@@ -19,14 +19,34 @@
 // SAMRAI INCLUDES
 #include <tbox/Pointer.h>
 #include <tbox/Database.h>
+#include <Variable.h>
+#include <CellVariable.h>
+#include <SideVariable.h>
+#include <HierarchyCellDataOpsReal.h>
+#include <HierarchySideDataOpsReal.h>
+#include <VariableContext.h>
+#include <LocationIndexRobinBcCoefs.h>
+#include <PoissonSpecifications.h>
+
+
 
 // IBAMR INCLUDES
 #include <ibamr/IBMethod.h>
 #include <ibamr/INSHierarchyIntegrator.h>
+#include <ibamr/IBHierarchyIntegrator.h>
 #include "../../Examples/IBKinematics.h"
+
+// IBTK INCLUDES
+#include <ibtk/HierarchyGhostCellInterpolation.h>
+#include <ibtk/CCLaplaceOperator.h>
+#include <ibtk/PETScKrylovLinearSolver.h>
+#include <ibtk/CCPoissonFACOperator.h>
+#include <ibtk/FACPreconditioner.h>
 
 // C++ STDLIB INCLUDES
 #include <vector>
+#include <string>
+#include <fstream>
 
 
 namespace IBAMR
@@ -50,7 +70,8 @@ public:
         const std::string& object_name,  
 	SAMRAI::tbox::Pointer<SAMRAI::tbox::Database> input_db,
 	bool register_for_restart = true,
-	SAMRAI::tbox::Pointer< IBAMR::INSHierarchyIntegrator > ins_hier_integrator
+	SAMRAI::tbox::Pointer< IBAMR::INSHierarchyIntegrator > ins_hier_integrator,
+	SAMRAI::tbox::Pointer< IBAMR::IBHierarchyIntegrator >  ib_hier_integrator
         );
         
     /*!
@@ -248,25 +269,11 @@ private:
 /////////////////////////    PRIVATE DATA MEMBERS ////////////////////////////////
     
     /*!
-     * Cache IBAMR-IBTK pointers for functionality.
+     * Cache IBAMR & IBTK pointers for functionality.
      */
     SAMRAI::tbox::Pointer< IBAMR::INSHierarchyIntegrator > d_ins_hier_integrator;
+    SAMRAI::tbox::Pointer< IBAMR::IBHierarchyIntegrator  > d_ib_hier_integrator;
     SAMRAI::tbox::Pointer< IBTK::HierarchyMathOps > d_hier_math_ops;
-    
-    /*!
-     * Pointer to the kinematics of the immersed structures.
-     */
-    
-    
-    /*!
-     * Name of the immersed Lagrangian structures in the domain.
-     */
-    std::vector<std::string> d_structure_names; 
-    
-    /*!
-     * ID of immersed Lagrangian structures in the domain.
-     */
-    std::vector<int> d_structure_ids;
     
     /*!
      * No of immersed structures.
@@ -274,50 +281,59 @@ private:
     const int d_no_structures;
     
     /*!
-     * Bools to control the variants of FuRMoRP algorithm for class of different applications.
+     * Pointer to the kinematics of the immersed structures.
      */
-    bool d_needs_div_free_projection, d_kinematics_need_filtering, d_body_is_self_rotating, d_body_is_self_translating;
-    std::map<int, std::vector<bool> > d_calculate_translational_momentum, d_calculate_rotational_momentum;
+    std::vector< SAMRAI::tbox::Pointer<IBAMR::IBKinematics> > d_ib_kinematics_ptr;
+    
+    /*!
+     * If divergence free projection is needed after FuRMoRP algorithm?
+     */
+    bool d_needs_div_free_projection;
+    
+    /*!
+     * Lagrangian position update method.
+     */
+    std::string d_lag_position_update_method;
         
     /*!
      * Rigid translational velocity of the structures.
      */
-    std::map<int, std::vector<double> > d_rigid_trans_vel, d_rigid_trans_vel_old;
+    std::vector< std::vector<double> > d_rigid_trans_vel, d_rigid_trans_vel_old;
     
     /*!
      * Rigid rotational velocity of the structures.
      */
-    std::map<int, std::vector<double> > d_rigid_rot_vel, d_rigid_rot_vel_old;
+    std::vector< std::vector<double> > d_rigid_rot_vel, d_rigid_rot_vel_old;
     
     /*!
      * Incremented angle from x, y and z axis when the body is rotating.
      */
-    std::map<int, SAMRAI::tbox::Array<double> > d_incremented_angle_from_reference_axis;
+    std::vector< std::vector<double> > d_incremented_angle_from_reference_axis;
     
     /*!
      * Translational velocity of the structures due to deformational kinematics.
      */
-    std::map<int, std::vector<double> > d_vel_com_def, d_vel_com_def_old;
+    std::vector< std::vector<double> > d_vel_com_def, d_vel_com_def_old;
     
     /*!
      * Rotational velocity of the structures due to deformational kinematics.
      */
-    std::map<int, std::vector<double> > d_omega_com_def, d_omega_com_def_old;
+    std::vector< std::vector<double> > d_omega_com_def, d_omega_com_def_old;
     
     /*!
      * Center of mass of the immersed structures.
      */
-    std::map<int, std::vector<double> > d_center_of_mass;
+    std::vector< std::vector<double> > d_center_of_mass;
     
     /*!
      * Tag a Lagrangian point (generally eye of the fish) of the immersed structures.
      */
-    std::map<int, std::vector<int> > d_tagged_pt_lag_idx;
+    std::vector< int > d_tagged_pt_lag_idx;
     
     /*!
      * Coordinates of the tagged points of different structures.
      */
-    std::map<int, std::vector<double> > d_tagged_pt_position;
+    std::vector< std::vector<double> > d_tagged_pt_position;
     
     /*!
      * Density and viscosity of the fluid.
@@ -329,19 +345,79 @@ private:
     /*!
      * Iteration_counter for printing stuff.
      */
-    int d_timestep_counter, d_output_interval, d_INS_num_cycles, d_INS_cycle_num;
+    int d_timestep_counter, d_output_interval, d_INS_num_cycles, d_INS_current_cycle_num;
    
     /*!
      * Bools for outputing stuff which is calculated on the fly.
      */
-    bool d_output_drag_and_kinetic_energy, d_output_power, d_print_output,d_output_trans_vel, 
+    bool d_print_output, d_output_drag_and_kinetic_energy, d_output_power,d_output_trans_vel, 
          d_output_rot_vel, d_output_COM_coordinates, d_output_MOI;
    
     /*!
      * output file name string.
      */
     std::string d_dir_name, d_base_output_filename;
-     
+    
+    /*!
+     * Store LData for U_interp, U_correction and U_new for only those levels which
+     * contain immersed structures.
+     */
+    std::vector< SAMRAI::tbox::Pointer<IBTK::LData> > d_l_data_U_interp, d_l_data_U_correction, 
+        d_l_data_U_new;
+	
+    /*!
+     * Hierarchy operations object. Needed for projection step.
+     */
+    SAMRAI::tbox::Pointer<SAMRAI::math::HierarchySideDataOpsReal<NDIM,double> > d_hier_sc_data_ops;
+    SAMRAI::tbox::Pointer<SAMRAI::math::HierarchyCellDataOpsReal<NDIM,double> > d_hier_cc_data_ops;
+    SAMRAI::tbox::Pointer<SAMRAI::pdat::CellVariable<NDIM,double> >             d_wgt_cc_var;
+    SAMRAI::tbox::Pointer<IBTK::HierarchyGhostCellInterpolation>                d_no_fill_op;
+    int                                                                         d_wgt_cc_idx;
+    double                                                                      d_volume;
+    
+    /*!
+     *  Variables and variable contexts associated with calculating divergence free projection.
+     */
+    SAMRAI::tbox::Pointer< SAMRAI::hier::Variable<     NDIM        > > d_u_var;
+    SAMRAI::tbox::Pointer< SAMRAI::hier::Variable<     NDIM        > > d_u_fluidSolve_var;
+    SAMRAI::tbox::Pointer< SAMRAI::pdat::CellVariable< NDIM,double > > d_phi_var;
+    SAMRAI::tbox::Pointer< SAMRAI::pdat::CellVariable< NDIM,double > > d_Div_u_var;
+   
+    SAMRAI::tbox::Pointer< SAMRAI::hier::VariableContext > d_scratch_context, d_new_context;
+    int d_u_scratch_idx, d_u_fluidSolve_idx , d_phi_idx, d_Div_u_scratch_idx;
+    
+    /*!
+     * The following variables are needed to solve cell centered poison equation for \phi ,which is
+     * used to project the corrected background fluid velocity on divergence free field to remove kinkiness
+     * introduced via FuRMoRP algorithm.
+     */
+    SAMRAI::solv::LocationIndexRobinBcCoefs<NDIM>        d_velcorrection_projection_bc_coef;
+    SAMRAI::solv::PoissonSpecifications*                 d_velcorrection_projection_spec;
+    SAMRAI::tbox::Pointer<IBTK::CCLaplaceOperator>       d_velcorrection_projection_op;
+    SAMRAI::tbox::Pointer<IBTK::PETScKrylovLinearSolver> d_velcorrection_projection_solver;
+    SAMRAI::tbox::Pointer<IBTK::CCPoissonFACOperator>    d_velcorrection_projection_fac_op;
+    SAMRAI::tbox::Pointer<SAMRAI::tbox::Database>        d_velcorrection_projection_fac_pc_db;
+    SAMRAI::tbox::Pointer<IBTK::FACPreconditioner>       d_velcorrection_projection_fac_pc;
+    
+
+    /*!
+     * Variables associated with Power calculation.
+     */
+    SAMRAI::tbox::Pointer< SAMRAI::pdat::CellVariable< NDIM,double> > d_VisDefPower_var;
+    SAMRAI::tbox::Pointer< SAMRAI::pdat::CellVariable< NDIM,double> > d_EulDefVel_var;
+    SAMRAI::tbox::Pointer< SAMRAI::pdat::CellVariable< NDIM,double> > d_ConstraintPower_var;
+    SAMRAI::tbox::Pointer< SAMRAI::pdat::CellVariable< NDIM,int   > > d_EulTagDefVel_var;
+    int d_VisDefPower_scratch_idx, d_EulDefVel_scratch_idx, d_ConstraintPower_scratch_idx, d_EulTagDefVel_scratch_idx;
+    
+    /*!
+     * File streams associated for the output.
+     */
+    std::vector<std::ofstream*>  d_trans_vel_stream, d_rot_vel_stream, d_drag_force_stream, d_moment_of_inertia_stream,
+        d_kinetic_energy_stream,d_position_COM_stream, d_power_spent_stream;
+	
+	
+
+  
 };
    
 }
