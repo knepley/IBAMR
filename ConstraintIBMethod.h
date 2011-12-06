@@ -43,6 +43,9 @@
 #include <ibtk/CCPoissonFACOperator.h>
 #include <ibtk/FACPreconditioner.h>
 
+// BLITZ INCLUDES 
+#include <blitz/array.h>
+
 // C++ STDLIB INCLUDES
 #include <vector>
 #include <string>
@@ -71,7 +74,8 @@ public:
 	SAMRAI::tbox::Pointer<SAMRAI::tbox::Database> input_db,
 	bool register_for_restart = true,
 	SAMRAI::tbox::Pointer< IBAMR::INSHierarchyIntegrator > ins_hier_integrator,
-	SAMRAI::tbox::Pointer< IBAMR::IBHierarchyIntegrator >  ib_hier_integrator
+	SAMRAI::tbox::Pointer< IBAMR::IBHierarchyIntegrator >  ib_hier_integrator,
+	const int no_structures
         );
         
     /*!
@@ -135,6 +139,19 @@ private:
     getFromRestart();
     
     /*!
+     * Set initial Lagrangian velocity on material points.
+     */
+    void
+    setInitialLagrangianVelocity();
+    
+    /*!
+     * Calculate center of mass and moment of inertia of immersed
+     * structures.
+     */
+    void
+    calculateCOMandMOIOfStructures();
+    
+    /*!
      * \brief Set the INS cycle number for this object.
      */
     void
@@ -174,26 +191,6 @@ private:
      */
     void 
     solveRigidTranslationalVelocity();
-
-    /*!
-     * Check if rigid body is self rotating or not?
-     */
-    bool
-    bodyIsSelfRotating() const
-    {
-        return d_body_is_self_rotating;
-    
-    }//bodyIsSelfRotating
-
-    /*!
-     * Check if body is self translating or not?
-     */
-    bool
-    bodyIsSelfTranslating() const
-    {
-        return d_body_is_self_translating;
-    
-    }// bodyIsSelfTranslating
   
     /*!
      * get no of INS cycles.
@@ -283,7 +280,7 @@ private:
     /*!
      * Pointer to the kinematics of the immersed structures.
      */
-    std::vector< SAMRAI::tbox::Pointer<IBAMR::IBKinematics> > d_ib_kinematics_ptr;
+    std::vector< SAMRAI::tbox::Pointer<IBAMR::ConstraintIBKinematics> > d_ib_kinematics;
     
     /*!
      * If divergence free projection is needed after FuRMoRP algorithm?
@@ -326,6 +323,11 @@ private:
     std::vector< std::vector<double> > d_center_of_mass;
     
     /*!
+     * Moment of inertia of the structures.
+     */
+    std::vector<blitz::Array<double,2> > d_moment_of_inertia;
+    
+    /*!
      * Tag a Lagrangian point (generally eye of the fish) of the immersed structures.
      */
     std::vector< int > d_tagged_pt_lag_idx;
@@ -363,7 +365,7 @@ private:
      * contain immersed structures.
      */
     std::vector< SAMRAI::tbox::Pointer<IBTK::LData> > d_l_data_U_interp, d_l_data_U_correction, 
-        d_l_data_U_new;
+        d_l_data_U_new, d_l_data_U_old;
 	
     /*!
      * Hierarchy operations object. Needed for projection step.

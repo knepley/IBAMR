@@ -27,6 +27,7 @@
 #endif
 
 // SAMARAI INCLUDES
+#include <PatchHierarchy.h>
 #include <HierarchyDataOpsManager.h>
 #include <VariableDatabase.h>
 #include <tbox/Utilities.h>
@@ -47,9 +48,14 @@
 // IBTK INCLUDES
 
 
+
+
 // C++ INCLUDES
 #include <limits>
 #include <sstream>
+#include <utility>
+#include <algorithm>
+#include <cmath>
 
 
 /////////////////////////////// NAMESPACE ////////////////////////////////////
@@ -78,7 +84,54 @@ namespace
   // interface ghost cells.
   static const bool CONSISTENT_TYPE_2_BDRY = false;
   
-}
+class find_struct_handle
+{
+    
+private:
+    typedef ConstraintIBKinematics::StructureParameters StructureParameters;
+    std::pair<int,int> struct_to_find_range;
+    
+public: 
+    
+    find_struct_handle(const pair<int,int>& struct_range)
+    :struct_to_find_range(struct_range) {}
+    
+    inline bool
+    operator()(Pointer<ConstraintIBKinematics> ib_kinematics_ptr)
+    {
+        const StructureParameters& struct_param       = ib_kinematics_ptr->getStructureParameters();
+	const std::vector<std::pair<int,int> >& range = struct_param.getLagIdxRange();
+	
+	bool is_in_range = false;
+	for(int i = 0 ; i < range.size(); ++i)
+	{
+	    if( struct_to_find_range.first == range[i].first && struct_to_find_range.second == range[i].second )
+	    {
+	        is_in_range = true;
+	        break;
+	    }  
+	}
+	
+	return is_in_range;   
+    }
+    
+}; //find_struct_handle
+ 
+template<typename itr, typename T> inline int
+find_struct_handle_position(itr begin, itr end, const T& value)
+{
+    int position = 0;
+    while (begin != end) 
+    {
+      if(*begin++ == value) return position;
+      else ++position;
+    }
+    
+    return -1;
+     
+} //find_struct_handle_position
+
+} //anonymous
 
 /////////////////////////////// PUBLIC ///////////////////////////////////////
 
@@ -87,13 +140,14 @@ ConstraintIBMethod::ConstraintIBMethod(
     Pointer< Database> input_db,
     bool register_for_restart,
     Pointer< INSHierarchyIntegrator > ins_hier_integrator,
-    Pointer< IBHierarchyIntegrator  > ib_hier_integrator) 
+    Pointer< IBHierarchyIntegrator  > ib_hier_integrator,
+    const int no_structures) 
     : IBMethod(object_name, input_db, register_for_restart),
     d_ins_hier_integrator(ins_hier_integrator),
     d_ib_hier_integrator(ib_hier_integrator),
     d_hier_math_ops(new HierarchyMathOps(object_name+ "HierarchyMathOps",d_hierarchy)),
-    d_no_structures(d_l_data_manager->getLagrangianStructureNames(d_hierarchy->getFinestLevelNumber()).size()),
-    d_ib_kinematics_ptr(d_no_structures,Pointer<IBKinematics>(NULL)),
+    d_no_structures(no_structures),   
+    d_ib_kinematics(d_no_structures, Pointer<ConstraintIBKinematics>(NULL)),
     d_needs_div_free_projection(false),
     d_rigid_trans_vel                       (d_no_structures, std::vector<double>(3,0.0)),
     d_rigid_trans_vel_old                   (d_no_structures, std::vector<double>(3,0.0)),
@@ -105,6 +159,7 @@ ConstraintIBMethod::ConstraintIBMethod(
     d_omega_com_def                         (d_no_structures, std::vector<double>(3,0.0)),
     d_omega_com_def_old                     (d_no_structures, std::vector<double>(3,0.0)),
     d_center_of_mass                        (d_no_structures, std::vector<double>(3,0.0)),
+    d_moment_of_inertia                     (d_no_structures, blitz::Array<double,2>(3,3)),
     d_tagged_pt_lag_idx                     (d_no_structures, 0),
     d_tagged_pt_position                    (d_no_structures, std::vector<double>(3,0.0)),
     d_rho_fluid(std::numeric_limits<double>::quiet_NaN()), 
@@ -124,7 +179,9 @@ ConstraintIBMethod::ConstraintIBMethod(
     d_base_output_filename("ImmersedStructrue"),
     d_l_data_U_interp    (d_hierarchy->getNumberOfLevels(),Pointer<LData>(NULL)),
     d_l_data_U_correction(d_hierarchy->getNumberOfLevels(),Pointer<LData>(NULL)),
-    d_l_data_U_new       (d_hierarchy->getNumberOfLevels(),Pointer<LData>(NULL))
+    d_l_data_U_new       (d_hierarchy->getNumberOfLevels(),Pointer<LData>(NULL)),
+    d_l_data_U_old       (d_hierarchy->getNumberOfLevels(),Pointer<LData>(NULL))
+    
 {
     // NOTE: Parent class constructor registers class with the restart manager, sets object name. 
     
@@ -335,11 +392,11 @@ ConstraintIBMethod::ConstraintIBMethod(
     }
    
    
-     // set the initial velocity of lag points.
-    setInitialLagrangianVelocity();  
+    // set the initial velocity of lag points.
+    if(!from_restart)  setInitialLagrangianVelocity();  
        
     // calculate the volume of material point in the non-elastic domain.
-    calculateVolOfLagPointInNonElasticDomain();
+    if(!from_restart) calculateVolOfLagPointInNonElasticDomain();
     
     // calculate the volume of material point in the elastic domain
     if( d_body_is_partly_elastic )
@@ -378,7 +435,7 @@ ConstraintIBMethod::getFromInput(
     const bool from_restart)
 {
 
-      //Read in control parameters from input database.
+    //Read in control parameters from input database.
     d_INS_num_cycles                   = input_db->getIntegerWithDefault("num_INS_cycles", d_INS_num_cycles);
     d_needs_div_free_projection        = input_db->getBoolWithDefault("needs_divfree_projection", d_needs_div_free_projection);
     d_rho_fluid                        = input_db->getDoubleWithDefault("rho_fluid", d_rho_fluid);
@@ -393,6 +450,7 @@ ConstraintIBMethod::getFromInput(
                   << "Update methods supported are user_defined_velocity/user_defined_position/background_fluid_velocity \n\n"
 		  << std::endl);
     }
+    
     //Printing stuff to files.
     Pointer<Database> d_output_db     = input_db->getDatabase("PrintOutput");
     d_print_output                    = d_output_db->getBoolWithDefault( "print_output"  ,d_print_output);
@@ -411,6 +469,244 @@ ConstraintIBMethod::getFromInput(
     return;
 } //getFromInput
 
+
+void
+ConstraintIBMethod::getFromRestart()
+{
+  
+  
+  
+    return;
+  
+} //getFromRestart
+
+void
+ConstraintIBMethod::setInitialLagrangianVelocity()
+{
+  
+    typedef ConstraintIBKinematics::StructureParameters StructureParameters;
+    calculateCOMandMOIOfStructures();
+    
+    for(int struct_no = 0; struct_no < d_no_structures; ++struct_no)
+    {
+      const StructureParameters& struct_param = d_ib_kinematics[struct_no]->getStructureParameters();
+      
+      d_ib_kinematics[struct_no]->setKinematicsVelocity(0.0,d_incremented_angle_from_reference_axis[struct_no],
+	  d_center_of_mass[struct_no], d_tagged_pt_position[struct_no] );
+      
+      if(struct_param.getStructureIsSelfTranslating()) calculateMomentumOfKinematicsVelocity(struct_no);
+      
+      if(struct_param.getKinematicsNeedFiltering())    filterkinematicsVelocity(struct_no);       
+    }
+    
+    const int coarsest_ln = 0;
+    const int finest_ln   = d_hierarchy->getFinestLevelNumber();
+    
+    for(int ln = coarsest_ln; ln <= finest_ln; ++ln)
+    {
+        if(!d_l_data_manager->levelContainsLagrangianData(ln)) continue;
+       
+        // Allocate U_old LData on this level
+        d_l_data_U_old[ln] = d_l_data_manager->createLData(d_object_name + "old_lag_vel", ln, NDIM, false);
+       	blitz::Array<double,2>& U_old_data = d_l_data_U_old[ln]->getLocalFormVecArray();
+	const Pointer<LMesh> mesh          = d_l_data_manager->getLMesh(ln);
+	const std::vector<LNode*>& local_nodes = mesh->getLocalNodes();
+	
+	// Get structures on this level.
+        const std::vector<int> structIDs = d_l_data_manager->getLagrangianStructureIDs(ln);
+        const int structs_on_this_ln     = structIDs.size();
+	
+        for(int struct_no = 0 ; struct_no < structs_on_this_ln; ++struct_no)
+        {
+	    std::pair<int,int> lag_idx_range = d_l_data_manager->getLagrangianStructureIndexRange(structIDs[struct_no],ln);
+	    const int offset = lag_idx_range.first;
+	    
+	    Pointer<ConstraintIBKinematics> ptr_ib_kinematics = *std::find_if(d_ib_kinematics.begin(),d_ib_kinematics.end(),find_struct_handle(lag_idx_range));
+	    const StructureParameters& struct_param = ptr_ib_kinematics->getStructureParameters();
+	   
+	    for(std::vector<LNode*>::const_iterator cit = local_nodes.begin(); cit != local_nodes.end(); ++cit)
+	    {
+	        const LNode* const node_idx = *cit;
+	        const int lag_idx = node_idx->getLagrangianIndex();
+	        if( lag_idx_range.first <= lag_idx && lag_idx < lag_idx_range.second)
+	        {
+		    const int local_idx = node_idx->getLocalPETScIndex();
+		    for(unsigned int d = 0; d < NDIM; ++d)
+		    {
+		       if(struct_param.getKinematicsNeedFiltering())
+			  U_old_data(local_idx,d) =  ptr_ib_kinematics->getFilteredKinematicsVel()[lag_idx][d];
+		       else
+			  U_old_data(local_idx,d) =  ptr_ib_kinematics->getKinematicsVel()[d][lag_idx - offset];
+		    }
+	        }
+	     
+	    }
+	   
+        }
+        d_l_data_U_old[ln]->restoreArrays();
+	
+      
+    }
+    
+    return;
+  
+} // setInitialLagrangianVelocity
+
+
+void
+ConstraintIBMethod::calculateCOMandMOIOfStructures()
+{
+
+    typedef ConstraintIBKinematics::StructureParameters StructureParameters;
+    
+    //Set the present com vector of all the structures to zero.
+    for(int struct_no = 0; struct_no < d_no_structures; ++struct_no)
+    {
+        for(int i = 0; i < 3; ++i) 
+	  d_center_of_mass[struct_no][i] = 0.0;
+    }
+    
+    
+    const int coarsest_ln = 0;
+    const int finest_ln   = d_hierarchy->getFinestLevelNumber();
+    
+    for(int ln = coarsest_ln; ln <= finest_ln; ++ln)
+    {
+        if(!d_l_data_manager->levelContainsLagrangianData(ln)) continue;
+       
+	//Get LData corresponding to the present position of the structures.
+       	const blitz::Array<double,2>& X_data = d_l_data_manager->getLData("X",ln)->getLocalFormVecArray();
+	const Pointer<LMesh> mesh          = d_l_data_manager->getLMesh(ln);
+	const std::vector<LNode*>& local_nodes = mesh->getLocalNodes();
+	
+	// Get structures on this level.
+        const std::vector<int> structIDs = d_l_data_manager->getLagrangianStructureIDs(ln);
+        const int structs_on_this_ln     = structIDs.size();
+	
+        for(int struct_no = 0 ; struct_no < structs_on_this_ln; ++struct_no)
+        {
+	    std::pair<int,int> lag_idx_range = d_l_data_manager->getLagrangianStructureIndexRange(structIDs[struct_no],ln);
+	    Pointer<ConstraintIBKinematics> ptr_ib_kinematics = *std::find_if(d_ib_kinematics.begin(),d_ib_kinematics.end(),find_struct_handle(lag_idx_range));
+	    const int location_struct_handle = find_struct_handle_position(d_ib_kinematics.begin(),d_ib_kinematics.end(),ptr_ib_kinematics);
+	    
+	    blitz::TinyVector<double,NDIM> X_com(0.0);
+	    for(std::vector<LNode*>::const_iterator cit = local_nodes.begin(); cit != local_nodes.end(); ++cit)
+	    {
+	        const LNode* const node_idx = *cit;
+	        const int lag_idx = node_idx->getLagrangianIndex();
+	        if( lag_idx_range.first <= lag_idx && lag_idx < lag_idx_range.second)
+	        {
+		    const int local_idx = node_idx->getLocalPETScIndex();
+		    const double* const X = &X_data(local_idx,0);
+		    for(unsigned int d = 0; d < NDIM; ++d)
+		    {
+                        X_com[d] += X[d];
+		    }
+	        }
+	     
+	    }
+	    
+	    SAMRAI_MPI::sumReduction(&X_com[0],NDIM);
+	    for(int d = 0; d < NDIM; ++d)
+	    {
+	        d_center_of_mass[location_struct_handle][d] += X_com[d];
+	    }
+	   
+        }
+	d_l_data_manager->getLData("X",ln)->restoreArrays();
+      
+    }
+    
+    for(int struct_no = 0; struct_no < d_no_structures; ++struct_no)
+    {
+        const StructureParameters& struct_param = d_ib_kinematics[struct_no]->getStructureParameters();
+	const int total_nodes                   = struct_param.getTotalNodes();
+	
+        for(int i = 0; i < 3; ++i) 
+	{
+	    d_center_of_mass[struct_no][i] /= total_nodes;
+	}
+	
+    }
+   
+    //Zero out the moment of inertia tensor.
+    for(int struct_no = 0; struct_no < d_no_structures; ++struct_no)
+    {
+        d_moment_of_inertia[struct_no] = 0.0; 
+    }
+   
+    for(int ln = coarsest_ln; ln <= finest_ln; ++ln)
+    {
+        if(!d_l_data_manager->levelContainsLagrangianData(ln)) continue;
+       
+	//Get LData corresponding to the present position of the structures.
+        const blitz::Array<double,2>& X_data = d_l_data_manager->getLData("X",ln)->getLocalFormVecArray();
+	const Pointer<LMesh> mesh          = d_l_data_manager->getLMesh(ln);
+	const std::vector<LNode*>& local_nodes = mesh->getLocalNodes();
+	
+	// Get structures on this level.
+        const std::vector<int> structIDs = d_l_data_manager->getLagrangianStructureIDs(ln);
+        const int structs_on_this_ln     = structIDs.size();
+	
+        for(int struct_no = 0 ; struct_no < structs_on_this_ln; ++struct_no)
+        {
+	    std::pair<int,int> lag_idx_range = d_l_data_manager->getLagrangianStructureIndexRange(structIDs[struct_no],ln);
+	    Pointer<ConstraintIBKinematics> ptr_ib_kinematics = *std::find_if(d_ib_kinematics.begin(),d_ib_kinematics.end(),find_struct_handle(lag_idx_range));
+	    const StructureParameters& struct_param  = ptr_ib_kinematics->getStructureParameters();
+	    if(!struct_param.getStructureIsSelfRotating()) continue;
+	    
+	    const int location_struct_handle = find_struct_handle_position(d_ib_kinematics.begin(),d_ib_kinematics.end(),ptr_ib_kinematics);
+	    std::vector<double> X_com = d_center_of_mass[location_struct_handle]; 
+	    
+	    blitz::Array<double,2> Inertia(3,3);
+	    Inertia = 0.0;
+	    for(std::vector<LNode*>::const_iterator cit = local_nodes.begin(); cit != local_nodes.end(); ++cit)
+	    {
+	        const LNode* const node_idx = *cit;
+	        const int lag_idx = node_idx->getLagrangianIndex();
+	        if( lag_idx_range.first <= lag_idx && lag_idx < lag_idx_range.second)
+	        {
+		    const int local_idx = node_idx->getLocalPETScIndex();
+		    const double* const X = &X_data(local_idx,0);
+#if (NDIM == 2)
+		    Inertia(0,0) += std::pow( X[1] - X_com[1] , 2);
+		    Inertia(0,1) += -(X[0] - X_com[0])*(X[1] - X_com[1]);
+		    Inertia(1,1) += std::pow( X[0] - X_com[0] , 2);
+		    Inertia(2,2) += std::pow( X[0] - X_com[0] , 2) + std::pow( X[1] - X_com[1] , 2);
+		    
+#endif
+		    
+#if (NDIM == 3)
+		    Inertia(0,0) += std::pow( X[1] - X_com[1] , 2) + std::pow( X[2] - X_com[2] , 2);
+		    Inertia(0,1) += -(X[0] - X_com[0])*(X[1] - X_com[1]);
+		    Inertia(0,2) += -(X[0] - X_com[0])*(X[2] - X_com[2]);
+		    Inertia(1,1) += std::pow( X[0] - X_com[0] , 2) + std::pow( X[2] - X_com[2] , 2);
+		    Inertia(1,2) += -(X[1] - X_com[1])*(X[2] - X_com[2]);
+		    Inertia(2,2) += std::pow( X[0] - X_com[0] , 2) + std::pow( X[1] - X_com[1] , 2);
+#endif
+
+	        }
+	     
+	    }
+	    
+	    SAMRAI_MPI::sumReduction(&Inertia(0,0), 9);
+            d_moment_of_inertia[location_struct_handle] += Inertia;   
+        }
+	d_l_data_manager->getLData("X",ln)->restoreArrays();
+      
+    }
+    
+    //Fill-in symmetric part of inertia tensor.
+    for(int struct_no = 0; struct_no < d_no_structures; ++struct_no)
+    {       
+	d_moment_of_inertia[struct_no](1,0) = d_moment_of_inertia[struct_no](0,1);
+	d_moment_of_inertia[struct_no](2,0) = d_moment_of_inertia[struct_no](0,2);
+        d_moment_of_inertia[struct_no](2,1) = d_moment_of_inertia[struct_no](1,2);
+    }
+    
+    
+    return;
+} //calculateCOMandMOIOfStructures
 
 
 
