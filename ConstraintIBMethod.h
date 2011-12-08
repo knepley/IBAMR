@@ -152,10 +152,22 @@ private:
     calculateCOMandMOIOfStructures();
     
     /*!
+     * Calculate momentum of Kinematics velocity.
+     */
+    void
+    calculateMomentumOfKinematicsVelocity(const int position_handle);
+    
+    /*!
+     * Calculate volume element associated with material points.
+     */
+    void
+    calculateVolumeElement();
+    
+    /*!
      * \brief Set the INS cycle number for this object.
      */
     void
-    setINSCycleNumber(
+    setINSCycleNumberAndCounter(
         const int cycle_num);
    
     /*!
@@ -281,6 +293,16 @@ private:
      * Pointer to the kinematics of the immersed structures.
      */
     std::vector< SAMRAI::tbox::Pointer<IBAMR::ConstraintIBKinematics> > d_ib_kinematics;
+    
+    /*!
+     * FuRMoRP apply time.
+     */
+    double d_FuRMoRP_time;
+    
+    /*!
+     * Volume element associated with material points.
+     */
+    std::vector<double> d_vol_element;
     
     /*!
      * If divergence free projection is needed after FuRMoRP algorithm?
@@ -422,7 +444,14 @@ private:
   
 };
    
-}
+} //IBAMR
+
+
+///////////////////////////////////////// INLINE ////////////////////////
+
+#include "ConstraintIBMethod.I"
+
+/////////////////////////////////////////////////////////////////////////
 
 
 

@@ -33,6 +33,7 @@
 #include <tbox/Utilities.h>
 #include <tbox/SAMRAI_MPI.h>
 #include <CartesianGridGeometry.h>
+#include <CartesianPatchGeometry.h>
 #include <CoarsenAlgorithm.h>
 #include <CoarsenPatchStrategy.h>
 #include <CoarsenSchedule.h>
@@ -41,11 +42,15 @@
 #include <RefineSchedule.h>
 #include <CoarsenOperator.h>
 #include <RefineOperator.h>
+#include <Patch.h>
+#include <CellData.h>
+#include <CellIndex.h>
 
 // IBAMR INCLUDES
 #include <ibamr/namespaces.h>
 
 // IBTK INCLUDES
+#include <ibtk/LNodeSetData.h>
 
 
 
@@ -118,7 +123,9 @@ public:
 }; //find_struct_handle
  
 template<typename itr, typename T> inline int
-find_struct_handle_position(itr begin, itr end, const T& value)
+find_struct_handle_position(
+    itr begin, 
+    itr end, const T& value)
 {
     int position = 0;
     while (begin != end) 
@@ -130,6 +137,39 @@ find_struct_handle_position(itr begin, itr end, const T& value)
     return -1;
      
 } //find_struct_handle_position
+
+
+// Routine to solve 3X3 equation to get rigid body rotational velocity.
+inline void
+solveSystemOfEqns(
+    std::vector<double>& ang_mom,
+    const blitz::Array<double,2>& inertiaTensor) 
+{
+
+    const double a1 = inertiaTensor(0,0),
+                 a2 = inertiaTensor(0,1),
+                 a3 = inertiaTensor(0,2),
+                 b1 = inertiaTensor(1,0),
+                 b2 = inertiaTensor(1,1),
+                 b3 = inertiaTensor(1,2),
+                 c1 = inertiaTensor(2,0),
+                 c2 = inertiaTensor(2,1),
+                 c3 = inertiaTensor(2,2),
+	         d1 = ang_mom[0],
+		 d2 = ang_mom[1],
+		 d3 = ang_mom[2];
+		   
+    const double Dnr       =  (a3*b2*c1 -a2*b3*c1  -a3*b1*c2 + a1*b3*c2 + a2*b1*c3 -a1*b2*c3);
+  
+    ang_mom[0]            =  (b3*c2*d1 - b2*c3*d1 -a3*c2*d2 + a2*c3*d2 + a3*b2*d3 -a2*b3*d3)/Dnr;
+
+    ang_mom[1]            =  -(b3*c1*d1 - b1*c3*d1 -a3*c1*d2 + a1*c3*d2 + a3*b1*d3 -a1*b3*d3)/Dnr;
+ 
+    ang_mom[2]            =  (b2*c1*d1 - b1*c2*d1 -a2*c1*d2 + a1*c2*d2 + a2*b1*d3 -a1*b2*d3)/Dnr;
+
+    return ;
+
+} //solveSystemOfEqns
 
 } //anonymous
 
@@ -148,6 +188,8 @@ ConstraintIBMethod::ConstraintIBMethod(
     d_hier_math_ops(new HierarchyMathOps(object_name+ "HierarchyMathOps",d_hierarchy)),
     d_no_structures(no_structures),   
     d_ib_kinematics(d_no_structures, Pointer<ConstraintIBKinematics>(NULL)),
+    d_FuRMoRP_time(0.0),
+    d_vol_element(d_no_structures,0.0),
     d_needs_div_free_projection(false),
     d_rigid_trans_vel                       (d_no_structures, std::vector<double>(3,0.0)),
     d_rigid_trans_vel_old                   (d_no_structures, std::vector<double>(3,0.0)),
@@ -208,6 +250,9 @@ ConstraintIBMethod::ConstraintIBMethod(
     d_hier_cc_data_ops                              = hier_ops_manager->getOperationsDouble(cc_var, d_hierarchy, true);
     Pointer<SideVariable<NDIM,double> > sc_var      = new SideVariable<NDIM,double>("sc_var");
     d_hier_sc_data_ops                              = hier_ops_manager->getOperationsDouble(sc_var, d_hierarchy, true);
+    d_wgt_cc_var                                    = d_hier_math_ops->getCellWeightVariable();
+    d_wgt_cc_idx                                    = d_hier_math_ops->getCellWeightPatchDescriptorIndex();
+    d_volume                                        = d_hier_math_ops->getVolumeOfPhysicalDomain();
    
     // Initialize  variables & variable contexts associated with projection step.
     VariableDatabase<NDIM>* var_db        = VariableDatabase<NDIM>::getDatabase();
@@ -309,7 +354,7 @@ ConstraintIBMethod::ConstraintIBMethod(
     coarsen_alg = new CoarsenAlgorithm<NDIM>();
     coarsen_op = grid_geom->lookupCoarsenOperator(d_u_fluidSolve_var, "CONSERVATIVE_COARSEN");
     coarsen_alg->registerCoarsen(d_u_fluidSolve_idx, d_u_fluidSolve_idx, coarsen_op);
-    d_ib_hier_integrator->registerCoarsenAlgorithm(d_object_name+"Synch::u_fluidSolve", coarsen_alg);
+    d_ib_hier_integrator->registerCoarsenAlgorithm(d_object_name+"SYNC::u_fluidSolve", coarsen_alg);
     
     if(d_output_power)
     {
@@ -317,7 +362,7 @@ ConstraintIBMethod::ConstraintIBMethod(
         coarsen_op = grid_geom->lookupCoarsenOperator(d_EulDefVel_var, "CONSERVATIVE_COARSEN");
         coarsen_alg->registerCoarsen(d_EulDefVel_scratch_idx,    d_EulDefVel_scratch_idx,    coarsen_op);
 	coarsen_alg->registerCoarsen(d_EulTagDefVel_scratch_idx, d_EulTagDefVel_scratch_idx, coarsen_op);
-        d_ib_hier_integrator->registerCoarsenAlgorithm(d_object_name+"Synch::u_def/tag", coarsen_alg);
+        d_ib_hier_integrator->registerCoarsenAlgorithm(d_object_name+"SYNC::u_def/tag", coarsen_alg);
     }
     
     // Create algorithm for filling ghost cells needed during 
@@ -390,17 +435,16 @@ ConstraintIBMethod::ConstraintIBMethod(
 	}
 
     }
-   
+    
+    
+    //Create ConstraintIBKinematics handlers.
    
     // set the initial velocity of lag points.
     if(!from_restart)  setInitialLagrangianVelocity();  
        
     // calculate the volume of material point in the non-elastic domain.
-    if(!from_restart) calculateVolOfLagPointInNonElasticDomain();
+    if(!from_restart) calculateVolumeElement();
     
-    // calculate the volume of material point in the elastic domain
-    if( d_body_is_partly_elastic )
-     { calculateVolOfLagPointInElasticDomain(); }
 
  return;
   
@@ -536,7 +580,7 @@ ConstraintIBMethod::setInitialLagrangianVelocity()
 		       if(struct_param.getKinematicsNeedFiltering())
 			  U_old_data(local_idx,d) =  ptr_ib_kinematics->getFilteredKinematicsVel()[lag_idx][d];
 		       else
-			  U_old_data(local_idx,d) =  ptr_ib_kinematics->getKinematicsVel()[d][lag_idx - offset];
+			  U_old_data(local_idx,d) =  ptr_ib_kinematics->getKinematicsVel(ln)[d][lag_idx - offset];
 		    }
 	        }
 	     
@@ -565,8 +609,7 @@ ConstraintIBMethod::calculateCOMandMOIOfStructures()
         for(int i = 0; i < 3; ++i) 
 	  d_center_of_mass[struct_no][i] = 0.0;
     }
-    
-    
+        
     const int coarsest_ln = 0;
     const int finest_ln   = d_hierarchy->getFinestLevelNumber();
     
@@ -604,23 +647,20 @@ ConstraintIBMethod::calculateCOMandMOIOfStructures()
 		    }
 	        }
 	     
-	    }
-	    
-	    SAMRAI_MPI::sumReduction(&X_com[0],NDIM);
+	    }	    
 	    for(int d = 0; d < NDIM; ++d)
 	    {
 	        d_center_of_mass[location_struct_handle][d] += X_com[d];
-	    }
-	   
+	    }	   
         }
-	d_l_data_manager->getLData("X",ln)->restoreArrays();
-      
+	d_l_data_manager->getLData("X",ln)->restoreArrays();     
     }
     
     for(int struct_no = 0; struct_no < d_no_structures; ++struct_no)
     {
         const StructureParameters& struct_param = d_ib_kinematics[struct_no]->getStructureParameters();
 	const int total_nodes                   = struct_param.getTotalNodes();
+	SAMRAI_MPI::sumReduction(&d_center_of_mass[struct_no][0],NDIM);
 	
         for(int i = 0; i < 3; ++i) 
 	{
@@ -684,18 +724,20 @@ ConstraintIBMethod::calculateCOMandMOIOfStructures()
 		    Inertia(1,2) += -(X[1] - X_com[1])*(X[2] - X_com[2]);
 		    Inertia(2,2) += std::pow( X[0] - X_com[0] , 2) + std::pow( X[1] - X_com[1] , 2);
 #endif
-
 	        }
 	     
 	    }
-	    
-	    SAMRAI_MPI::sumReduction(&Inertia(0,0), 9);
-            d_moment_of_inertia[location_struct_handle] += Inertia;   
-        }
-	d_l_data_manager->getLData("X",ln)->restoreArrays();
-      
-    }
+	    d_moment_of_inertia[location_struct_handle] += Inertia;   
+        }// all structs
+	d_l_data_manager->getLData("X",ln)->restoreArrays();      
+    }// all levels
     
+    for(int struct_no = 0; struct_no < d_no_structures; ++struct_no)
+    {
+        const StructureParameters& struct_param = d_ib_kinematics[struct_no]->getStructureParameters();
+	if(struct_param.getStructureIsSelfRotating()) SAMRAI_MPI::sumReduction(&d_moment_of_inertia[struct_no](0,0),9);     
+    }
+       
     //Fill-in symmetric part of inertia tensor.
     for(int struct_no = 0; struct_no < d_no_structures; ++struct_no)
     {       
@@ -708,6 +750,436 @@ ConstraintIBMethod::calculateCOMandMOIOfStructures()
     return;
 } //calculateCOMandMOIOfStructures
 
+
+void
+ConstraintIBMethod::calculateMomentumOfKinematicsVelocity(const int position_handle)
+{
+
+    typedef ConstraintIBKinematics::StructureParameters StructureParameters;
+    
+    Pointer<ConstraintIBKinematics> ptr_ib_kinematics = d_ib_kinematics[position_handle];
+    const StructureParameters& struct_param           = ptr_ib_kinematics->getStructureParameters();
+    const int coarsest_ln                             = struct_param.getCoarsestLevelNumber();
+    const int finest_ln                               = struct_param.getFinestLevelNumber();
+    const std::vector<std::pair<int,int> >& range     = struct_param.getLagIdxRange();
+    const int total_nodes                             = struct_param.getTotalNodes();
+    
+    //Zero out linear momentum of kinematics velocity of the structure.
+    for(int i = 0; i < 3; ++i) 
+	d_vel_com_def[position_handle][i] = 0.0;
+   
+    //Calculate linear momentum
+    for(int ln = coarsest_ln, itr = 0; ln <= finest_ln && itr < range.size(); ++ln,++itr)
+    {
+      
+#ifdef DEBUG_CHECK_ASSERTIONS
+        TBOX_ASSERT(d_l_data_manager->levelContainsLagrangianData(ln));
+#endif
+       	
+        std::pair<int,int> lag_idx_range = range[itr];
+	const int offset = lag_idx_range.first;
+	blitz::TinyVector<double,NDIM> U_com_def(0.0);
+	
+	//Get LMesh corresponding to the present position of the structures 
+	//on this level.
+	const Pointer<LMesh> mesh          = d_l_data_manager->getLMesh(ln);
+	const std::vector<LNode*>& local_nodes = mesh->getLocalNodes();
+	for(std::vector<LNode*>::const_iterator cit = local_nodes.begin(); cit != local_nodes.end(); ++cit)
+	{
+	    const LNode* const node_idx = *cit;
+	    const int lag_idx = node_idx->getLagrangianIndex();
+	    if( lag_idx_range.first <= lag_idx && lag_idx < lag_idx_range.second)
+	    {
+		for(unsigned int d = 0; d < NDIM; ++d)
+		{
+                    U_com_def[d] += ptr_ib_kinematics->getKinematicsVel(ln)[d][lag_idx - offset];
+		}
+	    }
+	}	    	
+	for(int d = 0; d < NDIM; ++d)
+	{
+	    d_vel_com_def[position_handle][d] += U_com_def[d];
+	}
+    }
+    SAMRAI_MPI::sumReduction(&d_vel_com_def[position_handle][0],NDIM);
+ 
+    for(int i = 0; i < 3; ++i) 
+    {
+	d_vel_com_def[position_handle][i] /= total_nodes;
+    }
+	
+    //Calculate angular momentum.
+    if(struct_param.getStructureIsSelfRotating())
+    {
+         
+        //Zero out angular momentum of kinematics velocity of the structure.
+        for(int i = 0; i < 3; ++i) 
+	    d_omega_com_def[position_handle][i] = 0.0;
+     
+     
+        for(int ln = coarsest_ln, itr = 0; ln <= finest_ln && itr < range.size(); ++ln,++itr)
+        {
+      
+#ifdef DEBUG_CHECK_ASSERTIONS
+            TBOX_ASSERT(d_l_data_manager->levelContainsLagrangianData(ln));
+#endif
+       	
+            std::pair<int,int> lag_idx_range = range[itr];
+	    const int offset = lag_idx_range.first;
+	    blitz::TinyVector<double,3> R_cross_U_def(0.0);
+	
+	    //Get LData corresponding to the present position of the structures.
+       	    const blitz::Array<double,2>& X_data = d_l_data_manager->getLData("X",ln)->getLocalFormVecArray();
+	    const Pointer<LMesh> mesh            = d_l_data_manager->getLMesh(ln);
+	    const std::vector<LNode*>& local_nodes = mesh->getLocalNodes();
+
+	    for(std::vector<LNode*>::const_iterator cit = local_nodes.begin(); cit != local_nodes.end(); ++cit)
+	    {
+	        const LNode* const node_idx = *cit;
+	        const int lag_idx = node_idx->getLagrangianIndex();
+	        if( lag_idx_range.first <= lag_idx && lag_idx < lag_idx_range.second)
+	        {
+	            const int local_idx = node_idx->getLocalPETScIndex();
+		    const double* const X = &X_data(local_idx,0);
+#if (NDIM == 2)
+		    double x_cm = X[0] - d_center_of_mass[position_handle][0];
+		    double y_cm = X[1] - d_center_of_mass[position_handle][1];
+		    R_cross_U_def[2] +=  ( x_cm*(ptr_ib_kinematics->getKinematicsVel(ln))[1][lag_idx - offset] 
+	                -y_cm*(ptr_ib_kinematics->getKinematicsVel(ln))[0][lag_idx - offset] );
+
+#endif
+		    
+#if (NDIM == 3)
+	            double x_cm = X[0] - d_center_of_mass[position_handle][0];
+		    double y_cm = X[1] - d_center_of_mass[position_handle][1];
+		    double z_cm = X[2] - d_center_of_mass[position_handle][2];
+		    
+		    R_cross_U_def[0]  +=  ( y_cm*(ptr_ib_kinematics->getKinematicsVel(ln))[2][lag_idx - offset] 
+	                        -z_cm* (ptr_ib_kinematics->getKinematicsVel(ln))[1][lag_idx - offset] );
+	    
+	            R_cross_U_def[1] +=  ( -x_cm*(ptr_ib_kinematics->getKinematicsVel(ln))[2][lag_idx - offset] 
+	                         +z_cm*(ptr_ib_kinematics->getKinematicsVel(ln))[0][lag_idx - offset] );
+	    
+	            R_cross_U_def[2] +=  ( x_cm*(ptr_ib_kinematics->getKinematicsVel(ln))[1][lag_idx - offset] 
+	                        -y_cm*(ptr_ib_kinematics->getKinematicsVel(ln))[0][lag_idx - offset] );		   
+#endif
+	        }
+	    }
+	    for(int d = 0; d < 3; ++d)
+	    {
+	      d_omega_com_def[position_handle][d] += R_cross_U_def[d];
+	    }            
+        } //all levels
+        SAMRAI_MPI::sumReduction(&d_omega_com_def[position_handle][0],3);
+    } //if struct is rotating
+    
+    // Find angular velocity of deformational velocity.
+#if (NDIM == 2)
+    d_omega_com_def[position_handle][2] /= d_moment_of_inertia[position_handle](2,2);               
+#endif
+ 
+#if (NDIM == 3)       
+   solveSystemOfEqns(d_omega_com_def[position_handle],d_moment_of_inertia[position_handle]);  
+#endif
+    
+    return;
+} //calculateMomentumOfKinematicsVelocity
+
+
+void
+ConstraintIBMethod::calculateVolumeElement()
+{
+  
+    typedef ConstraintIBKinematics::StructureParameters StructureParameters;
+    
+    // Initialize variables and variable contexts associated with Eulerian tracking of the Lagrangian points.
+    VariableDatabase<NDIM>* var_db        = VariableDatabase<NDIM>::getDatabase();
+    const IntVector<NDIM> cell_ghosts   = 0; 
+    Pointer< CellVariable< NDIM,int > > vol_cc_var = new CellVariable<NDIM, int>(d_object_name + "::vol_cc_var");
+    const int vol_cc_scratch_idx                   = var_db->registerVariableAndContext(vol_cc_var, d_scratch_context, cell_ghosts);
+    
+    const int coarsest_ln = 0;
+    const int finest_ln   = d_hierarchy->getFinestLevelNumber();
+    for(int ln = coarsest_ln; ln <= finest_ln; ++ln)
+    {
+        if(!d_l_data_manager->levelContainsLagrangianData(ln)) continue; 
+        Pointer<PatchLevel<NDIM> > level = d_hierarchy->getPatchLevel(ln);
+        level->allocatePatchData(vol_cc_scratch_idx,0.0);
+        for(PatchLevel<NDIM>::Iterator p(level); p ; p++)
+        {
+	    Pointer<Patch<NDIM> > patch = level->getPatch(p());
+	    Pointer<CellData<NDIM,int> >  vol_cc_scratch_idx_data = patch->getPatchData(vol_cc_scratch_idx);
+	    vol_cc_scratch_idx_data->fill(0,0);
+	 
+        }    
+    }
+  
+    const int lag_node_index_idx = d_l_data_manager->getLNodePatchDescriptorIndex();
+    for(int ln = coarsest_ln; ln <= finest_ln; ++ln)
+    {
+        if(!d_l_data_manager->levelContainsLagrangianData(ln)) continue; 
+	
+        
+	//Get LData corresponding to the present position of the structures.
+       	const blitz::Array<double,2>& X_data = d_l_data_manager->getLData("X",ln)->getLocalFormVecArray();
+	Pointer<PatchLevel<NDIM> > level = d_hierarchy->getPatchLevel(ln);
+	
+        // Get structures on this level.
+        const std::vector<int> structIDs = d_l_data_manager->getLagrangianStructureIDs(ln);
+        const int structs_on_this_ln     = structIDs.size();
+	for(int struct_no = 0 ; struct_no < structs_on_this_ln; ++struct_no)
+        { 
+	    std::pair<int,int> lag_idx_range = d_l_data_manager->getLagrangianStructureIndexRange(structIDs[struct_no],ln);
+	    Pointer<ConstraintIBKinematics> ptr_ib_kinematics = *std::find_if(d_ib_kinematics.begin(),d_ib_kinematics.end(),find_struct_handle(lag_idx_range));
+	    const int location_struct_handle = find_struct_handle_position(d_ib_kinematics.begin(),d_ib_kinematics.end(),ptr_ib_kinematics);
+	    
+	    for(PatchLevel<NDIM>::Iterator p(level); p ; p++)
+	    {
+	        Pointer<Patch<NDIM> > patch = level->getPatch(p());
+	        Pointer<CellData<NDIM,int> >  vol_cc_scratch_idx_data = patch->getPatchData(vol_cc_scratch_idx);
+                Pointer<CartesianPatchGeometry<NDIM> > pgeom = patch->getPatchGeometry();
+	        const double* const dx                       = pgeom->getDx(); 
+                const double* const XLower                   = pgeom->getXLower();
+                const Box<NDIM>& patch_box                   = patch->getBox();
+                const Index<NDIM>& ilower                    = patch_box.lower();
+#if (NDIM == 2 )
+	        const double patch_cell_vol                  = dx[0]*dx[1];
+#endif
+	    
+#if (NDIM == 3)
+                const double patch_cell_vol                  = dx[0]*dx[1]*dx[2];
+#endif
+                const Pointer<LNodeSetData> lag_node_index_data  = patch->getPatchData(lag_node_index_idx);                                                  	
+                for(LNodeSetData::DataIterator it = lag_node_index_data->data_begin(patch_box);
+		    it != lag_node_index_data->data_end(); ++it)
+	        {    
+	            LNode* const node_idx = *it;
+		    const int lag_idx = node_idx->getLagrangianIndex();
+	            if( lag_idx_range.first <= lag_idx && lag_idx < lag_idx_range.second)
+	            {
+		        const int local_idx = node_idx->getLocalPETScIndex();
+		        const double* const X = &X_data(local_idx,0);
+			const CellIndex<NDIM> Lag2Eul_cellindex( Index<NDIM> (int( floor((X[0]-XLower[0])/dx[0]) )+ilower(0)
+#if (NDIM > 1)
+                              ,int(floor((X[1]-XLower[1])/dx[1]))+ilower(1)
+#if (NDIM > 2)
+                              ,int(floor((X[2]-XLower[2])/dx[2]))+ilower(2)
+#endif
+#endif
+                                                                              ) );
+		       (*vol_cc_scratch_idx_data)(Lag2Eul_cellindex)++;
+			
+		    }	    
+		} //on a patch
+		
+	        for(CellData<NDIM,int>::Iterator it(patch_box); it; it++)
+                {
+	            if( (*vol_cc_scratch_idx_data)(*it) )
+	                d_vol_element[location_struct_handle] += patch_cell_vol;
+		    
+		} // on the same patch				
+	    }// all patches
+	} //all structs	
+	d_l_data_manager->getLData("X",ln)->restoreArrays();
+    }// all levels
+    SAMRAI_MPI::sumReduction(&d_vol_element,d_no_structures);
+    std::vector<double> vol_structures = d_vol_element;
+    
+    for(int struct_no = 0; struct_no < d_no_structures; ++struct_no)
+    {
+        Pointer<ConstraintIBKinematics> ptr_ib_kinematics = d_ib_kinematics[struct_no];
+        const StructureParameters& struct_param           = ptr_ib_kinematics->getStructureParameters();
+	d_vol_element[struct_no] /= struct_param.getTotalNodes();  
+	
+	
+	tbox::plog << " ++++++++++++++++ " << " STRUCTURE NO. " << struct_no << "  ++++++++++++++++++++++++++ \n\n\n" 
+                   << " VOLUME OF THE MATERIAL ELEMENT           = " << d_vol_element[struct_no] << "\n"
+                   << " VOLUME OF THE STRUCTURE                  = " << vol_structures[struct_no] << "\n"
+                   << " ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n" << std::endl;
+    }
+    
+
+    for(int ln = coarsest_ln; ln <= finest_ln; ++ln)
+    {
+        if(!d_l_data_manager->levelContainsLagrangianData(ln)) continue; 
+	Pointer<PatchLevel<NDIM> > level = d_hierarchy->getPatchLevel(ln);
+	if(level->checkAllocated(vol_cc_scratch_idx)) 
+	  level->deallocatePatchData(vol_cc_scratch_idx);     
+    }
+    var_db->removePatchDataIndex(vol_cc_scratch_idx);
+  
+    return;
+  
+} //calculateVolumeElement
+
+
+
+void
+ConstraintIBMethod::interpolateFluidSolveVelocity()
+{
+  
+    const int coarsest_ln = 0;
+    const int finest_ln   = d_hierarchy->getFinestLevelNumber();
+    
+    std::vector<Pointer<LData> > F_data(finest_ln+1, Pointer<LData>(NULL) );
+    std::vector<Pointer<LData> > X_data(finest_ln+1, Pointer<LData>(NULL) );
+  
+    for(int ln = coarsest_ln; ln <= finest_ln; ++ln)
+    {
+        if(!d_l_data_manager->levelContainsLagrangianData(ln)) continue;
+	F_data[ln] = d_l_data_U_interp[ln] = d_l_data_manager->createLData(d_object_name + "interp_lag_vel", ln, NDIM, false);  
+	X_data[ln] = d_l_data_manager->getLData("X",ln);
+    }
+  
+    d_l_data_manager->interp(d_u_fluidSolve_idx,F_data,X_data,
+        d_ib_hier_integrator->getCoarsenSchedules(d_object_name+"SYNC::u_fluidSolve"),
+	d_ib_hier_integrator->getGhostfillRefineSchedules(d_object_name+"FILL_GHOSTCELL::u_fluidSolve"),
+	d_FuRMoRP_time); 
+    
+    return; 
+  
+} //interpolateFluidSolveVelocity
+
+
+void
+ConstraintIBMethod::calculateRigidMomentum()
+{
+  
+    typedef ConstraintIBKinematics::StructureParameters StructureParameters;
+    const int coarsest_ln = 0;
+    const int finest_ln   = d_hierarchy->getFinestLevelNumber();
+    
+    //Calculate rigid translational velocity.
+    for(int ln = coarsest_ln; ln <= finest_ln; ++ln)
+    {
+        if(!d_l_data_manager->levelContainsLagrangianData(ln)) continue;
+       
+	//Get LData corresponding to the present position of the structures.
+        const blitz::Array<double,2>& U_interp_data = d_l_data_manager->getLData(d_object_name+"interp_lag_vel",ln)->getLocalFormVecArray();
+	const Pointer<LMesh> mesh                   = d_l_data_manager->getLMesh(ln);
+	const std::vector<LNode*>& local_nodes      = mesh->getLocalNodes();
+	
+	// Get structures on this level.
+        const std::vector<int> structIDs = d_l_data_manager->getLagrangianStructureIDs(ln);
+        const int structs_on_this_ln     = structIDs.size();
+	
+        for(int struct_no = 0 ; struct_no < structs_on_this_ln; ++struct_no)
+        {
+	    std::pair<int,int> lag_idx_range = d_l_data_manager->getLagrangianStructureIndexRange(structIDs[struct_no],ln);
+	    Pointer<ConstraintIBKinematics> ptr_ib_kinematics = *std::find_if(d_ib_kinematics.begin(),d_ib_kinematics.end(),find_struct_handle(lag_idx_range));
+	    const StructureParameters& struct_param  = ptr_ib_kinematics->getStructureParameters();
+	    if(!struct_param.getStructureIsSelfTranslating()) continue;
+	    
+	    const int location_struct_handle = find_struct_handle_position(d_ib_kinematics.begin(),d_ib_kinematics.end(),ptr_ib_kinematics);
+	    
+	    blitz::TinyVector<double,NDIM> U_rigid(0.0);
+	    for(std::vector<LNode*>::const_iterator cit = local_nodes.begin(); cit != local_nodes.end(); ++cit)
+	    {
+	        const LNode* const node_idx = *cit;
+	        const int lag_idx = node_idx->getLagrangianIndex();
+	        if( lag_idx_range.first <= lag_idx && lag_idx < lag_idx_range.second)
+	        {
+		    const int local_idx = node_idx->getLocalPETScIndex();
+		    const double* const U = &U_interp_data(local_idx,0);
+		    for(int d = 0 ; d < NDIM; ++d)
+		    {
+		        U_rigid[d] += U[d];
+		    }
+	        }	     
+	    }
+	    for(int d = 0; d < NDIM; ++d) d_rigid_trans_vel[location_struct_handle][d] += U_rigid[d];   
+        }// all structs
+	d_l_data_manager->getLData(d_object_name+"interp_lag_vel",ln)->restoreArrays();      
+    }// all levels
+    
+    for(int struct_no = 0; struct_no < d_no_structures; ++struct_no)
+    {
+        const StructureParameters& struct_param = d_ib_kinematics[struct_no]->getStructureParameters();
+	if(struct_param.getStructureIsSelfTranslating()) 
+	{
+	    SAMRAI_MPI::sumReduction(&d_rigid_trans_vel[struct_no][0],3); 
+	    for(int d = 0; d < NDIM; ++d) d_rigid_trans_vel[struct_no][d] /= struct_param.getTotalNodes();
+	}
+    }
+  
+    //Calculate rigid rotational velocity.
+    for(int ln = coarsest_ln; ln <= finest_ln; ++ln)
+    {
+        if(!d_l_data_manager->levelContainsLagrangianData(ln)) continue;
+       
+	//Get LData corresponding to the present position of the structures.
+        const blitz::Array<double,2>& U_interp_data = d_l_data_manager->getLData(d_object_name+"interp_lag_vel",ln)->getLocalFormVecArray();
+	const blitz::Array<double,2>& X_data        = d_l_data_manager->getLData("X",ln)->getLocalFormVecArray();
+	const Pointer<LMesh> mesh                   = d_l_data_manager->getLMesh(ln);
+	const std::vector<LNode*>& local_nodes      = mesh->getLocalNodes();
+	
+	// Get structures on this level.
+        const std::vector<int> structIDs = d_l_data_manager->getLagrangianStructureIDs(ln);
+        const int structs_on_this_ln     = structIDs.size();
+	
+        for(int struct_no = 0 ; struct_no < structs_on_this_ln; ++struct_no)
+        {
+	    std::pair<int,int> lag_idx_range = d_l_data_manager->getLagrangianStructureIndexRange(structIDs[struct_no],ln);
+	    Pointer<ConstraintIBKinematics> ptr_ib_kinematics = *std::find_if(d_ib_kinematics.begin(),d_ib_kinematics.end(),find_struct_handle(lag_idx_range));
+	    const StructureParameters& struct_param  = ptr_ib_kinematics->getStructureParameters();
+	    if(!struct_param.getStructureIsSelfRotating()) continue;
+	    
+	    const int location_struct_handle = find_struct_handle_position(d_ib_kinematics.begin(),d_ib_kinematics.end(),ptr_ib_kinematics);
+	    
+	    blitz::TinyVector<double,3> Omega_rigid(0.0);
+	    for(std::vector<LNode*>::const_iterator cit = local_nodes.begin(); cit != local_nodes.end(); ++cit)
+	    {
+	        const LNode* const node_idx = *cit;
+	        const int lag_idx = node_idx->getLagrangianIndex();
+	        if( lag_idx_range.first <= lag_idx && lag_idx < lag_idx_range.second)
+	        {
+		    const int local_idx = node_idx->getLocalPETScIndex();
+		    const double* const U = &U_interp_data(local_idx,0);
+		    const double* const X = &X_data       (local_idx,0);
+#if (NDIM == 2)
+		    Omega_rigid[2] +=  (X[0]-d_center_of_mass[location_struct_handle][0])*U[1] 
+		                     - (X[1]-d_center_of_mass[location_struct_handle][1])*U[0]; 
+#endif
+		    
+#if (NDIM == 3)
+		   Omega_rigid[0] +=  (X[1]-d_center_of_mass[location_struct_handle][1])*U[2] 
+		                     -(X[1]-d_center_of_mass[location_struct_handle][2])*U[1];	
+				     
+		   Omega_rigid[1] += -(X[0]-d_center_of_mass[location_struct_handle][0])*U[2] 
+		                     +(X[2]-d_center_of_mass[location_struct_handle][2])*U[0];
+				     
+		   Omega_rigid[2] +=  (X[0]-d_center_of_mass[location_struct_handle][0])*U[1] 
+		                     -(X[1]-d_center_of_mass[location_struct_handle][1])*U[0];		     
+		    
+#endif
+	        }	     
+	    }
+	    for(int d = 0; d < 3; ++d) d_rigid_rot_vel[location_struct_handle][d] += Omega_rigid[d];   
+        }// all structs
+	d_l_data_manager->getLData(d_object_name+"interp_lag_vel",ln)->restoreArrays(); 
+	d_l_data_manager->getLData("X",ln)->restoreArrays();
+    }// all levels
+    
+    for(int struct_no = 0; struct_no < d_no_structures; ++struct_no)
+    {
+        const StructureParameters& struct_param = d_ib_kinematics[struct_no]->getStructureParameters();
+	if(struct_param.getStructureIsSelfRotating()) 
+	{
+	    SAMRAI_MPI::sumReduction(&d_rigid_rot_vel[struct_no][0],3); 
+#if (NDIM == 2)
+	    d_rigid_rot_vel[struct_no][2] /= d_moment_of_inertia[struct_no](2,2);
+#endif
+	    
+#if (NDIM == 3)
+	    solveSystemOfEqns(d_rigid_rot_vel[struct_no],d_moment_of_inertia[struct_no]);
+#endif
+	}
+    }
+  
+    
+  return;
+  
+} //calculateRigidMomentum
 
 
 
