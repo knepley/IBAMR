@@ -186,6 +186,8 @@ ConstraintIBMethod::ConstraintIBMethod(
     d_ins_hier_integrator(ins_hier_integrator),
     d_ib_hier_integrator(ib_hier_integrator),
     d_hier_math_ops(new HierarchyMathOps(object_name+ "HierarchyMathOps",d_hierarchy)),
+    d_collocated_solver(false),
+    d_staggered_solver(false),
     d_no_structures(no_structures),   
     d_ib_kinematics(d_no_structures, Pointer<ConstraintIBKinematics>(NULL)),
     d_FuRMoRP_time(0.0),
@@ -235,12 +237,11 @@ ConstraintIBMethod::ConstraintIBMethod(
      
     
     // Obtain the type of INS fluid solver and velocity variable.
-    bool collocated_solver = false, staggered_solver = false;
     d_u_fluidSolve_var                             = d_ins_hier_integrator->getVelocityVariable();
     Pointer<CellVariable<NDIM,double> > cc_vel_var = d_u_fluidSolve_var;
     Pointer<SideVariable<NDIM,double> > sc_vel_var = d_u_fluidSolve_var;
-    if(!cc_vel_var.isNull()) collocated_solver = true;
-    if(!sc_vel_var.isNull()) staggered_solver  = true;
+    if(!cc_vel_var.isNull()) d_collocated_solver = true;
+    if(!sc_vel_var.isNull()) d_staggered_solver  = true;
     d_new_context            = d_ins_hier_integrator->getNewContext();
     d_u_fluidSolve_idx       = var_db->mapVariableAndContextToIndex(d_u_fluidSolve_var, d_new_context);
 
@@ -258,16 +259,16 @@ ConstraintIBMethod::ConstraintIBMethod(
     VariableDatabase<NDIM>* var_db        = VariableDatabase<NDIM>::getDatabase();
     d_scratch_context                     = var_db->getContext(d_object_name + "::SCRATCH");
     
-    if(collocated_solver) d_u_var         = new CellVariable<NDIM,double>(d_object_name + "::u"     );
-    if(staggered_solver)  d_u_var         = new SideVariable<NDIM,double>(d_object_name + "::u"     );
+    if(d_collocated_solver) d_u_var       = new CellVariable<NDIM,double>(d_object_name + "::u"     );
+    if(d_staggered_solver)  d_u_var       = new SideVariable<NDIM,double>(d_object_name + "::u"     );
     d_Div_u_var                           = new CellVariable<NDIM,double>(d_object_name + "::Div_u" );
     d_phi_var                             = new CellVariable<NDIM,double>(d_object_name + "::phi"   );
     const IntVector<NDIM> cell_ghosts     = CELLG;
     const IntVector<NDIM> side_ghosts     = SIDEG; 
-    if(collocated_solver) d_u_scratch_idx = var_db->registerVariableAndContext(d_u_var,    d_scratch_context, cell_ghosts);
-    if(staggered_solver) d_u_scratch_idx  = var_db->registerVariableAndContext(d_u_var,    d_scratch_context, side_ghosts);
-    d_phi_idx                             = var_db->registerVariableAndContext(d_phi_var,  d_scratch_context, cell_ghosts);
-    d_Div_u_scratch_idx                   = var_db->registerVariableAndContext(d_Div_u_var,d_scratch_context, cell_ghosts); 
+    if(d_collocated_solver) d_u_scratch_idx = var_db->registerVariableAndContext(d_u_var,    d_scratch_context, cell_ghosts);
+    if(d_staggered_solver) d_u_scratch_idx  = var_db->registerVariableAndContext(d_u_var,    d_scratch_context, side_ghosts);
+    d_phi_idx                               = var_db->registerVariableAndContext(d_phi_var,  d_scratch_context, cell_ghosts);
+    d_Div_u_scratch_idx                     = var_db->registerVariableAndContext(d_Div_u_var,d_scratch_context, cell_ghosts); 
 
 
 
@@ -344,7 +345,6 @@ ConstraintIBMethod::ConstraintIBMethod(
     Pointer<Geometry<NDIM> > grid_geom = d_hierarchy->getGridGeometry();
     Pointer<RefineAlgorithm<NDIM> > refine_alg;
     Pointer<RefineOperator<NDIM> > refine_op;
-    RefinePatchStrategy<NDIM>* refine_patch_strategy;
     Pointer<CoarsenAlgorithm<NDIM> > coarsen_alg;
     Pointer<CoarsenOperator<NDIM> > coarsen_op;
 
@@ -386,7 +386,7 @@ ConstraintIBMethod::ConstraintIBMethod(
     refine_alg = new RefineAlgorithm<NDIM>();
     refine_op = grid_geom->lookupRefineOperator(d_u_fluidSolve_var, "CONSERVATIVE_LINEAR_REFINE");
     refine_alg->registerRefine(d_u_fluidSolve_idx, d_u_fluidSolve_idx, d_u_fluidSolve_idx, refine_op);
-    d_ib_hier_integrator->registerProlongRefineAlgorithm(d_object_name+"Prolong::u_fluidSolve", refine_alg);
+    d_ib_hier_integrator->registerProlongRefineAlgorithm(d_object_name+"PROLONG::u_fluidSolve", refine_alg);
     
     // Do printing operation for processor 0 only.
     if( !SAMRAI_MPI::getRank() && d_print_output)
@@ -538,9 +538,7 @@ ConstraintIBMethod::setInitialLagrangianVelocity()
       d_ib_kinematics[struct_no]->setKinematicsVelocity(0.0,d_incremented_angle_from_reference_axis[struct_no],
 	  d_center_of_mass[struct_no], d_tagged_pt_position[struct_no] );
       
-      if(struct_param.getStructureIsSelfTranslating()) calculateMomentumOfKinematicsVelocity(struct_no);
-      
-      if(struct_param.getKinematicsNeedFiltering())    filterkinematicsVelocity(struct_no);       
+      if(struct_param.getStructureIsSelfTranslating()) calculateMomentumOfKinematicsVelocity(struct_no);      
     }
     
     const int coarsest_ln = 0;
@@ -750,6 +748,34 @@ ConstraintIBMethod::calculateCOMandMOIOfStructures()
     return;
 } //calculateCOMandMOIOfStructures
 
+
+void
+ConstraintIBMethod::calculateKinematicsVelocity(
+    const double current_time,
+    const double new_time)
+{  
+    typedef ConstraintIBKinematics::StructureParameters StructureParameters;
+    const double dt = new_time - current_time;
+    for(int struct_no = 0; struct_no < d_no_structures; ++struct_no)
+    {
+        const StructureParameters& struct_param = d_ib_kinematics[struct_no]->getStructureParameters();
+        //Update the orientation only at the first cycle. Rest of the cycles will have the same orientation 
+        //Theta_new = Theta_old + Omega_old*dt
+        if (d_INS_current_cycle_num == 0)
+        {
+            d_omega_com_def_old[struct_no] = d_omega_com_def[struct_no];
+	    d_vel_com_def_old  [struct_no] = d_vel_com_def[struct_no];
+	    for(int i = 0 ; i < 3; ++i)
+	         d_incremented_angle_from_reference_axis[struct_no][i] +=  (d_rigid_rot_vel_old[i] - d_omega_com_def_old[i])*dt;
+       
+            d_ib_kinematics[struct_no]->setKinematicsVelocity(new_time, d_incremented_angle_from_reference_axis[struct_no], 
+                d_center_of_mass_old[struct_no], d_tagged_pt_position[struct_no]);	    
+         } 
+         
+         if(struct_param.getStructureIsSelfTranslating()) calculateMomentumOfKinematicsVelocity(struct_no); 
+    }
+  
+}//calculateKinematicsVelocity
 
 void
 ConstraintIBMethod::calculateMomentumOfKinematicsVelocity(const int position_handle)
@@ -1013,34 +1039,6 @@ ConstraintIBMethod::calculateVolumeElement()
 } //calculateVolumeElement
 
 
-
-void
-ConstraintIBMethod::interpolateFluidSolveVelocity()
-{
-  
-    const int coarsest_ln = 0;
-    const int finest_ln   = d_hierarchy->getFinestLevelNumber();
-    
-    std::vector<Pointer<LData> > F_data(finest_ln+1, Pointer<LData>(NULL) );
-    std::vector<Pointer<LData> > X_data(finest_ln+1, Pointer<LData>(NULL) );
-  
-    for(int ln = coarsest_ln; ln <= finest_ln; ++ln)
-    {
-        if(!d_l_data_manager->levelContainsLagrangianData(ln)) continue;
-	F_data[ln] = d_l_data_U_interp[ln] = d_l_data_manager->createLData(d_object_name + "interp_lag_vel", ln, NDIM, false);  
-	X_data[ln] = d_l_data_manager->getLData("X",ln);
-    }
-  
-    d_l_data_manager->interp(d_u_fluidSolve_idx,F_data,X_data,
-        d_ib_hier_integrator->getCoarsenSchedules(d_object_name+"SYNC::u_fluidSolve"),
-	d_ib_hier_integrator->getGhostfillRefineSchedules(d_object_name+"FILL_GHOSTCELL::u_fluidSolve"),
-	d_FuRMoRP_time); 
-    
-    return; 
-  
-} //interpolateFluidSolveVelocity
-
-
 void
 ConstraintIBMethod::calculateRigidMomentum()
 {
@@ -1107,7 +1105,7 @@ ConstraintIBMethod::calculateRigidMomentum()
     {
         if(!d_l_data_manager->levelContainsLagrangianData(ln)) continue;
        
-	//Get LData corresponding to the present position of the structures.
+	//Get ponter to LData.
         const blitz::Array<double,2>& U_interp_data = d_l_data_manager->getLData(d_object_name+"interp_lag_vel",ln)->getLocalFormVecArray();
 	const blitz::Array<double,2>& X_data        = d_l_data_manager->getLData("X",ln)->getLocalFormVecArray();
 	const Pointer<LMesh> mesh                   = d_l_data_manager->getLMesh(ln);
@@ -1180,6 +1178,596 @@ ConstraintIBMethod::calculateRigidMomentum()
   return;
   
 } //calculateRigidMomentum
+
+void
+ConstraintIBMethod::calculateCurrentLagrangianVelocity(
+    const double current_time, 
+    const double new_time)
+{
+
+    typedef ConstraintIBKinematics::StructureParameters StructureParameters;
+    const int coarsest_ln = 0;
+    const int finest_ln   = d_hierarchy->getFinestLevelNumber();
+    std::vector<double> WxR(3,0.0), R(3,0.0);
+  
+    for(int ln = coarsest_ln; ln <= finest_ln; ++ln)
+    {
+        if(!d_l_data_manager->levelContainsLagrangianData(ln)) continue;
+       
+	//Allocate data for velocity correction and velocity update.
+	d_l_data_U_current[ln] = d_l_data_manager->createLData(d_object_name + "current_lag_vel", ln, NDIM, false); 
+	
+	//Get pointer to LData.
+	blitz::Array<double,2>& U_current_data      = d_l_data_U_current[ln]->getLocalFormVecArray();
+	const blitz::Array<double,2>& X_data        = d_l_data_manager->getLData("X",ln)->getLocalFormVecArray();
+	
+	const Pointer<LMesh> mesh                   = d_l_data_manager->getLMesh(ln);
+	const std::vector<LNode*>& local_nodes      = mesh->getLocalNodes();
+	
+	// Get structures on this level.
+        const std::vector<int> structIDs = d_l_data_manager->getLagrangianStructureIDs(ln);
+        const int structs_on_this_ln     = structIDs.size();
+	
+        for(int struct_no = 0 ; struct_no < structs_on_this_ln; ++struct_no)
+        {
+	    std::pair<int,int> lag_idx_range = d_l_data_manager->getLagrangianStructureIndexRange(structIDs[struct_no],ln);
+	    const int offset                 = lag_idx_range.first;
+	    Pointer<ConstraintIBKinematics> ptr_ib_kinematics = *std::find_if(d_ib_kinematics.begin(),d_ib_kinematics.end(),find_struct_handle(lag_idx_range));
+	    const int location_struct_handle = find_struct_handle_position(d_ib_kinematics.begin(),d_ib_kinematics.end(),ptr_ib_kinematics);
+	    const StructureParameters& struct_param  = ptr_ib_kinematics->getStructureParameters();
+	     
+	    for(std::vector<LNode*>::const_iterator cit = local_nodes.begin(); cit != local_nodes.end(); ++cit)
+	    {
+	        const LNode* const node_idx = *cit;
+	        const int lag_idx = node_idx->getLagrangianIndex();
+	        if( lag_idx_range.first <= lag_idx && lag_idx < lag_idx_range.second)
+	        {
+		    const int local_idx = node_idx->getLocalPETScIndex();
+		    double* const U_current   = &U_current_data(local_idx,0);
+		    const double* const X     = &X_data(local_idx,0);
+		    
+		    if(struct_param.getStructureIsSelfTranslating())
+	            { 
+		       	if(struct_param.getStructureIsSelfRotating())
+			{
+		            for(int d = 0; d < NDIM ; ++d)  R[d] = X[d] - d_center_of_mass_old[location_struct_handle][d]; 
+			    
+		            WxR[0] =  R[2]*(d_rigid_rot_vel_old[location_struct_handle][1] - d_omega_com_def_old[location_struct_handle][1]) 
+		                     -R[1]*(d_rigid_rot_vel_old[location_struct_handle][2] - d_omega_com_def_old[location_struct_handle][2]);
+					     
+                            WxR[1] = -R[2]*(d_rigid_rot_vel_old[location_struct_handle][0] - d_omega_com_def_old[location_struct_handle][0])
+			             +R[0]*(d_rigid_rot_vel_old[location_struct_handle][2] - d_omega_com_def_old[location_struct_handle][2]);
+					     
+                            WxR[2] =  R[1]*(d_rigid_rot_vel_old[location_struct_handle][0] - d_omega_com_def_old[location_struct_handle][0])
+			             -R[0]*(d_rigid_rot_vel_old[location_struct_handle][1] - d_omega_com_def_old[location_struct_handle][1]);
+					    
+			    for(int d = 0; d < NDIM ; ++d)
+			    {
+			        U_current[d]  =  d_rigid_trans_vel_old[location_struct_handle][d] - d_vel_com_def_old[location_struct_handle][d] + WxR[d] 
+			                   + (ptr_ib_kinematics->getCurrentKinematicsVel(ln))[d][lag_idx - offset];		            
+			    }					    					    
+			}//rotating
+			else
+			{			  
+			    for(int d = 0; d < NDIM ; ++d)
+			    {
+			        U_current[d]  =  d_rigid_trans_vel_old[location_struct_handle][d] - d_vel_com_def_old[location_struct_handle][d]  
+			                   + (ptr_ib_kinematics->getCurrentKinematicsVel(ln))[d][lag_idx - offset];
+			    }
+			  
+			}//not rotating			
+		    }
+		    else
+		    {		        
+		      	for(int d = 0; d < NDIM ; ++d)
+			{
+			    U_current[d]  =  (ptr_ib_kinematics->getCurrentKinematicsVel(ln))[d][lag_idx - offset];
+			}		      
+		    } //imposed momentum
+		    
+	        } //choose a struct	     
+	    } //all nodes on a level   	    	 
+        }// all structs
+	d_l_data_U_current[ln]->restoreArrays();
+	d_l_data_manager->getLData("X",ln)->restoreArrays();
+    }// all levels  
+  
+    return;
+  
+}// calculateCurrentLagrangianVelocity
+
+
+void
+ConstraintIBMethod::correctVelocityOnLagrangianMesh()
+{
+    typedef ConstraintIBKinematics::StructureParameters StructureParameters;
+    const int coarsest_ln = 0;
+    const int finest_ln   = d_hierarchy->getFinestLevelNumber();
+    std::vector<double> WxR(3,0.0), R(3,0.0);
+  
+    for(int ln = coarsest_ln; ln <= finest_ln; ++ln)
+    {
+        if(!d_l_data_manager->levelContainsLagrangianData(ln)) continue;
+       
+	//Allocate data for velocity correction and velocity update.
+	d_l_data_U_correction[ln] = d_l_data_manager->createLData(d_object_name + "correct_lag_vel", ln, NDIM, false);  
+	d_l_data_U_new       [ln] = d_l_data_manager->createLData(d_object_name + "new_lag_vel", ln, NDIM, false); 
+	
+	//Get pointer to LData.
+        const blitz::Array<double,2>& U_interp_data = d_l_data_manager->getLData(d_object_name+"interp_lag_vel",ln)->getLocalFormVecArray();
+        blitz::Array<double,2>& U_corr_data         = d_l_data_manager->getLData(d_object_name+"correct_lag_vel",ln)->getLocalFormVecArray();
+	blitz::Array<double,2>& U_new_data          = d_l_data_manager->getLData(d_object_name+"new_lag_vel",ln)->getLocalFormVecArray();
+	const blitz::Array<double,2>& X_data        = d_l_data_manager->getLData("X",ln)->getLocalFormVecArray();
+	
+	const Pointer<LMesh> mesh                   = d_l_data_manager->getLMesh(ln);
+	const std::vector<LNode*>& local_nodes      = mesh->getLocalNodes();
+	
+	// Get structures on this level.
+        const std::vector<int> structIDs = d_l_data_manager->getLagrangianStructureIDs(ln);
+        const int structs_on_this_ln     = structIDs.size();
+	
+        for(int struct_no = 0 ; struct_no < structs_on_this_ln; ++struct_no)
+        {
+	    std::pair<int,int> lag_idx_range = d_l_data_manager->getLagrangianStructureIndexRange(structIDs[struct_no],ln);
+	    const int offset                 = lag_idx_range.first;
+	    Pointer<ConstraintIBKinematics> ptr_ib_kinematics = *std::find_if(d_ib_kinematics.begin(),d_ib_kinematics.end(),find_struct_handle(lag_idx_range));
+	    const int location_struct_handle = find_struct_handle_position(d_ib_kinematics.begin(),d_ib_kinematics.end(),ptr_ib_kinematics);
+	    const StructureParameters& struct_param  = ptr_ib_kinematics->getStructureParameters();
+	     
+	    for(std::vector<LNode*>::const_iterator cit = local_nodes.begin(); cit != local_nodes.end(); ++cit)
+	    {
+	        const LNode* const node_idx = *cit;
+	        const int lag_idx = node_idx->getLagrangianIndex();
+	        if( lag_idx_range.first <= lag_idx && lag_idx < lag_idx_range.second)
+	        {
+		    const int local_idx = node_idx->getLocalPETScIndex();
+		    const double* const U = &U_interp_data(local_idx,0);
+		    double* const U_corr  = &U_corr_data(local_idx,0);
+		    double* const U_new   = &U_new_data(local_idx,0);
+		    const double* const X = &X_data(local_idx,0);
+		    
+		    if(struct_param.getStructureIsSelfTranslating())
+	            { 
+		       	if(struct_param.getStructureIsSelfRotating())
+			{
+		            for(int d = 0; d < NDIM ; ++d)  R[d] = X[d] - d_center_of_mass[location_struct_handle][d]; 
+			    
+		            WxR[0] =  R[2]*(d_rigid_rot_vel[location_struct_handle][1] - d_omega_com_def[location_struct_handle][1]) 
+		                     -R[1]*(d_rigid_rot_vel[location_struct_handle][2] - d_omega_com_def[location_struct_handle][2]);
+					     
+                            WxR[1] = -R[2]*(d_rigid_rot_vel[location_struct_handle][0] - d_omega_com_def[location_struct_handle][0])
+			             +R[0]*(d_rigid_rot_vel[location_struct_handle][2] - d_omega_com_def[location_struct_handle][2]);
+					     
+                            WxR[2] =  R[1]*(d_rigid_rot_vel[location_struct_handle][0] - d_omega_com_def[location_struct_handle][0])
+			             -R[0]*(d_rigid_rot_vel[location_struct_handle][1] - d_omega_com_def[location_struct_handle][1]);
+					    
+			    for(int d = 0; d < NDIM ; ++d)
+			    {
+			        U_new[d]  =  d_rigid_trans_vel[location_struct_handle][d] - d_vel_com_def[location_struct_handle][d] + WxR[d] 
+			                   + (ptr_ib_kinematics->getKinematicsVel(ln))[d][lag_idx - offset];
+			        U_corr[d] =  (U_new[d] - U[d])*d_vol_element[location_struct_handle];			            
+			    }					    					    
+			}//rotating
+			else
+			{			  
+			    for(int d = 0; d < NDIM ; ++d)
+			    {
+			        U_new[d]  =  d_rigid_trans_vel[location_struct_handle][d] - d_vel_com_def[location_struct_handle][d]  
+			                   + (ptr_ib_kinematics->getKinematicsVel(ln))[d][lag_idx - offset];
+			        U_corr[d] =  (U_new[d] - U[d])*d_vol_element[location_struct_handle];			            
+			    }
+			  
+			}//not rotating			
+		    }
+		    else
+		    {		        
+		      	for(int d = 0; d < NDIM ; ++d)
+			{
+			    U_new[d]  =  (ptr_ib_kinematics->getKinematicsVel(ln))[d][lag_idx - offset];
+			    U_corr[d] =  (U_new[d] - U[d])*d_vol_element[location_struct_handle];			            
+			}		      
+		    } //imposed momentum
+		    
+	        } //choose a struct	     
+	    } //all nodes on a level   	    	 
+        }// all structs
+	d_l_data_manager->getLData(d_object_name+"interp_lag_vel" ,ln)->restoreArrays(); 
+	d_l_data_manager->getLData(d_object_name+"correct_lag_vel",ln)->restoreArrays(); 
+	d_l_data_manager->getLData(d_object_name+"new_lag_vel"    ,ln)->restoreArrays(); 
+	d_l_data_manager->getLData("X"                            ,ln)->restoreArrays();
+    }// all levels  
+  
+    return;
+  
+} // correctVelocityOnLagrangianMesh
+
+
+void
+ConstraintIBMethod::applyProjection()
+{
+    const int coarsest_ln = 0;
+    const int finest_ln   = d_hierarchy->getFinestLevelNumber();
+
+    // Allocate temporary data.
+    ComponentSelector scratch_idxs;
+    scratch_idxs.setFlag(d_u_scratch_idx);
+    scratch_idxs.setFlag(d_phi_idx);
+    scratch_idxs.setFlag(d_Div_u_scratch_idx);
+    for (int ln = coarsest_ln; ln <= finest_ln; ++ln)
+    {
+        Pointer<PatchLevel<NDIM> > level = d_hierarchy->getPatchLevel(ln);
+        level->allocatePatchData(scratch_idxs, d_FuRMoRP_time);
+    }
+
+    
+    // Compute div U before applying the projection operator.
+    const bool U_current_cf_bdry_synch = true;
+    if(d_collocated_solver)
+    {  
+        d_hier_math_ops->div(
+            d_Div_u_scratch_idx, d_Div_u_var,                                            // dst
+           +1.0,                                                                         // alpha
+            d_u_fluidSolve_idx, Pointer<CellVariable<NDIM,double> >(d_u_fluidSolve_var), // src
+            d_no_fill_op,                                                                // src_bdry_fill
+            d_FuRMoRP_time,                                                              // src_bdry_fill_time
+            U_current_cf_bdry_synch);                                                    // src_cf_bdry_synch
+    }
+    else if(d_staggered_solver)
+    {
+        d_hier_math_ops->div(
+            d_Div_u_scratch_idx, d_Div_u_var,                                            // dst
+           +1.0,                                                                         // alpha
+            d_u_fluidSolve_idx, Pointer<SideVariable<NDIM,double> >(d_u_fluidSolve_var), // src
+            d_no_fill_op,                                                                // src_bdry_fill
+            d_FuRMoRP_time,                                                              // src_bdry_fill_time
+            U_current_cf_bdry_synch);                                                    // src_cf_bdry_synch   
+    }
+    else
+    {
+        TBOX_ERROR("ConstraintIBMethod::applyProjection()::div(u_corr) before projection undefined fluid solver" << std::endl );   
+    }
+
+
+    if (d_do_log)
+    {
+        const double Div_u_norm_1  = d_hier_cc_data_ops->L1Norm( d_Div_u_scratch_idx, d_wgt_cc_idx);
+        const double Div_u_norm_2  = d_hier_cc_data_ops->L2Norm( d_Div_u_scratch_idx, d_wgt_cc_idx);
+        const double Div_u_norm_oo = d_hier_cc_data_ops->maxNorm(d_Div_u_scratch_idx, d_wgt_cc_idx);
+        tbox::plog << d_object_name << "::applyProjection():\n"
+             << "  performing velocity correction projection\n"
+             << "  before projection:\n"
+             << "    ||Div U||_1  = " << Div_u_norm_1  << "\n"
+             << "    ||Div U||_2  = " << Div_u_norm_2  << "\n"
+             << "    ||Div U||_oo = " << Div_u_norm_oo << "\n";
+    }
+
+    // Setup the solver vectors.
+    d_hier_cc_data_ops->setToScalar(d_phi_idx, 0.0, false);
+    d_hier_cc_data_ops->scale(d_Div_u_scratch_idx, -1.0, d_Div_u_scratch_idx);
+    const double Div_u_mean = (1.0/d_volume)*d_hier_cc_data_ops->integral(d_Div_u_scratch_idx, d_wgt_cc_idx);
+    d_hier_cc_data_ops->addScalar(d_Div_u_scratch_idx, d_Div_u_scratch_idx, -Div_u_mean);
+
+    SAMRAIVectorReal<NDIM,double> sol_vec(d_object_name+"::sol_vec", d_hierarchy, coarsest_ln, finest_ln);
+    sol_vec.addComponent(d_phi_var, d_phi_idx, d_wgt_cc_idx, d_hier_cc_data_ops);
+
+    SAMRAIVectorReal<NDIM,double> rhs_vec(d_object_name+"::rhs_vec", d_hierarchy, coarsest_ln, finest_ln);
+    rhs_vec.addComponent(d_Div_u_var, d_Div_u_scratch_idx, d_wgt_cc_idx, d_hier_cc_data_ops);
+
+    // Setup the Poisson solver.
+    d_velcorrection_projection_spec->setCZero();
+    d_velcorrection_projection_spec->setDConstant(-1.0);
+
+    d_velcorrection_projection_op->setPoissonSpecifications(*d_velcorrection_projection_spec);
+    d_velcorrection_projection_op->setPhysicalBcCoef(&d_velcorrection_projection_bc_coef);
+    d_velcorrection_projection_op->setHomogeneousBc(true);
+    d_velcorrection_projection_op->setTime(d_FuRMoRP_time);
+    d_velcorrection_projection_op->setHierarchyMathOps(d_hier_math_ops);
+
+    d_velcorrection_projection_fac_op->setPoissonSpecifications(*d_velcorrection_projection_spec);
+    d_velcorrection_projection_fac_op->setPhysicalBcCoef(&d_velcorrection_projection_bc_coef);
+    d_velcorrection_projection_fac_op->setTime(d_FuRMoRP_time);
+
+    d_velcorrection_projection_solver->setInitialGuessNonzero(false);
+    d_velcorrection_projection_solver->setOperator(d_velcorrection_projection_op);
+
+    // NOTE: We always use homogeneous Neumann boundary conditions for the
+    // velocity correction projection Poisson solver.
+    d_velcorrection_projection_solver->setNullspace(true, NULL);
+    
+    // Solve the projection Poisson problem.
+    d_velcorrection_projection_solver->initializeSolverState(sol_vec,rhs_vec);
+    d_velcorrection_projection_solver->solveSystem(sol_vec,rhs_vec);
+    d_velcorrection_projection_solver->deallocateSolverState();
+
+
+
+    // Setup the interpolation transaction information.
+    typedef HierarchyGhostCellInterpolation::InterpolationTransactionComponent InterpolationTransactionComponent;
+    InterpolationTransactionComponent Phi_bc_component(d_phi_idx, CELL_DATA_COARSEN_TYPE, BDRY_EXTRAP_TYPE, CONSISTENT_TYPE_2_BDRY,  
+         &d_velcorrection_projection_bc_coef);
+    Pointer<HierarchyGhostCellInterpolation> Phi_bdry_bc_fill_op = new HierarchyGhostCellInterpolation();
+    Phi_bdry_bc_fill_op->initializeOperatorState(Phi_bc_component, d_hierarchy);
+
+    // Fill the physical boundary conditions for Phi.
+    Phi_bdry_bc_fill_op->setHomogeneousBc(true);
+    Phi_bdry_bc_fill_op->fillData(d_FuRMoRP_time);
+
+    // Set U := U - grad Phi.
+    const bool U_scratch_cf_bdry_synch = true;
+    if(d_collocated_solver)
+    {
+        d_hier_math_ops->grad(
+            d_u_scratch_idx, Pointer<CellVariable<NDIM,double> >(d_u_var),  // dst
+            U_scratch_cf_bdry_synch,                                        // dst_cf_bdry_synch
+            1.0,                                                            // alpha
+            d_phi_idx, d_phi_var,                                           // src
+            d_no_fill_op,                                                   // src_bdry_fill
+            d_FuRMoRP_time);                                                //src_bdry_fill_time
+	
+            d_hier_cc_data_ops->axpy(d_u_fluidSolve_idx, -1.0, d_u_scratch_idx, d_u_fluidSolve_idx);
+    }
+    else if(d_staggered_solver)
+    {
+        d_hier_math_ops->grad(
+            d_u_scratch_idx, Pointer<SideVariable<NDIM,double> >(d_u_var), // dst
+            U_scratch_cf_bdry_synch,                                       // dst_cf_bdry_synch
+            1.0,                                                           // alpha
+            d_phi_idx, d_phi_var,                                          // src
+            d_no_fill_op,                                                  // src_bdry_fill
+            d_FuRMoRP_time);                                               // src_bdry_fill_time
+	
+            d_hier_sc_data_ops->axpy(d_u_fluidSolve_idx, -1.0, d_u_scratch_idx, d_u_fluidSolve_idx);
+      
+    }
+    else
+    {
+        TBOX_ERROR("ConstraintIBMethod::applyProjection()::u - grad(phi) undefined fluid solver" << std::endl ); 
+    }
+      
+
+    // Compute div U after applying the projection operator
+    if (d_do_log)
+    {
+        // Compute div U before applying the projection operator.
+        const bool U_current_cf_bdry_synch = true;
+        if(d_collocated_solver)
+        {  
+            d_hier_math_ops->div(
+                d_Div_u_scratch_idx, d_Div_u_var,                                            // dst
+               +1.0,                                                                         // alpha
+                d_u_fluidSolve_idx, Pointer<CellVariable<NDIM,double> >(d_u_fluidSolve_var), // src
+                d_no_fill_op,                                                                // src_bdry_fill
+                d_FuRMoRP_time,                                                              // src_bdry_fill_time
+                U_current_cf_bdry_synch);                                                    // src_cf_bdry_synch
+        }
+        else if(d_staggered_solver)
+        {
+            d_hier_math_ops->div(
+                d_Div_u_scratch_idx, d_Div_u_var,                                            // dst
+               +1.0,                                                                         // alpha
+                d_u_fluidSolve_idx, Pointer<SideVariable<NDIM,double> >(d_u_fluidSolve_var), // src
+                d_no_fill_op,                                                                // src_bdry_fill
+                d_FuRMoRP_time,                                                              // src_bdry_fill_time
+                U_current_cf_bdry_synch);                                                    // src_cf_bdry_synch   
+        }
+        else
+        {
+            TBOX_ERROR("ConstraintIBMethod::applyProjection()::div(u_corr) after projection undefined fluid solver" << std::endl );   
+        }
+      
+        const double Div_u_norm_1  = d_hier_cc_data_ops->L1Norm( d_Div_u_scratch_idx, d_wgt_cc_idx);
+        const double Div_u_norm_2  = d_hier_cc_data_ops->L2Norm( d_Div_u_scratch_idx, d_wgt_cc_idx);
+        const double Div_u_norm_oo = d_hier_cc_data_ops->maxNorm(d_Div_u_scratch_idx, d_wgt_cc_idx);
+        tbox::plog << "  after projection:\n"
+             << "    ||Div U||_1  = " << Div_u_norm_1  << "\n"
+             << "    ||Div U||_2  = " << Div_u_norm_2  << "\n"
+             << "    ||Div U||_oo = " << Div_u_norm_oo << "\n";
+    }
+
+    // Deallocate scratch data.
+    for (int ln = coarsest_ln; ln <= finest_ln; ++ln)
+    {
+        Pointer<PatchLevel<NDIM> > level = d_hierarchy->getPatchLevel(ln);
+        level->deallocatePatchData(scratch_idxs);
+    }
+    
+    return;
+  
+} //applyProjection
+
+void
+ConstraintIBMethod::updateStructurePositionEulerStep(
+    double current_time,
+    double new_time)
+{
+  
+    typedef ConstraintIBMethod::StructureParameters StructureParameters;
+    const int coarsest_ln = 0;
+    const int finest_ln   = d_hierarchy->getFinestLevelNumber();
+    const double dt       = new_time - current_time;
+    
+    for(int ln = coarsest_ln; ln <= finest_ln; ++ln)
+    {
+        if(!d_l_data_manager->levelContainsLagrangianData(ln)) continue;  
+      
+        //Allocate data for velocity correction and velocity update.
+	d_l_data_X_new_Euler[ln]                     = d_l_data_manager->createLData(d_object_name + "X_Euler", ln, NDIM, false);  
+	blitz::Array<double,2>& X_new_Euler_data     = d_l_data_X_new_Euler[ln]->getLocalFormVecArray();
+	const blitz::Array<double,2>& X_current_data = d_l_data_manager->getLData("X",ln)->getLocalFormVecArray();
+	const blitz::Array<double,2>& U_current_data = d_l_data_manager->getLData(d_object_name+"current_lag_vel",ln)->getLocalFormVecArray();
+	
+	const Pointer<LMesh> mesh                   = d_l_data_manager->getLMesh(ln);
+	const std::vector<LNode*>& local_nodes      = mesh->getLocalNodes();
+	
+	// Get structures on this level.
+        const std::vector<int> structIDs = d_l_data_manager->getLagrangianStructureIDs(ln);
+        const int structs_on_this_ln     = structIDs.size();
+      
+	for(int struct_no = 0 ; struct_no < structs_on_this_ln; ++struct_no)
+        {
+	    std::pair<int,int> lag_idx_range = d_l_data_manager->getLagrangianStructureIndexRange(structIDs[struct_no],ln);
+	    const int offset                 = lag_idx_range.first;
+	    Pointer<ConstraintIBKinematics> ptr_ib_kinematics = *std::find_if(d_ib_kinematics.begin(),d_ib_kinematics.end(),find_struct_handle(lag_idx_range));
+	    const int location_struct_handle = find_struct_handle_position(d_ib_kinematics.begin(),d_ib_kinematics.end(),ptr_ib_kinematics);
+	    const StructureParameters& struct_param  = ptr_ib_kinematics->getStructureParameters();
+	    const string position_update_method      = struct_param.getPositionUpdateMethod();
+	      
+	    for(std::vector<LNode*>::const_iterator cit = local_nodes.begin(); cit != local_nodes.end(); ++cit)
+	    {
+	        const LNode* const node_idx = *cit;
+	        const int lag_idx = node_idx->getLagrangianIndex();
+	        if( lag_idx_range.first <= lag_idx && lag_idx < lag_idx_range.second)
+	        {
+		    const int local_idx = node_idx->getLocalPETScIndex();
+		    const double* const U_current = &U_current_data  (local_idx,0);
+		    const double* const X_current = &X_current_data(local_idx,0);
+		    double* const X_new           = &X_new_Euler_data(local_idx,0);
+		    if(position_update_method == "user_defined_velocity")
+		    {
+		        for(int d = 0 ; d < NDIM; ++d)
+			{
+			    X_new[d] = X_current + dt*U_current[d];
+			}		      		      
+		    }
+		    else if(position_update_method == "user_defined_position")
+		    {		      
+		      	for(int d = 0 ; d < NDIM; ++d)
+			{
+			    X_new[d] = d_center_of_mass_old[location_struct_handle][d]+ (ptr_ib_kinematics->getCurrentShapeEulerStep(ln))[d][lag_idx - offset]
+			        + dt*(d_rigid_rot_vel_old[location_struct_handle][d]);
+			}		      
+		    }
+
+	        }	     
+	    }
+        }// all structs
+        d_l_data_X_new_Euler[ln]->restoreArrays(); 
+	d_l_data_manager->getLData(d_object_name+"current_lag_vel",ln)->restoreArrays();
+	d_l_data_manager->getLData("X",ln)->restoreArrays();      
+    } 
+    return; 
+} //updateStructurePositionEulerStep
+
+void
+ConstraintIBMethod::eulerStep(
+    double current_time,
+    double new_time)
+{    
+    IBMethod::eulerStep(current_time, new_time);
+  
+    updateStructurePositionEulerStep(current_time, new_time);
+    
+    const int coarsest_ln = 0;
+    const int finest_ln = d_hierarchy->getFinestLevelNumber();
+    int ierr;
+    for (int ln = coarsest_ln; ln <= finest_ln; ++ln)
+    {
+        if (!d_l_data_manager->levelContainsLagrangianData(ln)) continue;
+        ierr = VecCopy(d_l_data_X_new_Euler[ln]->getVec(), d_X_new_data[ln]->getVec());  IBTK_CHKERRQ(ierr);
+    }
+    
+    return;
+  
+} //eulerStep
+    
+    
+void
+ConstraintIBMethod::updateStructurePositionMidPointStep(
+    const double current_time, 
+    const double new_time)
+{    
+    typedef ConstraintIBMethod::StructureParameters StructureParameters;
+    const int coarsest_ln = 0;
+    const int finest_ln   = d_hierarchy->getFinestLevelNumber();
+    const double dt       = new_time - current_time;
+    
+    calculateMidPointVelocity();
+    for(int ln = coarsest_ln; ln <= finest_ln; ++ln)
+    {
+        if(!d_l_data_manager->levelContainsLagrangianData(ln)) continue;  
+      
+        //Allocate data for velocity correction and velocity update.
+	d_l_data_X_newhalf_MidPoint[ln]              = d_l_data_manager->createLData(d_object_name + "X_MidPoint", ln, NDIM, false);  
+	blitz::Array<double,2>& X_new_MidPoint_data  = d_l_data_X_newhalf_MidPoint[ln]->getLocalFormVecArray();
+	const blitz::Array<double,2>& X_current_data = d_l_data_manager->getLData("X",ln)->getLocalFormVecArray();
+	const blitz::Array<double,2>& U_half_data    = d_l_data_manager->getLData(d_object_name+"half_lag_vel",ln)->getLocalFormVecArray();
+	
+	const Pointer<LMesh> mesh                   = d_l_data_manager->getLMesh(ln);
+	const std::vector<LNode*>& local_nodes      = mesh->getLocalNodes();
+	
+	// Get structures on this level.
+        const std::vector<int> structIDs = d_l_data_manager->getLagrangianStructureIDs(ln);
+        const int structs_on_this_ln     = structIDs.size();
+      
+	for(int struct_no = 0 ; struct_no < structs_on_this_ln; ++struct_no)
+        {
+	    std::pair<int,int> lag_idx_range = d_l_data_manager->getLagrangianStructureIndexRange(structIDs[struct_no],ln);
+	    const int offset                 = lag_idx_range.first;
+	    Pointer<ConstraintIBKinematics> ptr_ib_kinematics = *std::find_if(d_ib_kinematics.begin(),d_ib_kinematics.end(),find_struct_handle(lag_idx_range));
+	    const int location_struct_handle = find_struct_handle_position(d_ib_kinematics.begin(),d_ib_kinematics.end(),ptr_ib_kinematics);
+	    const StructureParameters& struct_param  = ptr_ib_kinematics->getStructureParameters();
+	    const string position_update_method      = struct_param.getPositionUpdateMethod();
+	      
+	    for(std::vector<LNode*>::const_iterator cit = local_nodes.begin(); cit != local_nodes.end(); ++cit)
+	    {
+	        const LNode* const node_idx = *cit;
+	        const int lag_idx = node_idx->getLagrangianIndex();
+	        if( lag_idx_range.first <= lag_idx && lag_idx < lag_idx_range.second)
+	        {
+		    const int local_idx = node_idx->getLocalPETScIndex();
+		    const double* const U_half = &U_half_data  (local_idx,0);
+		    const double* const X_current = &X_current_data(local_idx,0);
+		    double* const X_new           = &X_new_MidPoint_data(local_idx,0);
+		    if(position_update_method == "user_defined_velocity")
+		    {
+		        for(int d = 0 ; d < NDIM; ++d)
+			{
+			    X_new[d] = X_current + dt*U_half[d];
+			}		      		      
+		    }
+		    else if(position_update_method == "user_defined_position")
+		    {		      
+		      	for(int d = 0 ; d < NDIM; ++d)
+			{
+			    X_new[d] = d_center_of_mass_old[location_struct_handle][d]+ (ptr_ib_kinematics->getNewShapeMidPointStep(ln))[d][lag_idx - offset]
+			        + dt*0.5*(d_rigid_rot_vel_old[location_struct_handle][d] + d_rigid_rot_vel[location_struct_handle][d]);
+			}		      
+		    }
+
+	        }	     
+	    }
+        }// all structs
+        d_l_data_X_newhalf_MidPoint[ln]->restoreArrays(); 
+        d_l_data_manager->getLData("X",ln)->restoreArrays();   
+	d_l_data_manager->getLData(d_object_name+"half_lag_vel",ln)->restoreArrays();   
+    } 
+    return; 
+    
+} //updateStructurePositionMidPointStep
+
+void
+ConstraintIBMethod::midpointStep(
+    double current_time,
+    double new_time)
+{    
+    IBMethod::midpointStep(current_time, new_time);
+  
+    updateStructurePositionMidPointStep(current_time, new_time);
+    
+    const int coarsest_ln = 0;
+    const int finest_ln = d_hierarchy->getFinestLevelNumber();
+    int ierr;
+    for (int ln = coarsest_ln; ln <= finest_ln; ++ln)
+    {
+        if (!d_l_data_manager->levelContainsLagrangianData(ln)) continue;
+        ierr = VecCopy(d_l_data_X_newhalf_Euler[ln]->getVec(), d_X_new_data[ln]->getVec());  IBTK_CHKERRQ(ierr);
+    }
+    
+    return;
+  
+} //eulerStep
+
+
 
 
 

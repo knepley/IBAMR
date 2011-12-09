@@ -52,11 +52,92 @@ ConstraintIBMethod::setFurmorpTime(
 
     d_FuRMoRP_time = new_time;
     return;
-}
+} //setFurmorpTime
 
 
 
+inline void
+ConstraintIBMethod::interpolateFluidSolveVelocity()
+{
+  
+    const int coarsest_ln = 0;
+    const int finest_ln   = d_hierarchy->getFinestLevelNumber();
+    
+    std::vector<Pointer<LData> > F_data(finest_ln+1, Pointer<LData>(NULL) );
+    std::vector<Pointer<LData> > X_data(finest_ln+1, Pointer<LData>(NULL) );
+  
+    for(int ln = coarsest_ln; ln <= finest_ln; ++ln)
+    {
+        if(!d_l_data_manager->levelContainsLagrangianData(ln)) continue;
+	F_data[ln] = d_l_data_U_interp[ln] = d_l_data_manager->createLData(d_object_name + "interp_lag_vel", ln, NDIM, false);  
+	X_data[ln] = d_l_data_manager->getLData("X",ln);
+    }
+  
+    d_l_data_manager->interp(d_u_fluidSolve_idx,F_data,X_data,
+        d_ib_hier_integrator->getCoarsenSchedules(d_object_name+"SYNC::u_fluidSolve"),
+	d_ib_hier_integrator->getGhostfillRefineSchedules(d_object_name+"FILL_GHOSTCELL::u_fluidSolve"),
+	d_FuRMoRP_time); 
+    
+    return; 
+  
+} //interpolateFluidSolveVelocity
 
+inline void
+ConstraintIBMethod::spreadCorrectedLagrangianVelocity()
+{
+    const int coarsest_ln = 0;
+    const int finest_ln   = d_hierarchy->getFinestLevelNumber();
+    std::vector<Pointer<LData> > F_data(finest_ln+1,  Pointer<LData>(NULL) );
+    std::vector<Pointer<LData> > X_data(finest_ln+1,  Pointer<LData>(NULL) );
+    
+    for(int ln = coarsest_ln; ln <= finest_ln; ++ln)
+    {
+        if(!d_l_data_manager->levelContainsLagrangianData(ln)) continue;
+	F_data[ln] = d_l_data_manager->getLData(d_object_name + "correct_lag_vel", ln);  
+	X_data[ln] = d_l_data_manager->getLData("X",ln);
+    }
+  
+    d_l_data_manager->spread(d_u_fluidSolve_idx,F_data,X_data,
+        d_ib_hier_integrator->getProlongRefineSchedules(d_object_name+"PROLONG::u_fluidSolve"),
+	true,true); 
+     
+    return;
+  
+} //spreadCorrectedLagrangianVelocity
+
+inline void
+ConstraintIBMethod::synchronizeLevels()
+{
+    const int coarsest_ln = 0;
+    const int finest_ln   = d_hierarchy->getFinestLevelNumber();
+    const std::vector<Pointer<CoarsenSchedule<NDIM> > >& coarsen_schedules = d_ib_hier_integrator->getCoarsenSchedules(d_object_name+"SYNC::u_fluidSolve");
+    
+    // Do the Coarsening Operation.
+    for(int ln = finest_ln; ln > coarsest_ln; --ln)
+    {
+        coarsen_schedules[ln]->coarsenData();
+    }
+    
+    return;
+  
+} //synchronizeLevels
+
+
+inline void
+ConstraintIBMethod::calculateMidPointVelocity()
+{
+  
+    const int coarsest_ln = 0;
+    const int finest_ln = d_hierarchy->getFinestLevelNumber();
+    int ierr;
+    for (int ln = coarsest_ln; ln <= finest_ln; ++ln)
+    {
+        if (!d_l_data_manager->levelContainsLagrangianData(ln)) continue;
+        ierr = VecAXPBYPCZ(d_l_data_U_half[ln]->getVec(), 0.5, 0.5, 0.0, d_l_data_U_old[ln]->getVec(), d_l_data_U_new[ln]->getVec());  IBTK_CHKERRQ(ierr);
+    }
+    return;
+  
+}// calculateMidPointVelocity
 
 
 

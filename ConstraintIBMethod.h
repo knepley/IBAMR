@@ -99,6 +99,22 @@ public:
 	double new_time, 
 	int cycle_num);
     
+    /*!
+     * \brief Override the eulerStep method of the base class.
+     */
+    virtual void
+    eulerStep(
+        double current_time,
+	double new_time);
+    
+    /*!
+     * \brief Override the midpointStep method of the base class.
+     */
+    virtual void
+    midpointStep(
+        double current_time,
+	double new_time); 
+    
 private:
   
     /*!
@@ -152,6 +168,14 @@ private:
     calculateCOMandMOIOfStructures();
     
     /*!
+     * Calculate & store kinematics velocity on different lagrangian points.
+     */
+    void 
+    calculateKinematicsVelocity(
+        const double current_time, 
+	const double new_time);
+    
+    /*!
      * Calculate momentum of Kinematics velocity.
      */
     void
@@ -176,14 +200,6 @@ private:
     void
     setFurmorpTime(
         const double new_time);
-    
-    /*!
-     * Calculate & store kinematics velocity on different lagrangian points.
-     */
-    void 
-    calculateKinematicsVelocity(
-        const double current_time, 
-	const double new_time);
 
     /*!
      * Interpolate fluid solve velocity from Eulerian grid onto the Lagrangian mesh.
@@ -192,34 +208,17 @@ private:
     interpolateFluidSolveVelocity();
 
     /*!
-     * Subtract the calculated deformation velocity from the interpolated fluidSolve 
-     * velocity.
+     * Calculate the rigid translational and rotational velocity.
      */
     void
-    subtractDeformationVelocity();
+    calculateRigidMomentum();
     
     /*!
-     * Solve for rigid body translation velocity.
-     */
-    void 
-    solveRigidTranslationalVelocity();
-  
-    /*!
-     * get no of INS cycles.
-     */
-    int
-    getNumberOfINSCycles() const
-    {
-        return d_INS_num_cycles;
-    
-    }//getNoOfINSCycles
-
-    /*!
-     * Solve for rigid rotational velocity.
+     * Calculate current velocity on the material points.
      */
     void
-    solveRigidRotationalVelocity();
-
+    calculateCurrentLagrangianVelocity();
+    
     /*!
      * Correct velocity on Lagrangian mesh. Set the velocity on Lagrangian 
      * mesh as U_lag_corr = U_trans + Omega X r + U_def - U_interpolated.
@@ -227,22 +226,11 @@ private:
     void
     correctVelocityOnLagrangianMesh();
 
- 
     /*!
      *  Spread the corrected velocity at the Lagrangian mesh to the Eulerian Grid. 
      */
     void 
     spreadCorrectedLagrangianVelocity();
-
-    /*!
-     * if div free projection step is needed?
-     */
-    bool
-    needs_DivFreeProjection() const 
-    {
-        return d_needs_div_free_projection;
-    
-    }//needs_DivFreeProjection
     
 
     /*!
@@ -257,14 +245,28 @@ private:
      */
     void
     applyProjection();
-   
+    
     /*!
-     * Translate and rotate the shape with rigid body velocity.
+     * Update the position of structures according to forward Euler step method.
      */
     void
-    updateLagrangianPosition(
+    updateStructurePositionEulerStep(
         const double current_time, 
 	const double new_time);
+   
+    /*!
+     * Update the position of structures according to mid point step method.
+     */
+    void
+    updateStructurePositionMidPointStep(
+        const double current_time, 
+	const double new_time);
+    
+    /*!
+     * Compute U_half = U_current + U_new;
+     */
+    void 
+    calculateMidPointVelocity();  
 
    
     /*!
@@ -283,6 +285,11 @@ private:
     SAMRAI::tbox::Pointer< IBAMR::INSHierarchyIntegrator > d_ins_hier_integrator;
     SAMRAI::tbox::Pointer< IBAMR::IBHierarchyIntegrator  > d_ib_hier_integrator;
     SAMRAI::tbox::Pointer< IBTK::HierarchyMathOps > d_hier_math_ops;
+    
+    /*!
+     * Type of fluid solver.
+     */
+    bool d_collocated_solver, d_staggered_solver;
     
     /*!
      * No of immersed structures.
