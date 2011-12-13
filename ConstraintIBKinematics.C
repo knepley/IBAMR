@@ -12,7 +12,6 @@
 
 
 //SAMRAI INCLUDES
-#include <tbox/Array.h>
 #include <tbox/Utilities.h>
 
 
@@ -78,13 +77,13 @@ ConstraintIBKinematics::StructureParameters::StructureParameters(
     
     //Get options from database
     
-    Array<int> calculate_trans_mom  = input_db->getIntegerArray("calculate_translational_momentum");
-    Array<int> calculate_rot_mom    = input_db->getIntegerArray("calculate_rotational_momentum");
+    d_calculate_trans_mom  = input_db->getIntegerArray("calculate_translational_momentum");
+    d_calculate_rot_mom    = input_db->getIntegerArray("calculate_rotational_momentum");
     for(int i = 0; i < 3; ++i)
     {
-        if(calculate_trans_mom[i])
+        if(d_calculate_trans_mom[i])
 	  d_struct_is_self_translating = true;
-	if(calculate_rot_mom[i])
+	if(d_calculate_rot_mom[i])
 	  d_struct_is_self_rotating    = true;
     }    
     // Only self translating bodies can be self rotating.

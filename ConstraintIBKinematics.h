@@ -13,6 +13,7 @@
 
 
 //SAMRAI INCLUDES
+#include <tbox/Array.h>
 #include <tbox/DescribedClass.h>
 #include <tbox/Serializable.h>
 #include <tbox/Database.h>
@@ -59,6 +60,18 @@ public:
      */
     int 
     getTaggedPtIdx() const;
+    
+    /*!
+     * Get the unlocked components of translational momentum.
+     */
+    SAMRAI::tbox::Array<int>
+    getCalculateTranslationalMomentum() const;
+    
+    /*!
+     * Get the unlocked components of rotational momentum.
+     */
+    SAMRAI::tbox::Array<int>
+    getCalculateRotationalMomentum() const;
 
     /*!
      * Check if the structure has translational degree unlocked.
@@ -109,6 +122,7 @@ private:
      std::vector<std::pair<int,int> > d_idx_range;
      int d_total_nodes;
      int d_tagged_pt_idx;
+     SAMRAI::tbox::Array<int> d_calculate_trans_mom, d_calculate_rot_mom;
      bool d_struct_is_self_translating, d_struct_is_self_rotating;
     
 };

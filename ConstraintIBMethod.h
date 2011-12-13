@@ -68,13 +68,13 @@ public:
     /*!
      * \brief Constructor 
      */
-    ConstraintIBMethod(
+    ConstraintIBMethod(  
         const std::string& object_name,  
 	SAMRAI::tbox::Pointer<SAMRAI::tbox::Database> input_db,
-	bool register_for_restart = true,
 	SAMRAI::tbox::Pointer< IBAMR::INSHierarchyIntegrator > ins_hier_integrator,
 	SAMRAI::tbox::Pointer< IBAMR::IBHierarchyIntegrator >  ib_hier_integrator,
-	const int no_structures);
+	const int no_structures,
+	bool register_for_restart = true);
         
     /*!
      * \brief Destructor 
@@ -86,7 +86,7 @@ public:
      */
     void
     registerConstraintIBKinematics(
-        std::vector< SAMRAI::tbox::Pointer<IBAMR::IBKinematics> > ib_kinematics_op);
+        std::vector< SAMRAI::tbox::Pointer<IBAMR::ConstraintIBKinematics> > ib_kinematics_op);
     
     /*!
      * \brief Apply the FuRMoRP algorithm in IBAMR::IBStrategy::postprocessSolveFluidEquations method.
@@ -188,9 +188,7 @@ private:
      * Calculate & store kinematics velocity on different lagrangian points.
      */
     void 
-    calculateNewKinematicsVelocity(
-        const double current_time, 
-	const double new_time);
+    calculateNewKinematicsVelocity();
     
     /*!
      * Calculate momentum of Kinematics velocity.
@@ -268,17 +266,13 @@ private:
      * Update the position of structures according to forward Euler step method.
      */
     void
-    updateStructurePositionEulerStep(
-        const double current_time, 
-	const double new_time);
+    updateStructurePositionEulerStep();
    
     /*!
      * Update the position of structures according to mid point step method.
      */
     void
-    updateStructurePositionMidPointStep(
-        const double current_time, 
-	const double new_time);
+    updateStructurePositionMidPointStep();
     
     /*!
      * Compute U_half = U_current + U_new;
@@ -291,9 +285,7 @@ private:
      * Calculate Drag, Kinetic Energy, Power.
      */
     void 
-    postprocessData(
-        const double current_time, 
-        const double new_time);
+    postprocessData();
    
 /////////////////////////    PRIVATE DATA MEMBERS ////////////////////////////////
     
@@ -474,29 +466,6 @@ private:
 #include "ConstraintIBMethod.I"
 
 /////////////////////////////////////////////////////////////////////////
-
-
-#endif //ifndef included_constraintibmethod
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 #endif //#ifndef included_constraintibmethod

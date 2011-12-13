@@ -32,6 +32,22 @@ ConstraintIBKinematics::StructureParameters::getTaggedPtIdx() const
 } //getTaggedPtIdx
 
 
+SAMRAI::tbox::Array<int>
+ConstraintIBKinematics::StructureParameters::getCalculateTranslationalMomentum() const
+{
+
+    return d_calculate_trans_mom;
+
+} //getCalculateTranslationalMomentum 
+
+SAMRAI::tbox::Array<int>
+ConstraintIBKinematics::StructureParameters::getCalculateRotationalMomentum() const
+{
+
+    return d_calculate_rot_mom;
+
+} //getCalculateRotationalMomentum
+
 bool
 ConstraintIBKinematics::StructureParameters::getStructureIsSelfTranslating() const
 {
