@@ -47,14 +47,44 @@ ConstraintIBMethod::setINSCycleNumberAndCounter(
 
 inline void
 ConstraintIBMethod::setFurmorpTime(
+    const double current_time,
     const double new_time)
 {
+    d_FuRMoRP_current_time = current_time;
+    d_FuRMoRP_new_time     = new_time;
 
-    d_FuRMoRP_time = new_time;
     return;
 } //setFurmorpTime
 
+inline void
+ConstraintIBMethod::createNewLagrangianWorkspace()
+{
+  
+    const int coarsest_ln = 0;
+    const int finest_ln   = d_hierarchy->getFinestLevelNumber();
+    d_l_data_U_interp      .resize(finest_ln+1);
+    d_l_data_U_correction  .resize(finest_ln+1);
+    d_l_data_U_new         .resize(finest_ln+1);
+    d_l_data_U_half        .resize(finest_ln+1);
+    d_l_data_X_new_Euler   .resize(finest_ln+1);
+    d_l_data_X_new_MidPoint.resize(finest_ln+1);
+    if (d_INS_current_cycle_num == 0)  d_l_data_U_current.resize(finest_ln+1);
+    
+    for(int ln = coarsest_ln; ln <= finest_ln; ++ln)
+    {
+        if(!d_l_data_manager->levelContainsLagrangianData(ln)) continue;
+	d_l_data_U_interp[ln]       = d_l_data_manager->createLData(d_object_name + "interp_lag_vel", ln, NDIM, false);  
+        d_l_data_U_correction[ln]   = d_l_data_manager->createLData(d_object_name + "correct_lag_vel", ln, NDIM, false);  
+        d_l_data_U_new[ln]          = d_l_data_manager->createLData(d_object_name + "new_lag_vel", ln, NDIM, false); 
+        d_l_data_U_half[ln]         = d_l_data_manager->createLData(d_object_name + "half_lag_vel", ln, NDIM, false); 
+	d_l_data_X_new_Euler[ln]    = d_l_data_manager->createLData(d_object_name + "X_Euler", ln, NDIM, false); 
+	d_l_data_X_new_MidPoint[ln] = d_l_data_manager->createLData(d_object_name + "X_MidPoint", ln, NDIM, false); 
+        if (d_INS_current_cycle_num == 0) 
+	   d_l_data_U_current[ln]   = d_l_data_manager->createLData(d_object_name + "current_lag_vel", ln, NDIM, false); 
 
+    }
+    return;
+} //createLagrangianWorkspace
 
 inline void
 ConstraintIBMethod::interpolateFluidSolveVelocity()
@@ -77,6 +107,45 @@ ConstraintIBMethod::interpolateFluidSolveVelocity()
         d_ib_hier_integrator->getCoarsenSchedules(d_object_name+"SYNC::u_fluidSolve"),
 	d_ib_hier_integrator->getGhostfillRefineSchedules(d_object_name+"FILL_GHOSTCELL::u_fluidSolve"),
 	d_FuRMoRP_time); 
+    
+    return; 
+  
+} //interpolateFluidSolveVelocity
+
+inline void
+ConstraintIBMethod::destroyPreviousLagrangianWorkspace()
+{
+    d_l_data_U_interp      .clear();
+    d_l_data_U_correction  .clear();
+    d_l_data_U_new         .clear();
+    d_l_data_U_half        .clear();
+    d_l_data_X_new_Euler   .clear();
+    d_l_data_X_new_MidPoint.clear();
+    
+    return;
+} //destroyLagrangianWorkspace
+
+inline void
+ConstraintIBMethod::interpolateFluidSolveVelocity()
+{
+  
+    const int coarsest_ln = 0;
+    const int finest_ln   = d_hierarchy->getFinestLevelNumber();
+    
+    std::vector<Pointer<LData> > F_data(finest_ln+1, Pointer<LData>(NULL) );
+    std::vector<Pointer<LData> > X_data(finest_ln+1, Pointer<LData>(NULL) );
+  
+    for(int ln = coarsest_ln; ln <= finest_ln; ++ln)
+    {
+        if(!d_l_data_manager->levelContainsLagrangianData(ln)) continue;
+	F_data[ln] = d_l_data_U_interp[ln];  
+	X_data[ln] = d_l_data_manager->getLData("X",ln);
+    }
+  
+    d_l_data_manager->interp(d_u_fluidSolve_idx,F_data,X_data,
+        d_ib_hier_integrator->getCoarsenSchedules(d_object_name+"SYNC::u_fluidSolve"),
+	d_ib_hier_integrator->getGhostfillRefineSchedules(d_object_name+"FILL_GHOSTCELL::u_fluidSolve"),
+	d_FuRMoRP_new_time); 
     
     return; 
   
@@ -133,15 +202,11 @@ ConstraintIBMethod::calculateMidPointVelocity()
     for (int ln = coarsest_ln; ln <= finest_ln; ++ln)
     {
         if (!d_l_data_manager->levelContainsLagrangianData(ln)) continue;
-        ierr = VecAXPBYPCZ(d_l_data_U_half[ln]->getVec(), 0.5, 0.5, 0.0, d_l_data_U_old[ln]->getVec(), d_l_data_U_new[ln]->getVec());  IBTK_CHKERRQ(ierr);
+        ierr = VecAXPBYPCZ(d_l_data_U_half[ln]->getVec(), 0.5, 0.5, 0.0, d_l_data_U_current[ln]->getVec(), d_l_data_U_new[ln]->getVec());  IBTK_CHKERRQ(ierr);
     }
     return;
   
 }// calculateMidPointVelocity
-
-
-
-
 
 
 } //IBAMR

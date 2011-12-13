@@ -34,7 +34,7 @@
 #include <ibamr/IBMethod.h>
 #include <ibamr/INSHierarchyIntegrator.h>
 #include <ibamr/IBHierarchyIntegrator.h>
-#include "../../Examples/IBKinematics.h"
+#include "ConstraintIBKinematics.h"
 
 // IBTK INCLUDES
 #include <ibtk/HierarchyGhostCellInterpolation.h>
@@ -62,7 +62,6 @@ namespace IBAMR
 
 class ConstraintIBMethod : public IBAMR::IBMethod
 {
-
   
 public:
   
@@ -75,8 +74,7 @@ public:
 	bool register_for_restart = true,
 	SAMRAI::tbox::Pointer< IBAMR::INSHierarchyIntegrator > ins_hier_integrator,
 	SAMRAI::tbox::Pointer< IBAMR::IBHierarchyIntegrator >  ib_hier_integrator,
-	const int no_structures
-        );
+	const int no_structures);
         
     /*!
      * \brief Destructor 
@@ -87,7 +85,7 @@ public:
      * \brief Register kinematics of the immersed structure(s) with this class.
      */
     void
-    registerKinematics(
+    registerConstraintIBKinematics(
         std::vector< SAMRAI::tbox::Pointer<IBAMR::IBKinematics> > ib_kinematics_op);
     
     /*!
@@ -100,7 +98,7 @@ public:
 	int cycle_num);
     
     /*!
-     * \brief Override the eulerStep method of the base class.
+     * \brief Override the eulerStep method of the base IBMethod class.
      */
     virtual void
     eulerStep(
@@ -108,12 +106,19 @@ public:
 	double new_time);
     
     /*!
-     * \brief Override the midpointStep method of the base class.
+     * \brief Override the midpointStep method of the base IBMethod class.
      */
     virtual void
     midpointStep(
         double current_time,
 	double new_time); 
+    
+    /*!
+     * \brief Override the putToDatabase method of the base Serializable class.
+     */
+    virtual void
+    putToDatabase(
+        SAMRAI::tbox::Pointer<SAMRAI::tbox::Database> db);
     
 private:
   
@@ -155,6 +160,18 @@ private:
     getFromRestart();
     
     /*!
+     * Allocate LData to work with.
+     */
+    void
+    createNewLagrangianWorkspace();
+    
+    /*!
+     * Deallocate LData.
+     */
+    void
+    destroyPreviousLagrangianWorkspace();
+    
+    /*!
      * Set initial Lagrangian velocity on material points.
      */
     void
@@ -171,7 +188,7 @@ private:
      * Calculate & store kinematics velocity on different lagrangian points.
      */
     void 
-    calculateKinematicsVelocity(
+    calculateNewKinematicsVelocity(
         const double current_time, 
 	const double new_time);
     
@@ -179,7 +196,7 @@ private:
      * Calculate momentum of Kinematics velocity.
      */
     void
-    calculateMomentumOfKinematicsVelocity(const int position_handle);
+    calculateMomentumOfNewKinematicsVelocity(const int position_handle);
     
     /*!
      * Calculate volume element associated with material points.
@@ -199,6 +216,7 @@ private:
      */
     void
     setFurmorpTime(
+        const double current_time,
         const double new_time);
 
     /*!
@@ -304,7 +322,7 @@ private:
     /*!
      * FuRMoRP apply time.
      */
-    double d_FuRMoRP_time;
+    double d_FuRMoRP_current_time, d_FuRMoRP_new_time;
     
     /*!
      * Volume element associated with material points.
@@ -324,12 +342,12 @@ private:
     /*!
      * Rigid translational velocity of the structures.
      */
-    std::vector< std::vector<double> > d_rigid_trans_vel, d_rigid_trans_vel_old;
+    std::vector< std::vector<double> > d_rigid_trans_vel_current, d_rigid_trans_vel_new;
     
     /*!
      * Rigid rotational velocity of the structures.
      */
-    std::vector< std::vector<double> > d_rigid_rot_vel, d_rigid_rot_vel_old;
+    std::vector< std::vector<double> > d_rigid_rot_vel_current, d_rigid_rot_vel_new;
     
     /*!
      * Incremented angle from x, y and z axis when the body is rotating.
@@ -339,22 +357,22 @@ private:
     /*!
      * Translational velocity of the structures due to deformational kinematics.
      */
-    std::vector< std::vector<double> > d_vel_com_def, d_vel_com_def_old;
+    std::vector< std::vector<double> > d_vel_com_def_current, d_vel_com_def_new;
     
     /*!
      * Rotational velocity of the structures due to deformational kinematics.
      */
-    std::vector< std::vector<double> > d_omega_com_def, d_omega_com_def_old;
+    std::vector< std::vector<double> > d_omega_com_def_current, d_omega_com_def_new;
     
     /*!
      * Center of mass of the immersed structures.
      */
-    std::vector< std::vector<double> > d_center_of_mass;
+    std::vector< std::vector<double> > d_center_of_mass_current, d_center_of_mass_new;
     
     /*!
      * Moment of inertia of the structures.
      */
-    std::vector<blitz::Array<double,2> > d_moment_of_inertia;
+    std::vector<blitz::Array<double,2> > d_moment_of_inertia_current, d_moment_of_inertia_new;
     
     /*!
      * Tag a Lagrangian point (generally eye of the fish) of the immersed structures.
@@ -390,11 +408,10 @@ private:
     std::string d_dir_name, d_base_output_filename;
     
     /*!
-     * Store LData for U_interp, U_correction and U_new for only those levels which
-     * contain immersed structures.
+     * Store LData for only those levels which contain immersed structures.
      */
     std::vector< SAMRAI::tbox::Pointer<IBTK::LData> > d_l_data_U_interp, d_l_data_U_correction, 
-        d_l_data_U_new, d_l_data_U_old;
+        d_l_data_U_new, d_l_data_U_current, d_l_data_U_half, d_l_data_X_new_Euler, d_l_data_X_new_MidPoint;
 	
     /*!
      * Hierarchy operations object. Needed for projection step.
@@ -445,8 +462,6 @@ private:
      */
     std::vector<std::ofstream*>  d_trans_vel_stream, d_rot_vel_stream, d_drag_force_stream, d_moment_of_inertia_stream,
         d_kinetic_energy_stream,d_position_COM_stream, d_power_spent_stream;
-	
-	
 
   
 };
@@ -461,7 +476,7 @@ private:
 /////////////////////////////////////////////////////////////////////////
 
 
-
+#endif //ifndef included_constraintibmethod
 
 
 
