@@ -184,13 +184,12 @@ ConstraintIBMethod::ConstraintIBMethod(
     const std::string& object_name,  
     Pointer< Database> input_db,
     Pointer< INSHierarchyIntegrator > ins_hier_integrator,
-    Pointer< IBHierarchyIntegrator  > ib_hier_integrator,
     const int no_structures,
     bool register_for_restart) 
     : IBMethod(object_name, input_db, register_for_restart),
     d_ins_hier_integrator(ins_hier_integrator),
-    d_ib_hier_integrator(ib_hier_integrator),
-    d_hier_math_ops(new HierarchyMathOps(object_name+ "HierarchyMathOps",d_hierarchy)),
+    d_ib_hier_integrator(NULL),
+    d_hier_math_ops(NULL),
     d_collocated_solver(false),
     d_staggered_solver(false),
     d_no_structures(no_structures),   
@@ -220,13 +219,14 @@ ConstraintIBMethod::ConstraintIBMethod(
     d_output_interval      (1),
     d_INS_num_cycles       (2),
     d_INS_current_cycle_num(0),
-    d_print_output                  (false),
-    d_output_drag_and_kinetic_energy(false),
-    d_output_power                  (false),
-    d_output_trans_vel              (false),
-    d_output_rot_vel                (false),
-    d_output_COM_coordinates        (false),
-    d_output_MOI                    (false),
+    d_print_output              (false),
+    d_output_drag               (false),
+    d_output_kinetic_energy     (false),
+    d_output_power              (false),
+    d_output_trans_vel          (false),
+    d_output_rot_vel            (false),
+    d_output_COM_coordinates    (false),
+    d_output_MOI                (false),
     d_dir_name            ("./ConstraintIBMethodDump"),
     d_base_output_filename("ImmersedStructrue")    
 {
@@ -239,6 +239,124 @@ ConstraintIBMethod::ConstraintIBMethod(
     if (!input_db.isNull()) getFromInput(input_db, from_restart);
      
     
+    
+    
+    // Do printing operation for processor 0 only.
+    if( !SAMRAI_MPI::getRank() && d_print_output)
+    {
+        d_trans_vel_stream         .resize(d_no_structures);
+	d_rot_vel_stream           .resize(d_no_structures);
+	d_drag_force_stream        .resize(d_no_structures);
+	d_moment_of_inertia_stream .resize(d_no_structures);
+	d_kinetic_energy_stream    .resize(d_no_structures);
+	d_position_COM_stream      .resize(d_no_structures);
+	d_power_spent_stream       .resize(d_no_structures);
+	
+        for(int struct_no = 0; struct_no < d_no_structures; ++struct_no)
+	{
+	    std::ostringstream trans_vel,rot_vel,drag_force,moment_inertia,
+            kinetic_energy, position_com, power_spent;
+	  
+	    trans_vel      << d_base_output_filename + "_Trans_vel"       + "_struct_no_" << struct_no;
+	    rot_vel        << d_base_output_filename + "_Rot_vel"         + "_struct_no_" << struct_no;
+	    drag_force     << d_base_output_filename + "_Drag_force"      + "_struct_no_" << struct_no;
+	    moment_inertia << d_base_output_filename + "_MOI"             + "_struct_no_" << struct_no;
+	    kinetic_energy << d_base_output_filename + "_Kinetic_energy"  + "_struct_no_" << struct_no;
+	    position_com   << d_base_output_filename + "_COM_coordinates" + "_struct_no_" << struct_no;
+	    power_spent    << d_base_output_filename + "_Power_spent"     + "_struct_no_" << struct_no;
+	    
+	    if(from_restart) d_trans_vel_stream[struct_no]         = new std::ofstream(trans_vel.str().c_str(), std::fstream::app);
+	    else             d_trans_vel_stream[struct_no]         = new std::ofstream(trans_vel.str().c_str(), std::fstream::out);
+	    
+	    if(from_restart) d_rot_vel_stream[struct_no]           = new std::ofstream(rot_vel.str().c_str(), std::fstream::app);
+	    else             d_rot_vel_stream[struct_no]           = new std::ofstream(rot_vel.str().c_str(), std::fstream::out);
+	    
+	    if(from_restart) d_drag_force_stream[struct_no]        = new std::ofstream(drag_force.str().c_str(), std::fstream::app);
+	    else             d_drag_force_stream[struct_no]        = new std::ofstream(drag_force.str().c_str(), std::fstream::out);
+	    
+	    if(from_restart) d_moment_of_inertia_stream[struct_no] = new std::ofstream(moment_inertia.str().c_str(), std::fstream::app);
+	    else             d_moment_of_inertia_stream[struct_no] = new std::ofstream(moment_inertia.str().c_str(), std::fstream::out);
+	  
+	    if(from_restart) d_kinetic_energy_stream[struct_no]    = new std::ofstream(kinetic_energy.str().c_str(), std::fstream::app);
+	    else             d_kinetic_energy_stream[struct_no]    = new std::ofstream(kinetic_energy.str().c_str(), std::fstream::out);
+	    
+	    if(from_restart) d_position_COM_stream[struct_no]      = new std::ofstream(position_com.str().c_str(), std::fstream::app);
+	    else             d_position_COM_stream[struct_no]      = new std::ofstream(position_com.str().c_str(), std::fstream::out);
+	    
+	    if(from_restart) d_power_spent_stream[struct_no]       = new std::ofstream(power_spent.str().c_str(), std::fstream::app);
+	    else             d_power_spent_stream[struct_no]       = new std::ofstream(power_spent.str().c_str(), std::fstream::out);
+	}
+
+    }
+    
+    
+
+ return; 
+} // ConstraintIBMethod
+
+ConstraintIBMethod::~ConstraintIBMethod()
+{
+  
+    delete d_velcorrection_projection_spec;
+    if( !SAMRAI_MPI::getRank() && d_print_output)
+    {
+        for(int struct_no = 0; struct_no < d_no_structures; ++struct_no)
+        {
+            delete (d_trans_vel_stream[struct_no]);
+            delete (d_rot_vel_stream[struct_no]);
+            delete (d_drag_force_stream[struct_no]);
+            delete (d_moment_of_inertia_stream[struct_no]);
+            delete (d_kinetic_energy_stream[struct_no]);
+            delete (d_position_COM_stream[struct_no]);
+            delete (d_power_spent_stream[struct_no]); 
+        }
+    }
+    
+    return;
+} //~ConstraintIBMethod
+
+void
+ConstraintIBMethod::postprocessSolveFluidEquations(
+    double current_time, 
+    double new_time, 
+    int cycle_num)
+{
+    IBMethod::postprocessSolveFluidEquations(current_time, new_time, cycle_num);
+    
+    setFurmorpTime(current_time,new_time);
+    setINSCycleNumberAndCounter(cycle_num);
+    destroyPreviousLagrangianWorkspace();
+    createNewLagrangianWorkspace();
+    calculateCOMandMOIOfStructures();
+    interpolateFluidSolveVelocity();
+    calculateNewKinematicsVelocity();
+    calculateRigidMomentum();
+    correctVelocityOnLagrangianMesh();
+    spreadCorrectedLagrangianVelocity();
+    synchronizeLevels();
+    if(d_needs_div_free_projection)
+       applyProjection();
+    if(d_INS_current_cycle_num == 0)
+      calculateCurrentLagrangianVelocity();
+    
+    return;
+    
+}
+
+
+void
+ConstraintIBMethod::registerIBHierarchyIntegrator(
+    Pointer<IBHierarchyIntegrator >  ib_hier_integrator)
+{
+    d_ib_hier_integrator = ib_hier_integrator;
+    return;
+  
+} //registerIBHierarchyIntegrator
+
+void
+ConstraintIBMethod::initializeHierarchyRelatedData()
+{
+    
     // Obtain the type of INS fluid solver and velocity variable.
     d_u_fluidSolve_var                             = d_ins_hier_integrator->getVelocityVariable();
     Pointer<CellVariable<NDIM,double> > cc_vel_var = d_u_fluidSolve_var;
@@ -248,17 +366,8 @@ ConstraintIBMethod::ConstraintIBMethod(
     d_new_context                                  = d_ins_hier_integrator->getNewContext();
     VariableDatabase<NDIM>* var_db                 = VariableDatabase<NDIM>::getDatabase();
     d_u_fluidSolve_idx                             = var_db->mapVariableAndContextToIndex(d_u_fluidSolve_var, d_new_context);
-
-    // Obtain the Hierarchy data operations objects.
-    HierarchyDataOpsManager<NDIM>* hier_ops_manager = HierarchyDataOpsManager<NDIM>::getManager();
-    Pointer<CellVariable<NDIM,double> > cc_var      = new CellVariable<NDIM,double>("cc_var");
-    d_hier_cc_data_ops                              = hier_ops_manager->getOperationsDouble(cc_var, d_hierarchy, true);
-    Pointer<SideVariable<NDIM,double> > sc_var      = new SideVariable<NDIM,double>("sc_var");
-    d_hier_sc_data_ops                              = hier_ops_manager->getOperationsDouble(sc_var, d_hierarchy, true);
-    d_wgt_cc_var                                    = d_hier_math_ops->getCellWeightVariable();
-    d_wgt_cc_idx                                    = d_hier_math_ops->getCellWeightPatchDescriptorIndex();
-    d_volume                                        = d_hier_math_ops->getVolumeOfPhysicalDomain();
-   
+    const int u_scratch_idx                        = var_db->mapVariableAndContextToIndex(d_ins_hier_integrator->getVelocityVariable(), d_ins_hier_integrator->getScratchContext());
+    
     // Initialize  variables & variable contexts associated with projection step.
     d_scratch_context                       = var_db->getContext(d_object_name + "::SCRATCH");   
     if(d_collocated_solver) d_u_var         = new CellVariable<NDIM,double>(d_object_name + "::u"     );
@@ -342,6 +451,16 @@ ConstraintIBMethod::ConstraintIBMethod(
     
     }
 
+    d_hier_math_ops = new HierarchyMathOps(d_object_name+ "HierarchyMathOps",d_hierarchy);
+   // Obtain the Hierarchy data operations objects.
+    HierarchyDataOpsManager<NDIM>* hier_ops_manager = HierarchyDataOpsManager<NDIM>::getManager();
+    Pointer<CellVariable<NDIM,double> > cc_var      = new CellVariable<NDIM,double>("cc_var");
+    d_hier_cc_data_ops                              = hier_ops_manager->getOperationsDouble(cc_var, d_hierarchy, true);
+    Pointer<SideVariable<NDIM,double> > sc_var      = new SideVariable<NDIM,double>("sc_var");
+    d_hier_sc_data_ops                              = hier_ops_manager->getOperationsDouble(sc_var, d_hierarchy, true);
+    d_wgt_cc_idx                                    = d_hier_math_ops->getCellWeightPatchDescriptorIndex();
+    d_volume                                        = d_hier_math_ops->getVolumeOfPhysicalDomain();
+    
     // Create several communications algorithms, used in filling ghost cell data
     // and synchronizing data on the patch hierarchy.
     Pointer<Geometry<NDIM> > grid_geom = d_hierarchy->getGridGeometry();
@@ -387,122 +506,25 @@ ConstraintIBMethod::ConstraintIBMethod(
     // Create algorithm for spreading correction.
     refine_alg = new RefineAlgorithm<NDIM>();
     refine_op = grid_geom->lookupRefineOperator(d_u_fluidSolve_var, "CONSERVATIVE_LINEAR_REFINE");
-    refine_alg->registerRefine(d_u_fluidSolve_idx, d_u_fluidSolve_idx, d_u_fluidSolve_idx, refine_op);
+    refine_alg->registerRefine(d_u_fluidSolve_idx, d_u_fluidSolve_idx, u_scratch_idx, refine_op);
     d_ib_hier_integrator->registerProlongRefineAlgorithm(d_object_name+"PROLONG::u_fluidSolve", refine_alg);
     
-    // Do printing operation for processor 0 only.
-    if( !SAMRAI_MPI::getRank() && d_print_output)
-    {
-        d_trans_vel_stream         .resize(d_no_structures);
-	d_rot_vel_stream           .resize(d_no_structures);
-	d_drag_force_stream        .resize(d_no_structures);
-	d_moment_of_inertia_stream .resize(d_no_structures);
-	d_kinetic_energy_stream    .resize(d_no_structures);
-	d_position_COM_stream      .resize(d_no_structures);
-	d_power_spent_stream       .resize(d_no_structures);
-	
-        for(int struct_no = 0; struct_no < d_no_structures; ++struct_no)
-	{
-	    std::ostringstream trans_vel,rot_vel,drag_force,moment_inertia,
-            kinetic_energy, position_com, power_spent;
-	  
-	    trans_vel      << d_base_output_filename + "_Trans_vel"       + "_struct_no_" << struct_no;
-	    rot_vel        << d_base_output_filename + "_Rot_vel"         + "_struct_no_" << struct_no;
-	    drag_force     << d_base_output_filename + "_Drag_force"      + "_struct_no_" << struct_no;
-	    moment_inertia << d_base_output_filename + "_MOI"             + "_struct_no_" << struct_no;
-	    kinetic_energy << d_base_output_filename + "_Kinetic_energy"  + "_struct_no_" << struct_no;
-	    position_com   << d_base_output_filename + "_COM_coordinates" + "_struct_no_" << struct_no;
-	    power_spent    << d_base_output_filename + "_Power_spent"     + "_struct_no_" << struct_no;
-	    
-	    if(from_restart) d_trans_vel_stream[struct_no]         = new std::ofstream(trans_vel.str().c_str(), std::fstream::app);
-	    else             d_trans_vel_stream[struct_no]         = new std::ofstream(trans_vel.str().c_str(), std::fstream::out);
-	    
-	    if(from_restart) d_rot_vel_stream[struct_no]           = new std::ofstream(rot_vel.str().c_str(), std::fstream::app);
-	    else             d_rot_vel_stream[struct_no]           = new std::ofstream(rot_vel.str().c_str(), std::fstream::out);
-	    
-	    if(from_restart) d_drag_force_stream[struct_no]        = new std::ofstream(drag_force.str().c_str(), std::fstream::app);
-	    else             d_drag_force_stream[struct_no]        = new std::ofstream(drag_force.str().c_str(), std::fstream::out);
-	    
-	    if(from_restart) d_moment_of_inertia_stream[struct_no] = new std::ofstream(moment_inertia.str().c_str(), std::fstream::app);
-	    else             d_moment_of_inertia_stream[struct_no] = new std::ofstream(moment_inertia.str().c_str(), std::fstream::out);
-	  
-	    if(from_restart) d_kinetic_energy_stream[struct_no]    = new std::ofstream(kinetic_energy.str().c_str(), std::fstream::app);
-	    else             d_kinetic_energy_stream[struct_no]    = new std::ofstream(kinetic_energy.str().c_str(), std::fstream::out);
-	    
-	    if(from_restart) d_position_COM_stream[struct_no]      = new std::ofstream(kinetic_energy.str().c_str(), std::fstream::app);
-	    else             d_position_COM_stream[struct_no]      = new std::ofstream(kinetic_energy.str().c_str(), std::fstream::out);
-	    
-	    if(from_restart) d_power_spent_stream[struct_no]       = new std::ofstream(power_spent.str().c_str(), std::fstream::app);
-	    else             d_power_spent_stream[struct_no]       = new std::ofstream(power_spent.str().c_str(), std::fstream::out);
-	}
-
-    }
     
-    
-    //Create ConstraintIBKinematics handlers.
-   
+    bool from_restart = RestartManager::getManager()->isFromRestart();      
     // set the initial velocity of lag points.
     if(!from_restart)  setInitialLagrangianVelocity();  
        
     // calculate the volume of material point in the non-elastic domain.
     if(!from_restart) calculateVolumeElement();
     
-
- return; 
-} // ConstraintIBMethod
-
-ConstraintIBMethod::~ConstraintIBMethod()
-{
   
-    delete d_velcorrection_projection_spec;
-    if( !SAMRAI_MPI::getRank() && d_print_output)
-    {
-        for(int struct_no = 0; struct_no < d_no_structures; ++struct_no)
-        {
-            delete (d_trans_vel_stream[struct_no]);
-            delete (d_rot_vel_stream[struct_no]);
-            delete (d_drag_force_stream[struct_no]);
-            delete (d_moment_of_inertia_stream[struct_no]);
-            delete (d_kinetic_energy_stream[struct_no]);
-            delete (d_position_COM_stream[struct_no]);
-            delete (d_power_spent_stream[struct_no]); 
-        }
-    }
-    
-    return;
-} //~ConstraintIBMethod
-
-void
-ConstraintIBMethod::postprocessSolveFluidEquations(
-    double current_time, 
-    double new_time, 
-    int cycle_num)
-{
-    IBMethod::postprocessSolveFluidEquations(current_time, new_time, cycle_num);
-    
-    setFurmorpTime(current_time,new_time);
-    setINSCycleNumberAndCounter(cycle_num);
-    destroyPreviousLagrangianWorkspace();
-    createNewLagrangianWorkspace();
-    calculateCOMandMOIOfStructures();
-    interpolateFluidSolveVelocity();
-    calculateNewKinematicsVelocity();
-    calculateRigidMomentum();
-    correctVelocityOnLagrangianMesh();
-    spreadCorrectedLagrangianVelocity();
-    synchronizeLevels();
-    if(d_needs_div_free_projection)
-       applyProjection();
-    if(d_INS_current_cycle_num == 0)
-      calculateCurrentLagrangianVelocity();
-    
     return;
     
-}
+} //initializeHierarchyRelatedData
 
 void
 ConstraintIBMethod::registerConstraintIBKinematics(
-    std::vector<Pointer<ConstraintIBKinematics> > ib_kinematics)
+    const std::vector<Pointer<ConstraintIBKinematics> >& ib_kinematics)
 {
     if(ib_kinematics.size() != static_cast<unsigned int>(d_no_structures))
     {
@@ -590,7 +612,8 @@ ConstraintIBMethod::getFromInput(
     Pointer<Database> output_db       = input_db->getDatabase("PrintOutput");
     d_print_output                    = output_db->getBoolWithDefault( "print_output"  ,d_print_output);
     d_output_interval                 = output_db->getIntegerWithDefault("output_interval", d_output_interval);
-    d_output_drag_and_kinetic_energy  = output_db->getBoolWithDefault( "output_drag_kinetic_energy", d_output_drag_and_kinetic_energy);
+    d_output_drag                     = output_db->getBoolWithDefault( "output_drag", d_output_drag);
+    d_output_kinetic_energy           = output_db->getBoolWithDefault( "output_drag", d_output_kinetic_energy);
     d_output_power                    = output_db->getBoolWithDefault( "output_power" , d_output_power);
     d_output_trans_vel                = output_db->getBoolWithDefault( "output_rig_transvel" , d_output_trans_vel);
     d_output_rot_vel                  = output_db->getBoolWithDefault( "output_rig_rotvel" , d_output_rot_vel);
@@ -917,6 +940,8 @@ ConstraintIBMethod::calculateMomentumOfNewKinematicsVelocity(const int position_
     
     Pointer<ConstraintIBKinematics> ptr_ib_kinematics = d_ib_kinematics[position_handle];
     const StructureParameters& struct_param           = ptr_ib_kinematics->getStructureParameters();
+    Array<int> calculate_trans_mom                    = struct_param.getCalculateTranslationalMomentum();
+    Array<int> calculate_rot_mom                      = struct_param.getCalculateRotationalMomentum();
     const int coarsest_ln                             = struct_param.getCoarsestLevelNumber();
     const int finest_ln                               = struct_param.getFinestLevelNumber();
     const std::vector<std::pair<int,int> >& range     = struct_param.getLagIdxRange();
@@ -960,17 +985,20 @@ ConstraintIBMethod::calculateMomentumOfNewKinematicsVelocity(const int position_
     }
     SAMRAI_MPI::sumReduction(&d_vel_com_def_new[position_handle][0],NDIM);
  
-    for(int i = 0; i < 3; ++i) 
+    for(int d = 0; d < 3; ++d) 
     {
-	d_vel_com_def_new[position_handle][i] /= total_nodes;
+	if(calculate_trans_mom[d])
+	    d_vel_com_def_new[position_handle][d] /= total_nodes;
+	else
+	    d_vel_com_def_new[position_handle][d] = 0.0;
     }
 	
     //Calculate angular momentum.
     if(struct_param.getStructureIsSelfRotating())
     {        
         //Zero out angular momentum of kinematics velocity of the structure.
-        for(int i = 0; i < 3; ++i) 
-	    d_omega_com_def_new[position_handle][i] = 0.0;
+        for(int d = 0; d < 3; ++d) 
+	    d_omega_com_def_new[position_handle][d] = 0.0;
           
         for(int ln = coarsest_ln, itr = 0; ln <= finest_ln && static_cast<unsigned int>(itr) < range.size(); ++ln,++itr)
         {     
@@ -1033,7 +1061,10 @@ ConstraintIBMethod::calculateMomentumOfNewKinematicsVelocity(const int position_
 #endif
  
 #if (NDIM == 3)       
-   solveSystemOfEqns(d_omega_com_def_new[position_handle],d_moment_of_inertia_new[position_handle]);  
+    solveSystemOfEqns(d_omega_com_def_new[position_handle],d_moment_of_inertia_new[position_handle]); 
+    for(int d = 0; d < 3; ++d)
+        if(!calculate_rot_mom[d]) d_omega_com_def_new[position_handle][d] = 0.0;
+      
 #endif
     
     return;
@@ -1550,8 +1581,11 @@ ConstraintIBMethod::correctVelocityOnLagrangianMesh()
 void
 ConstraintIBMethod::applyProjection()
 {
+   
     const int coarsest_ln = 0;
     const int finest_ln   = d_hierarchy->getFinestLevelNumber();
+    
+    
 
     // Allocate temporary data.
     ComponentSelector scratch_idxs;
@@ -1564,6 +1598,8 @@ ConstraintIBMethod::applyProjection()
         level->allocatePatchData(scratch_idxs, d_FuRMoRP_new_time);
     }
 
+    d_hier_math_ops->resetLevels(coarsest_ln,finest_ln);
+    
     
     // Compute div U before applying the projection operator.
     const bool U_current_cf_bdry_synch = true;
@@ -1925,6 +1961,132 @@ ConstraintIBMethod::midpointStep(
   
 } //eulerStep
 
+void
+ConstraintIBMethod::createNewLagrangianWorkspace()
+{
+  
+    const int coarsest_ln = 0;
+    const int finest_ln   = d_hierarchy->getFinestLevelNumber();
+    d_l_data_U_interp      .resize(finest_ln+1);
+    d_l_data_U_correction  .resize(finest_ln+1);
+    d_l_data_U_new         .resize(finest_ln+1);
+    d_l_data_U_half        .resize(finest_ln+1);
+    d_l_data_X_new_Euler   .resize(finest_ln+1);
+    d_l_data_X_new_MidPoint.resize(finest_ln+1);
+    if (d_INS_current_cycle_num == 0)  d_l_data_U_current.resize(finest_ln+1);
+    
+    for(int ln = coarsest_ln; ln <= finest_ln; ++ln)
+    {
+        if(!d_l_data_manager->levelContainsLagrangianData(ln)) continue;
+	d_l_data_U_interp[ln]       = d_l_data_manager->createLData(d_object_name + "interp_lag_vel", ln, NDIM, false);  
+        d_l_data_U_correction[ln]   = d_l_data_manager->createLData(d_object_name + "correct_lag_vel", ln, NDIM, false);  
+        d_l_data_U_new[ln]          = d_l_data_manager->createLData(d_object_name + "new_lag_vel", ln, NDIM, false); 
+        d_l_data_U_half[ln]         = d_l_data_manager->createLData(d_object_name + "half_lag_vel", ln, NDIM, false); 
+	d_l_data_X_new_Euler[ln]    = d_l_data_manager->createLData(d_object_name + "X_Euler", ln, NDIM, false); 
+	d_l_data_X_new_MidPoint[ln] = d_l_data_manager->createLData(d_object_name + "X_MidPoint", ln, NDIM, false); 
+        if (d_INS_current_cycle_num == 0) 
+	   d_l_data_U_current[ln]   = d_l_data_manager->createLData(d_object_name + "current_lag_vel", ln, NDIM, false); 
+
+    }
+    return;
+} //createLagrangianWorkspace
+
+
+void
+ConstraintIBMethod::destroyPreviousLagrangianWorkspace()
+{
+    d_l_data_U_interp      .clear();
+    d_l_data_U_correction  .clear();
+    d_l_data_U_new         .clear();
+    d_l_data_U_half        .clear();
+    d_l_data_X_new_Euler   .clear();
+    d_l_data_X_new_MidPoint.clear();
+    
+    return;
+} //destroyLagrangianWorkspace
+
+inline void
+ConstraintIBMethod::interpolateFluidSolveVelocity()
+{
+  
+    const int coarsest_ln = 0;
+    const int finest_ln   = d_hierarchy->getFinestLevelNumber();
+    
+    std::vector<SAMRAI::tbox::Pointer<IBTK::LData> > F_data(finest_ln+1, SAMRAI::tbox::Pointer<IBTK::LData>(NULL) );
+    std::vector<SAMRAI::tbox::Pointer<IBTK::LData> > X_data(finest_ln+1, SAMRAI::tbox::Pointer<IBTK::LData>(NULL) );
+  
+    for(int ln = coarsest_ln; ln <= finest_ln; ++ln)
+    {
+        if(!d_l_data_manager->levelContainsLagrangianData(ln)) continue;
+	F_data[ln] = d_l_data_U_interp[ln];  
+	X_data[ln] = d_l_data_manager->getLData("X",ln);
+    }
+  
+    d_l_data_manager->interp(d_u_fluidSolve_idx,F_data,X_data,
+        d_ib_hier_integrator->getCoarsenSchedules(d_object_name+"SYNC::u_fluidSolve"),
+	d_ib_hier_integrator->getGhostfillRefineSchedules(d_object_name+"FILL_GHOSTCELL::u_fluidSolve"),
+	d_FuRMoRP_new_time); 
+    
+    return; 
+  
+} //interpolateFluidSolveVelocity
+
+void
+ConstraintIBMethod::spreadCorrectedLagrangianVelocity()
+{
+    const int coarsest_ln = 0;
+    const int finest_ln   = d_hierarchy->getFinestLevelNumber();
+    std::vector<SAMRAI::tbox::Pointer<IBTK::LData> > F_data(finest_ln+1,  SAMRAI::tbox::Pointer<IBTK::LData>(NULL) );
+    std::vector<SAMRAI::tbox::Pointer<IBTK::LData> > X_data(finest_ln+1,  SAMRAI::tbox::Pointer<IBTK::LData>(NULL) );
+    
+    for(int ln = coarsest_ln; ln <= finest_ln; ++ln)
+    {
+        if(!d_l_data_manager->levelContainsLagrangianData(ln)) continue;
+	F_data[ln] = d_l_data_U_correction[ln];  
+	X_data[ln] = d_l_data_manager->getLData("X",ln);
+    }
+  
+    d_l_data_manager->spread(d_u_fluidSolve_idx,F_data,X_data,
+        d_ib_hier_integrator->getProlongRefineSchedules(d_object_name+"PROLONG::u_fluidSolve"),
+	true,true); 
+     
+    return;
+  
+} //spreadCorrectedLagrangianVelocity
+
+void
+ConstraintIBMethod::synchronizeLevels()
+{
+    const int coarsest_ln = 0;
+    const int finest_ln   = d_hierarchy->getFinestLevelNumber();
+    const std::vector<SAMRAI::tbox::Pointer<SAMRAI::xfer::CoarsenSchedule<NDIM> > >& coarsen_schedules = d_ib_hier_integrator->getCoarsenSchedules(d_object_name+"SYNC::u_fluidSolve");
+    
+    // Do the Coarsening Operation.
+    for(int ln = finest_ln; ln > coarsest_ln; --ln)
+    {
+        coarsen_schedules[ln]->coarsenData();
+    }
+    
+    return;
+  
+} //synchronizeLevels
+
+
+void
+ConstraintIBMethod::calculateMidPointVelocity()
+{
+  
+    const int coarsest_ln = 0;
+    const int finest_ln = d_hierarchy->getFinestLevelNumber();
+    int ierr;
+    for (int ln = coarsest_ln; ln <= finest_ln; ++ln)
+    {
+        if (!d_l_data_manager->levelContainsLagrangianData(ln)) continue;
+        ierr = VecAXPBYPCZ(d_l_data_U_half[ln]->getVec(), 0.5, 0.5, 0.0, d_l_data_U_current[ln]->getVec(), d_l_data_U_new[ln]->getVec());  IBTK_CHKERRQ(ierr);
+    }
+    return;
+  
+}// calculateMidPointVelocity
 
 
 } //IBAMR

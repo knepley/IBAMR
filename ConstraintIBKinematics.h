@@ -58,62 +58,105 @@ public:
     /*!
      * Lagrangian point to tag on this structure.
      */
-    int 
-    getTaggedPtIdx() const;
-    
+    inline int 
+    getTaggedPtIdx() const
+    {
+        return d_tagged_pt_idx;
+	
+    } //getTaggedPtIdx
     /*!
      * Get the unlocked components of translational momentum.
      */
-    SAMRAI::tbox::Array<int>
-    getCalculateTranslationalMomentum() const;
+    inline SAMRAI::tbox::Array<int>
+    getCalculateTranslationalMomentum() const
+    {
+
+        return d_calculate_trans_mom;
+
+    } //getCalculateTranslationalMomentum 
     
     /*!
      * Get the unlocked components of rotational momentum.
      */
-    SAMRAI::tbox::Array<int>
-    getCalculateRotationalMomentum() const;
+    inline SAMRAI::tbox::Array<int>
+    getCalculateRotationalMomentum() const
+    {
+
+        return d_calculate_rot_mom;
+
+    } //getCalculateRotationalMomentum
+    
 
     /*!
      * Check if the structure has translational degree unlocked.
      */
-    bool
-    getStructureIsSelfTranslating() const;
+    inline bool
+    getStructureIsSelfTranslating() const
+    {
+        return d_struct_is_self_translating;
+
+    } //getStructureIsSelfTranslating
     
     /*!
      * Check if the structure has rotational degree unlocked.
      */
-    bool
-    getStructureIsSelfRotating() const;
+    inline bool
+    getStructureIsSelfRotating() const
+    {
+        return d_struct_is_self_rotating;
+
+    } //getStructureIsSelfRotating
 
     /*!
      * The coarsest level on which the structure resides.
      */
-    int
-    getCoarsestLevelNumber() const;
+    inline int
+    getCoarsestLevelNumber() const
+    {
+        return d_coarsest_ln;
+
+    } //getCoarsestLevelNumber
     
     /*!
      * The finest level on which the structure resides.
      */
-    int
-    getFinestLevelNumber() const;
+    inline int
+    getFinestLevelNumber() const
+    {
+        return d_finest_ln;
+
+    } //getFinestLevelNumber
     
     /*!
      * Global Lagrangian indices managed for this structure.
      */
-    const std::vector<std::pair<int,int> >& 
-    getLagIdxRange() const;
+    inline const std::vector<std::pair<int,int> >& 
+    getLagIdxRange() const
+    {
+        return d_idx_range;
+ 
+    } //getLagIdxRange
 
     /*!
      * Total number of Lagrangian nodes managed for this structure.
      */
-    int 
-    getTotalNodes() const;
+    inline int 
+    getTotalNodes() const
+    {
+        return d_total_nodes;
+
+    } //getTotalNodes
 
     /*!
      * Lagrangian nodes update method for this structure.
      */
-    std::string
-    getPositionUpdateMethod() const;
+    inline std::string
+    getPositionUpdateMethod() const
+    {
+
+        return d_lag_position_update_method; 
+
+    } //getPositionUpdateMethod
    
 private:
   
@@ -130,7 +173,7 @@ private:
      * \brief Constructor.
      */
     ConstraintIBKinematics(
-        std::string& object_name,
+        const std::string& object_name,
         SAMRAI::tbox::Pointer<SAMRAI::tbox::Database> input_db,
 	IBTK::LDataManager* l_data_manager,
         bool register_for_restart = true);
@@ -144,8 +187,11 @@ private:
     /*!
      * Get the object enclosing this structure's parameters.
      */
-    const StructureParameters&
-    getStructureParameters() const;
+    inline const StructureParameters&
+    getStructureParameters() const
+    {
+        return d_struct_param;
+    }
 
     /*!
      * Set the kinematics velocity(deformational or imposed) at Lagrangian points managed by this object.
@@ -219,6 +265,12 @@ private:
      */
     ConstraintIBKinematics(
         const ConstraintIBKinematics& from);
+    
+    /*!
+     * Deleted default assignment.
+     */
+    ConstraintIBKinematics&
+    operator = (const ConstraintIBKinematics& that);
    
     /*!
      * Object enclosing all the parameters of the structure.
@@ -247,7 +299,7 @@ protected:
 
 /////////////////////////////////// INLINE ///////////////////////////////////////
 
-#include "ConstraintIBKinematics.I"
+//#include "ConstraintIBKinematics.I"
 
 /////////////////////////////////////////////////////////////////////////////////
 

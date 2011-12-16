@@ -126,7 +126,7 @@ ConstraintIBKinematics::StructureParameters::StructureParameters(
   
   
 ConstraintIBKinematics::ConstraintIBKinematics(
-    std::string& object_name, 
+    const std::string& object_name, 
     Pointer< Database > input_db, 
     LDataManager* l_data_manager, 
     bool register_for_restart)

@@ -72,7 +72,6 @@ public:
         const std::string& object_name,  
 	SAMRAI::tbox::Pointer<SAMRAI::tbox::Database> input_db,
 	SAMRAI::tbox::Pointer< IBAMR::INSHierarchyIntegrator > ins_hier_integrator,
-	SAMRAI::tbox::Pointer< IBAMR::IBHierarchyIntegrator >  ib_hier_integrator,
 	const int no_structures,
 	bool register_for_restart = true);
         
@@ -82,11 +81,25 @@ public:
     ~ConstraintIBMethod();
     
     /*!
+     * Register IBHierarchyIntegrator.
+     */
+    void
+    registerIBHierarchyIntegrator(
+        SAMRAI::tbox::Pointer< IBAMR::IBHierarchyIntegrator >  ib_hier_integrator);
+    
+    /*!
+     * Initialize Hierarchy related Data.
+     */
+    void
+    initializeHierarchyRelatedData();
+   
+    
+    /*!
      * \brief Register kinematics of the immersed structure(s) with this class.
      */
     void
     registerConstraintIBKinematics(
-        std::vector< SAMRAI::tbox::Pointer<IBAMR::ConstraintIBKinematics> > ib_kinematics_op);
+        const std::vector< SAMRAI::tbox::Pointer<IBAMR::ConstraintIBKinematics> >& ib_kinematics_op);
     
     /*!
      * \brief Apply the FuRMoRP algorithm in IBAMR::IBStrategy::postprocessSolveFluidEquations method.
@@ -205,9 +218,18 @@ private:
     /*!
      * \brief Set the INS cycle number for this object.
      */
-    void
+    inline void
     setINSCycleNumberAndCounter(
-        const int cycle_num);
+        const int cycle_num)
+    {
+
+        d_INS_current_cycle_num = cycle_num;
+        if(cycle_num == (d_INS_num_cycles -1))
+            ++d_timestep_counter;      
+ 
+        return;
+
+    } //setINSCycleNumberAndCounter
    
     /*!
      * \brief Set the time at which FuRMoRP is applied.
@@ -215,7 +237,13 @@ private:
     void
     setFurmorpTime(
         const double current_time,
-        const double new_time);
+        const double new_time)
+    {
+        d_FuRMoRP_current_time = current_time;
+        d_FuRMoRP_new_time     = new_time;
+
+        return;
+    } //setFurmorpTime
 
     /*!
      * Interpolate fluid solve velocity from Eulerian grid onto the Lagrangian mesh.
@@ -391,7 +419,7 @@ private:
     /*!
      * Bools for outputing stuff which is calculated on the fly.
      */
-    bool d_print_output, d_output_drag_and_kinetic_energy, d_output_power,d_output_trans_vel, 
+    bool d_print_output, d_output_drag, d_output_kinetic_energy, d_output_power,d_output_trans_vel, 
          d_output_rot_vel, d_output_COM_coordinates, d_output_MOI;
    
     /*!
@@ -410,7 +438,6 @@ private:
      */
     SAMRAI::tbox::Pointer<SAMRAI::math::HierarchySideDataOpsReal<NDIM,double> > d_hier_sc_data_ops;
     SAMRAI::tbox::Pointer<SAMRAI::math::HierarchyCellDataOpsReal<NDIM,double> > d_hier_cc_data_ops;
-    SAMRAI::tbox::Pointer<SAMRAI::pdat::CellVariable<NDIM,double> >             d_wgt_cc_var;
     SAMRAI::tbox::Pointer<IBTK::HierarchyGhostCellInterpolation>                d_no_fill_op;
     int                                                                         d_wgt_cc_idx;
     double                                                                      d_volume;
@@ -463,7 +490,7 @@ private:
 
 ///////////////////////////////////////// INLINE ////////////////////////
 
-#include "ConstraintIBMethod.I"
+//#include "ConstraintIBMethod.I"
 
 /////////////////////////////////////////////////////////////////////////
 
