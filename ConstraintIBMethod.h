@@ -303,7 +303,7 @@ private:
     updateStructurePositionMidPointStep();
     
     /*!
-     * Compute U_half = U_current + U_new;
+     * Compute U_half = 0.5(U_current + U_new);
      */
     void 
     calculateMidPointVelocity();  
@@ -313,7 +313,7 @@ private:
      * Calculate Drag, Kinetic Energy, Power.
      */
     void 
-    postprocessData();
+    calculateDragKEPower();
    
 /////////////////////////    PRIVATE DATA MEMBERS ////////////////////////////////
     
