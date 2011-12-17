@@ -46,6 +46,8 @@
 #include <CellData.h>
 #include <CellIndex.h>
 #include <PoissonSpecifications.h>
+#include <tbox/Timer.h>
+#include <tbox/TimerManager.h>
 
 // IBAMR INCLUDES
 #include <ibamr/namespaces.h>
@@ -56,6 +58,7 @@
 #include <ibtk/PETScKrylovLinearSolver.h>
 #include <ibtk/FACPreconditioner.h>
 #include <ibtk/CCPoissonFACOperator.h>
+#include <ibtk/ibtk_utilities.h>
 
 
 
@@ -77,22 +80,38 @@ namespace IBAMR
 namespace
 {
   
-  // Number of ghost cells used for each variable quantity.
-  static const int CELLG = (USING_LARGE_GHOST_CELL_WIDTH ? 2 : 1 );
-  static const int SIDEG = (USING_LARGE_GHOST_CELL_WIDTH ? 2 : 1);
+//Timers.
+static Pointer<Timer> t_postprocessSolveFluidEquation;
+static Pointer<Timer> t_destroyPreviousLagrangianWorkspace;
+static Pointer<Timer> t_createNewLagrangianWorkspace;
+static Pointer<Timer> t_calculateCOMandMOIOfStructures;
+static Pointer<Timer> t_interpolateFluidSolveVelocity;
+static Pointer<Timer> t_calculateNewKinematicsVelocity;
+static Pointer<Timer> t_calculateRigidMomentum;
+static Pointer<Timer> t_correctVelocityOnLagrangianMesh;
+static Pointer<Timer> t_spreadCorrectedLagrangianVelocity;
+static Pointer<Timer> t_synchronizeLevels;
+static Pointer<Timer> t_applyProjection;
+static Pointer<Timer> t_calculateCurrentLagrangianVelocity;
+static Pointer<Timer> t_eulerStep;
+static Pointer<Timer> t_midpointStep;
+
+// Number of ghost cells used for each variable quantity.
+static const int CELLG = (USING_LARGE_GHOST_CELL_WIDTH ? 2 : 1 );
+static const int SIDEG = (USING_LARGE_GHOST_CELL_WIDTH ? 2 : 1);
 
 
-  // Type of coarsening to perform prior to setting coarse-fine boundary and
-  // physical boundary ghost cell values.
-  static const std::string CELL_DATA_COARSEN_TYPE = "CUBIC_COARSEN";
-  static const std::string SIDE_DATA_COARSEN_TYPE = "CUBIC_COARSEN";
+// Type of coarsening to perform prior to setting coarse-fine boundary and
+// physical boundary ghost cell values.
+static const std::string CELL_DATA_COARSEN_TYPE = "CUBIC_COARSEN";
+static const std::string SIDE_DATA_COARSEN_TYPE = "CUBIC_COARSEN";
 
-  // Type of extrapolation to use at physical boundaries.
-  static const std::string BDRY_EXTRAP_TYPE = "LINEAR";
+// Type of extrapolation to use at physical boundaries.
+static const std::string BDRY_EXTRAP_TYPE = "LINEAR";
 
-  // Whether to enforce consistent interpolated values at Type 2 coarse-fine
-  // interface ghost cells.
-  static const bool CONSISTENT_TYPE_2_BDRY = false;
+// Whether to enforce consistent interpolated values at Type 2 coarse-fine
+// interface ghost cells.
+static const bool CONSISTENT_TYPE_2_BDRY = false;
   
 class find_struct_handle
 {
@@ -289,7 +308,43 @@ ConstraintIBMethod::ConstraintIBMethod(
 
     }
     
-    
+    //Setup the Timers.
+    IBTK_DO_ONCE(
+	t_postprocessSolveFluidEquation      = TimerManager::getManager()->getTimer("IBAMR::ConstraintIBMethod::postprocessSolveFluidEquation()",true);
+        t_destroyPreviousLagrangianWorkspace = TimerManager::getManager()->getTimer("IBAMR::ConstraintIBMethod::destroyPreviousLagrangianWorkspace()",true);
+        t_createNewLagrangianWorkspace       = TimerManager::getManager()->getTimer("IBAMR::ConstraintIBMethod::createNewLagrangianWorkspace()",true);
+        t_calculateCOMandMOIOfStructures     = TimerManager::getManager()->getTimer("IBAMR::ConstraintIBMethod::calculateCOMandMOIOfStructures()",true);
+        t_interpolateFluidSolveVelocity      = TimerManager::getManager()->getTimer("IBAMR::ConstraintIBMethod::interpolateFluidSolveVelocity()",true);
+        t_calculateNewKinematicsVelocity     = TimerManager::getManager()->getTimer("IBAMR::ConstraintIBMethod::calculateNewKinematicsVelocity()",true);
+        t_calculateRigidMomentum             = TimerManager::getManager()->getTimer("IBAMR::ConstraintIBMethod::calculateRigidMomentum()",true);
+        t_correctVelocityOnLagrangianMesh    = TimerManager::getManager()->getTimer("IBAMR::ConstraintIBMethod::correctVelocityOnLagrangianMesh()",true);
+        t_spreadCorrectedLagrangianVelocity  = TimerManager::getManager()->getTimer("IBAMR::ConstraintIBMethod::spreadCorrectedLagrangianVelocity()",true);
+        t_synchronizeLevels                  = TimerManager::getManager()->getTimer("IBAMR::ConstraintIBMethod::synchronizeLevels()",true);
+        t_applyProjection                    = TimerManager::getManager()->getTimer("IBAMR::ConstraintIBMethod::applyProjection()",true);
+        t_calculateCurrentLagrangianVelocity = TimerManager::getManager()->getTimer("IBAMR::ConstraintIBMethod::calculateCurrentLagrangianVelocity()",true);
+	t_eulerStep                          = TimerManager::getManager()->getTimer("IBAMR::ConstraintIBMethod::eulerStep()",true);
+        t_midpointStep                       = TimerManager::getManager()->getTimer("IBAMR::ConstraintIBMethod::midpointStep()",true);
+    );   
+
+    /*IBTK_DO_ONCE(
+	t_postprocessSolveFluidEquation      = TimerManager::getManager()->getTimer("IBAMR::ConstraintIBMethod::postprocessSolveFluidEquation()");
+        t_destroyPreviousLagrangianWorkspace = TimerManager::getManager()->getTimer("IBAMR::ConstraintIBMethod::destroyPreviousLagrangianWorkspace()");
+        t_createNewLagrangianWorkspace       = TimerManager::getManager()->getTimer("IBAMR::ConstraintIBMethod::createNewLagrangianWorkspace()");
+        t_calculateCOMandMOIOfStructures     = TimerManager::getManager()->getTimer("IBAMR::ConstraintIBMethod::calculateCOMandMOIOfStructures()");
+        t_interpolateFluidSolveVelocity      = TimerManager::getManager()->getTimer("IBAMR::ConstraintIBMethod::interpolateFluidSolveVelocity()");
+        t_calculateNewKinematicsVelocity     = TimerManager::getManager()->getTimer("IBAMR::ConstraintIBMethod::calculateNewKinematicsVelocity()");
+        t_calculateRigidMomentum             = TimerManager::getManager()->getTimer("IBAMR::ConstraintIBMethod::calculateRigidMomentum()");
+        t_correctVelocityOnLagrangianMesh    = TimerManager::getManager()->getTimer("IBAMR::ConstraintIBMethod::correctVelocityOnLagrangianMesh()");
+        t_spreadCorrectedLagrangianVelocity  = TimerManager::getManager()->getTimer("IBAMR::ConstraintIBMethod::spreadCorrectedLagrangianVelocity()");
+        t_synchronizeLevels                  = TimerManager::getManager()->getTimer("IBAMR::ConstraintIBMethod::synchronizeLevels()");
+        t_applyProjection                    = TimerManager::getManager()->getTimer("IBAMR::ConstraintIBMethod::applyProjection()");
+        t_calculateCurrentLagrangianVelocity = TimerManager::getManager()->getTimer("IBAMR::ConstraintIBMethod::calculateCurrentLagrangianVelocity()");
+	t_eulerStep                          = TimerManager::getManager()->getTimer("IBAMR::ConstraintIBMethod::eulerStep()");
+        t_midpointStep                       = TimerManager::getManager()->getTimer("IBAMR::ConstraintIBMethod::midpointStep()");
+	);*/
+
+
+
 
  return; 
 } // ConstraintIBMethod
@@ -322,23 +377,64 @@ ConstraintIBMethod::postprocessSolveFluidEquations(
     int cycle_num)
 {
     IBMethod::postprocessSolveFluidEquations(current_time, new_time, cycle_num);
+     
+    IBTK_TIMER_START(t_postprocessSolveFluidEquation);
     
     setFurmorpTime(current_time,new_time);
     setINSCycleNumberAndCounter(cycle_num);
+
+    IBTK_TIMER_START(t_destroyPreviousLagrangianWorkspace);
     destroyPreviousLagrangianWorkspace();
+    IBTK_TIMER_STOP(t_destroyPreviousLagrangianWorkspace);
+
+    IBTK_TIMER_START(t_createNewLagrangianWorkspace);
     createNewLagrangianWorkspace();
+    IBTK_TIMER_STOP(t_createNewLagrangianWorkspace);
+
+    IBTK_TIMER_START(t_calculateCOMandMOIOfStructures);
     calculateCOMandMOIOfStructures();
+    IBTK_TIMER_STOP(t_calculateCOMandMOIOfStructures);
+
+    IBTK_TIMER_START(t_interpolateFluidSolveVelocity);
     interpolateFluidSolveVelocity();
+    IBTK_TIMER_STOP(t_interpolateFluidSolveVelocity);
+
+    IBTK_TIMER_START(t_calculateNewKinematicsVelocity);
     calculateNewKinematicsVelocity();
+    IBTK_TIMER_STOP(t_calculateNewKinematicsVelocity);
+
+    IBTK_TIMER_START(t_calculateRigidMomentum);
     calculateRigidMomentum();
+    IBTK_TIMER_STOP(t_calculateRigidMomentum);
+
+    IBTK_TIMER_START(t_correctVelocityOnLagrangianMesh);
     correctVelocityOnLagrangianMesh();
+    IBTK_TIMER_STOP(t_correctVelocityOnLagrangianMesh);
+
+    IBTK_TIMER_START(t_spreadCorrectedLagrangianVelocity);
     spreadCorrectedLagrangianVelocity();
+    IBTK_TIMER_STOP(t_spreadCorrectedLagrangianVelocity);
+
+    IBTK_TIMER_START(t_synchronizeLevels);
     synchronizeLevels();
+    IBTK_TIMER_STOP(t_synchronizeLevels);
+
     if(d_needs_div_free_projection)
-       applyProjection();
+    {
+        IBTK_TIMER_START(t_applyProjection);
+        applyProjection();
+        IBTK_TIMER_STOP(t_applyProjection);
+    }
+
     if(d_INS_current_cycle_num == 0)
-      calculateCurrentLagrangianVelocity();
-    
+    {
+        IBTK_TIMER_START(t_calculateCurrentLagrangianVelocity);
+        calculateCurrentLagrangianVelocity();
+        IBTK_TIMER_STOP(t_calculateCurrentLagrangianVelocity);
+    }
+
+    IBTK_TIMER_STOP(t_postprocessSolveFluidEquation);
+
     return;
     
 }
@@ -704,8 +800,7 @@ ConstraintIBMethod::setInitialLagrangianVelocity()
 
 void
 ConstraintIBMethod::calculateCOMandMOIOfStructures()
-{
-
+{    
     typedef ConstraintIBKinematics::StructureParameters StructureParameters;            
     const int coarsest_ln = 0;
     const int finest_ln   = d_hierarchy->getFinestLevelNumber();
@@ -901,14 +996,14 @@ ConstraintIBMethod::calculateCOMandMOIOfStructures()
                                 << d_moment_of_inertia_current[struct_no](2,1) << '\t'<< d_moment_of_inertia_current[struct_no](2,2)  << std::endl;
 	}
    }
-    
+       
     return;
 } //calculateCOMandMOIOfStructures
 
 
 void
 ConstraintIBMethod::calculateNewKinematicsVelocity()
-{  
+{      
     typedef ConstraintIBKinematics::StructureParameters StructureParameters;
     const double dt = d_FuRMoRP_new_time - d_FuRMoRP_current_time;
     for(int struct_no = 0; struct_no < d_no_structures; ++struct_no)
@@ -929,6 +1024,8 @@ ConstraintIBMethod::calculateNewKinematicsVelocity()
          
          if(struct_param.getStructureIsSelfTranslating()) calculateMomentumOfNewKinematicsVelocity(struct_no); 
     }
+    
+    return;
   
 }//calculateNewKinematicsVelocity
 
@@ -1197,6 +1294,7 @@ ConstraintIBMethod::calculateVolumeElement()
 void
 ConstraintIBMethod::calculateRigidMomentum()
 {
+  
     if(d_INS_current_cycle_num == 0)
     {
         for(int struct_no = 0; struct_no < d_no_structures; ++ struct_no)
@@ -1379,15 +1477,13 @@ ConstraintIBMethod::calculateRigidMomentum()
 	}
     }
     
-    
-  return;
+    return;
   
 } //calculateRigidMomentum
 
 void
 ConstraintIBMethod::calculateCurrentLagrangianVelocity()
 {
-
     typedef ConstraintIBKinematics::StructureParameters StructureParameters;
     const int coarsest_ln = 0;
     const int finest_ln   = d_hierarchy->getFinestLevelNumber();
@@ -1572,7 +1668,7 @@ ConstraintIBMethod::correctVelocityOnLagrangianMesh()
 	d_l_data_U_new[ln]->restoreArrays(); 
 	d_l_data_manager->getLData("X",ln)->restoreArrays();
     }// all levels  
-  
+      
     return;
   
 } // correctVelocityOnLagrangianMesh
@@ -1581,12 +1677,9 @@ ConstraintIBMethod::correctVelocityOnLagrangianMesh()
 void
 ConstraintIBMethod::applyProjection()
 {
-   
     const int coarsest_ln = 0;
     const int finest_ln   = d_hierarchy->getFinestLevelNumber();
     
-    
-
     // Allocate temporary data.
     ComponentSelector scratch_idxs;
     scratch_idxs.setFlag(d_u_scratch_idx);
@@ -1848,8 +1941,11 @@ ConstraintIBMethod::eulerStep(
     double current_time,
     double new_time)
 {    
-
+    
     IBMethod::eulerStep(current_time, new_time);
+    
+    IBTK_TIMER_START(t_eulerStep);
+    
     if(d_INS_num_cycles > 1)
     {
         updateStructurePositionEulerStep();
@@ -1864,6 +1960,7 @@ ConstraintIBMethod::eulerStep(
         }
     }
     
+    IBTK_TIMER_STOP(t_eulerStep);
     return;
   
 } //eulerStep
@@ -1946,6 +2043,8 @@ ConstraintIBMethod::midpointStep(
 {    
     IBMethod::midpointStep(current_time, new_time);
   
+    IBTK_TIMER_START(t_midpointStep);
+    
     updateStructurePositionMidPointStep();
     
     const int coarsest_ln = 0;
@@ -1957,6 +2056,7 @@ ConstraintIBMethod::midpointStep(
         ierr = VecCopy(d_l_data_X_new_MidPoint[ln]->getVec(), d_X_new_data[ln]->getVec());  IBTK_CHKERRQ(ierr);
     }
     
+    IBTK_TIMER_STOP(t_midpointStep);
     return;
   
 } //eulerStep
@@ -1964,7 +2064,6 @@ ConstraintIBMethod::midpointStep(
 void
 ConstraintIBMethod::createNewLagrangianWorkspace()
 {
-  
     const int coarsest_ln = 0;
     const int finest_ln   = d_hierarchy->getFinestLevelNumber();
     d_l_data_U_interp      .resize(finest_ln+1);
@@ -1988,6 +2087,7 @@ ConstraintIBMethod::createNewLagrangianWorkspace()
 	   d_l_data_U_current[ln]   = d_l_data_manager->createLData(d_object_name + "current_lag_vel", ln, NDIM, false); 
 
     }
+    
     return;
 } //createLagrangianWorkspace
 
@@ -1995,6 +2095,7 @@ ConstraintIBMethod::createNewLagrangianWorkspace()
 void
 ConstraintIBMethod::destroyPreviousLagrangianWorkspace()
 {
+
     d_l_data_U_interp      .clear();
     d_l_data_U_correction  .clear();
     d_l_data_U_new         .clear();
@@ -2002,13 +2103,13 @@ ConstraintIBMethod::destroyPreviousLagrangianWorkspace()
     d_l_data_X_new_Euler   .clear();
     d_l_data_X_new_MidPoint.clear();
     
+
     return;
 } //destroyLagrangianWorkspace
 
 inline void
 ConstraintIBMethod::interpolateFluidSolveVelocity()
 {
-  
     const int coarsest_ln = 0;
     const int finest_ln   = d_hierarchy->getFinestLevelNumber();
     
@@ -2049,7 +2150,7 @@ ConstraintIBMethod::spreadCorrectedLagrangianVelocity()
     d_l_data_manager->spread(d_u_fluidSolve_idx,F_data,X_data,
         d_ib_hier_integrator->getProlongRefineSchedules(d_object_name+"PROLONG::u_fluidSolve"),
 	true,true); 
-     
+    
     return;
   
 } //spreadCorrectedLagrangianVelocity
