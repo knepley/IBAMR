@@ -572,7 +572,6 @@ ConstraintIBMethod::initializeHierarchyRelatedData()
     coarsen_op = grid_geom->lookupCoarsenOperator(d_u_fluidSolve_var, "CONSERVATIVE_COARSEN");
     coarsen_alg->registerCoarsen(d_u_fluidSolve_idx, d_u_fluidSolve_idx, coarsen_op);
     d_ib_hier_integrator->registerCoarsenAlgorithm(d_object_name+"SYNC::u_fluidSolve", coarsen_alg);
-    pout << "done dona done \n\n\n";
     
     if(d_output_power)
     {
