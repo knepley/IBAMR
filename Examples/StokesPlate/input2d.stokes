@@ -92,7 +92,7 @@ ConstraintIBMethod {
    delta_fcn                = DELTA_FUNCTION
    enable_logging           = ENABLE_LOGGING
    num_INS_cycles           = NUM_CYCLES
-   needs_divfree_projection = FALSE
+   needs_divfree_projection = TRUE
    rho_fluid                = RHO
    mu_fluid                 = MU
    

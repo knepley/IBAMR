@@ -233,14 +233,9 @@ main(
 	Pointer<ConstraintIBKinematics> ib_kinematics = new StokesPlateKinematics("STOKES_PLATE",
              app_initializer->getComponentDatabase("ConstraintIBKinematics")->getDatabase("SPlate"),ib_method_ops->getLDataManager());
 	ib_method_ops->registerConstraintIBKinematics(vector<Pointer<ConstraintIBKinematics> >(1,ib_kinematics));
-	
-	//Create MathOps and communication algorithms.
-	ib_method_ops->registerIBHierarchyIntegrator(time_integrator);
-	ib_method_ops->initializeHierarchyRelatedData();
-	pout << " Hierarchy Related data done .... \n\n" ;
-	
-
-										  
+	ib_method_ops->initializeHierarchyOperatorsandData();
+     
+											  
         // Deallocate initialization objects.
         ib_method_ops->freeLInitStrategy();
         ib_initializer.setNull();

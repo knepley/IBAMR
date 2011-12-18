@@ -71,7 +71,6 @@ public:
     ConstraintIBMethod(  
         const std::string& object_name,  
 	SAMRAI::tbox::Pointer<SAMRAI::tbox::Database> input_db,
-	SAMRAI::tbox::Pointer< IBAMR::INSHierarchyIntegrator > ins_hier_integrator,
 	const int no_structures,
 	bool register_for_restart = true);
         
@@ -81,18 +80,23 @@ public:
     ~ConstraintIBMethod();
     
     /*!
-     * Register IBHierarchyIntegrator.
+     *  Initialize Hierarchy operators
      */
-    void
-    registerIBHierarchyIntegrator(
-        SAMRAI::tbox::Pointer< IBAMR::IBHierarchyIntegrator >  ib_hier_integrator);
+   void
+   initializeHierarchyOperatorsandData();
     
     /*!
-     * Initialize Hierarchy related Data.
+     * Register Eulerian variables with IBStrategy class.
      */
-    void
-    initializeHierarchyRelatedData();
-   
+    virtual void
+    registerEulerianVariables();
+    
+    /*!
+     *  Register Eulerian communication algorithms.
+     */
+    virtual void
+    registerEulerianCommunicationAlgorithms();
+    
     
     /*!
      * \brief Register kinematics of the immersed structure(s) with this class.
@@ -318,10 +322,8 @@ private:
 /////////////////////////    PRIVATE DATA MEMBERS ////////////////////////////////
     
     /*!
-     * Cache IBAMR & IBTK pointers for functionality.
+     * Hierarchy math operator.
      */
-    SAMRAI::tbox::Pointer< IBAMR::INSHierarchyIntegrator > d_ins_hier_integrator;
-    SAMRAI::tbox::Pointer< IBAMR::IBHierarchyIntegrator  > d_ib_hier_integrator;
     SAMRAI::tbox::Pointer< IBTK::HierarchyMathOps > d_hier_math_ops;
     
     /*!
@@ -450,7 +452,7 @@ private:
     SAMRAI::tbox::Pointer< SAMRAI::pdat::CellVariable< NDIM,double > > d_phi_var;
     SAMRAI::tbox::Pointer< SAMRAI::pdat::CellVariable< NDIM,double > > d_Div_u_var;
    
-    SAMRAI::tbox::Pointer< SAMRAI::hier::VariableContext > d_scratch_context, d_new_context;
+    SAMRAI::tbox::Pointer< SAMRAI::hier::VariableContext > d_scratch_context;
     int d_u_scratch_idx, d_u_fluidSolve_idx , d_phi_idx, d_Div_u_scratch_idx;
     
     /*!

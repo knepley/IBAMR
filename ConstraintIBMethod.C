@@ -202,12 +202,9 @@ solveSystemOfEqns(
 ConstraintIBMethod::ConstraintIBMethod(
     const std::string& object_name,  
     Pointer< Database> input_db,
-    Pointer< INSHierarchyIntegrator > ins_hier_integrator,
     const int no_structures,
     bool register_for_restart) 
     : IBMethod(object_name, input_db, register_for_restart),
-    d_ins_hier_integrator(ins_hier_integrator),
-    d_ib_hier_integrator(NULL),
     d_hier_math_ops(NULL),
     d_collocated_solver(false),
     d_staggered_solver(false),
@@ -257,8 +254,58 @@ ConstraintIBMethod::ConstraintIBMethod(
     if (from_restart) getFromRestart();
     if (!input_db.isNull()) getFromInput(input_db, from_restart);
      
-    
-    
+
+        
+    // Setup the cell centered Poisson Solver needed for projection.
+    if (d_needs_div_free_projection)
+    {
+        const std::string velcorrection_projection_prefix = "ConstraintIBMethodProjection";
+        // Setup the various solver components.
+        for (int d = 0; d < NDIM; ++d)
+        {
+            d_velcorrection_projection_bc_coef.setBoundarySlope(2*d  ,0.0);
+            d_velcorrection_projection_bc_coef.setBoundarySlope(2*d+1,0.0);
+        }
+
+        d_velcorrection_projection_spec    = new PoissonSpecifications(d_object_name + "::ConstraintIBMethodProjection::Spec");
+        d_velcorrection_projection_op      = new CCLaplaceOperator(d_object_name + "ConstraintIBMethodProjection::PoissonOperator",
+            *d_velcorrection_projection_spec, &d_velcorrection_projection_bc_coef, true);
+        d_velcorrection_projection_solver  = new PETScKrylovLinearSolver(d_object_name + "ConstraintIBMethodProjection::PoissonKrylovSolver",
+             velcorrection_projection_prefix);
+        d_velcorrection_projection_solver->setInitialGuessNonzero(false);
+        d_velcorrection_projection_solver->setOperator(d_velcorrection_projection_op);
+
+       	if (d_velcorrection_projection_fac_pc_db.isNull())
+        {
+            TBOX_WARNING(d_object_name << "::ConstraintIBMethod():\n" <<
+                " ConstraintIBMethodProjection:: Poisson FAC PC solver database is null." << std::endl);
+	}
+
+        d_velcorrection_projection_fac_op  = new CCPoissonFACOperator(d_object_name + ":: ConstraintIBMethodProjection::PoissonFACOperator", 
+             d_velcorrection_projection_fac_pc_db);
+        d_velcorrection_projection_fac_op->setPoissonSpecifications(*d_velcorrection_projection_spec);
+        d_velcorrection_projection_fac_pc  = new IBTK::FACPreconditioner(d_object_name + "::ConstraintIBMethodProjection::PoissonPreconditioner",
+             d_velcorrection_projection_fac_op, d_velcorrection_projection_fac_pc_db);
+        d_velcorrection_projection_solver->setPreconditioner(d_velcorrection_projection_fac_pc);
+
+        // Set some default options.
+        d_velcorrection_projection_solver->setKSPType("gmres");
+        d_velcorrection_projection_solver->setAbsoluteTolerance(1.0e-12);
+        d_velcorrection_projection_solver->setRelativeTolerance(1.0e-08);
+        d_velcorrection_projection_solver->setMaxIterations(25);
+
+        // NOTE: We always use homogeneous Neumann boundary conditions for the
+        // velocity correction projection Poisson solver.
+        d_velcorrection_projection_solver->setNullspace(true, NULL);
+    }
+    else
+    {
+        d_velcorrection_projection_spec   = NULL;
+        d_velcorrection_projection_op     = NULL;
+        d_velcorrection_projection_fac_op = NULL;
+        d_velcorrection_projection_fac_pc = NULL;
+        d_velcorrection_projection_solver = NULL;
+    }
     
     // Do printing operation for processor 0 only.
     if( !SAMRAI_MPI::getRank() && d_print_output)
@@ -439,33 +486,21 @@ ConstraintIBMethod::postprocessSolveFluidEquations(
     
 }
 
-
 void
-ConstraintIBMethod::registerIBHierarchyIntegrator(
-    Pointer<IBHierarchyIntegrator >  ib_hier_integrator)
+ConstraintIBMethod::registerEulerianVariables()
 {
-    d_ib_hier_integrator = ib_hier_integrator;
-    return;
-  
-} //registerIBHierarchyIntegrator
-
-void
-ConstraintIBMethod::initializeHierarchyRelatedData()
-{
+    IBMethod::registerEulerianVariables();
     
     // Obtain the type of INS fluid solver and velocity variable.
-    d_u_fluidSolve_var                             = d_ins_hier_integrator->getVelocityVariable();
+    d_u_fluidSolve_var                             = d_ib_solver->getINSHierarchyIntegrator()->getVelocityVariable();
     Pointer<CellVariable<NDIM,double> > cc_vel_var = d_u_fluidSolve_var;
     Pointer<SideVariable<NDIM,double> > sc_vel_var = d_u_fluidSolve_var;
     if(!cc_vel_var.isNull()) d_collocated_solver   = true;
     if(!sc_vel_var.isNull()) d_staggered_solver    = true;
-    d_new_context                                  = d_ins_hier_integrator->getNewContext();
     VariableDatabase<NDIM>* var_db                 = VariableDatabase<NDIM>::getDatabase();
-    d_u_fluidSolve_idx                             = var_db->mapVariableAndContextToIndex(d_u_fluidSolve_var, d_new_context);
-    const int u_scratch_idx                        = var_db->mapVariableAndContextToIndex(d_ins_hier_integrator->getVelocityVariable(), d_ins_hier_integrator->getScratchContext());
+    d_scratch_context                              = var_db->getContext(d_object_name + "::SCRATCH");  
     
     // Initialize  variables & variable contexts associated with projection step.
-    d_scratch_context                       = var_db->getContext(d_object_name + "::SCRATCH");   
     if(d_collocated_solver) d_u_var         = new CellVariable<NDIM,double>(d_object_name + "::u"     );
     if(d_staggered_solver)  d_u_var         = new SideVariable<NDIM,double>(d_object_name + "::u"     );
     d_Div_u_var                             = new CellVariable<NDIM,double>(d_object_name + "::Div_u" );
@@ -476,61 +511,7 @@ ConstraintIBMethod::initializeHierarchyRelatedData()
     if(d_staggered_solver) d_u_scratch_idx  = var_db->registerVariableAndContext(d_u_var,    d_scratch_context, side_ghosts);
     d_phi_idx                               = var_db->registerVariableAndContext(d_phi_var,  d_scratch_context, cell_ghosts);
     d_Div_u_scratch_idx                     = var_db->registerVariableAndContext(d_Div_u_var,d_scratch_context, cell_ghosts); 
-
-
-
-    // Setup the cell centered Poisson Solver needed for projection.
-    if (d_needs_div_free_projection)
-    {
-        const std::string velcorrection_projection_prefix = "ConstraintIBMethodProjection";
-        // Setup the various solver components.
-        for (int d = 0; d < NDIM; ++d)
-        {
-            d_velcorrection_projection_bc_coef.setBoundarySlope(2*d  ,0.0);
-            d_velcorrection_projection_bc_coef.setBoundarySlope(2*d+1,0.0);
-        }
-
-        d_velcorrection_projection_spec    = new PoissonSpecifications(d_object_name + "::ConstraintIBMethodProjection::Spec");
-        d_velcorrection_projection_op      = new CCLaplaceOperator(d_object_name + "ConstraintIBMethodProjection::PoissonOperator",
-            *d_velcorrection_projection_spec, &d_velcorrection_projection_bc_coef, true);
-        d_velcorrection_projection_op->setHierarchyMathOps(d_hier_math_ops);
-        d_velcorrection_projection_solver  = new PETScKrylovLinearSolver(d_object_name + "ConstraintIBMethodProjection::PoissonKrylovSolver",
-             velcorrection_projection_prefix);
-        d_velcorrection_projection_solver->setInitialGuessNonzero(false);
-        d_velcorrection_projection_solver->setOperator(d_velcorrection_projection_op);
-
-       	if (d_velcorrection_projection_fac_pc_db.isNull())
-        {
-            TBOX_WARNING(d_object_name << "::ConstraintIBMethod():\n" <<
-                " ConstraintIBMethodProjection:: Poisson FAC PC solver database is null." << std::endl);
-	}
-
-        d_velcorrection_projection_fac_op  = new CCPoissonFACOperator(d_object_name + ":: ConstraintIBMethodProjection::PoissonFACOperator", 
-             d_velcorrection_projection_fac_pc_db);
-        d_velcorrection_projection_fac_op->setPoissonSpecifications(*d_velcorrection_projection_spec);
-        d_velcorrection_projection_fac_pc  = new IBTK::FACPreconditioner(d_object_name + "::ConstraintIBMethodProjection::PoissonPreconditioner",
-             d_velcorrection_projection_fac_op, d_velcorrection_projection_fac_pc_db);
-        d_velcorrection_projection_solver->setPreconditioner(d_velcorrection_projection_fac_pc);
-
-        // Set some default options.
-        d_velcorrection_projection_solver->setKSPType("gmres");
-        d_velcorrection_projection_solver->setAbsoluteTolerance(1.0e-12);
-        d_velcorrection_projection_solver->setRelativeTolerance(1.0e-08);
-        d_velcorrection_projection_solver->setMaxIterations(25);
-
-        // NOTE: We always use homogeneous Neumann boundary conditions for the
-        // velocity correction projection Poisson solver.
-        d_velcorrection_projection_solver->setNullspace(true, NULL);
-    }
-    else
-    {
-        d_velcorrection_projection_spec   = NULL;
-        d_velcorrection_projection_op     = NULL;
-        d_velcorrection_projection_fac_op = NULL;
-        d_velcorrection_projection_fac_pc = NULL;
-        d_velcorrection_projection_solver = NULL;
-    }
-        
+          
     // Get the variables related to power calculation.
     if(d_output_power)
     {
@@ -543,12 +524,20 @@ ConstraintIBMethod::initializeHierarchyRelatedData()
         d_VisDefPower_scratch_idx     = var_db->registerVariableAndContext(d_VisDefPower_var,    d_scratch_context, 0);
         d_EulDefVel_scratch_idx       = var_db->registerVariableAndContext(d_EulDefVel_var,      d_scratch_context, 1);
         d_ConstraintPower_scratch_idx = var_db->registerVariableAndContext(d_ConstraintPower_var,d_scratch_context, 0);
-        d_EulTagDefVel_scratch_idx    = var_db->registerVariableAndContext(d_EulTagDefVel_var,   d_scratch_context, 1);
-    
+        d_EulTagDefVel_scratch_idx    = var_db->registerVariableAndContext(d_EulTagDefVel_var,   d_scratch_context, 1);    
     }
+         
+     return;
+    
+} //registerEulerianVariables
 
-    d_hier_math_ops = new HierarchyMathOps(d_object_name+ "HierarchyMathOps",d_hierarchy);
-   // Obtain the Hierarchy data operations objects.
+
+void
+ConstraintIBMethod::initializeHierarchyOperatorsandData()
+{
+
+    // Obtain the Hierarchy data operations objects.
+    d_hier_math_ops                                 = getHierarchyMathOps();
     HierarchyDataOpsManager<NDIM>* hier_ops_manager = HierarchyDataOpsManager<NDIM>::getManager();
     Pointer<CellVariable<NDIM,double> > cc_var      = new CellVariable<NDIM,double>("cc_var");
     d_hier_cc_data_ops                              = hier_ops_manager->getOperationsDouble(cc_var, d_hierarchy, true);
@@ -557,9 +546,34 @@ ConstraintIBMethod::initializeHierarchyRelatedData()
     d_wgt_cc_idx                                    = d_hier_math_ops->getCellWeightPatchDescriptorIndex();
     d_volume                                        = d_hier_math_ops->getVolumeOfPhysicalDomain();
     
+    bool from_restart = RestartManager::getManager()->isFromRestart();
+    if(!from_restart)
+    {
+        // set the initial velocity of lag points.
+        setInitialLagrangianVelocity();
+	
+	// calculate the volume of material point in the non-elastic domain.
+	calculateVolumeElement();
+    }
+    
+    return;
+  
+} //initializeHierarchyOperatorsandData
+
+void
+ConstraintIBMethod::registerEulerianCommunicationAlgorithms()
+{
+    IBMethod::registerEulerianCommunicationAlgorithms();
+    
+    VariableDatabase<NDIM>* var_db                 = VariableDatabase<NDIM>::getDatabase();
+    Pointer<VariableContext> u_new_ctx             = d_ib_solver->getINSHierarchyIntegrator()->getNewContext();
+    Pointer<VariableContext> u_scratch_ctx         = d_ib_solver->getINSHierarchyIntegrator()->getScratchContext();
+    d_u_fluidSolve_idx                             = var_db->mapVariableAndContextToIndex(d_u_fluidSolve_var, u_new_ctx);
+    const int u_scratch_idx                        = var_db->mapVariableAndContextToIndex(d_u_fluidSolve_var, u_scratch_ctx);
+    
     // Create several communications algorithms, used in filling ghost cell data
     // and synchronizing data on the patch hierarchy.
-    Pointer<Geometry<NDIM> > grid_geom = d_hierarchy->getGridGeometry();
+    Pointer<Geometry<NDIM> > grid_geom = d_ib_solver->getPatchHierarchy()->getGridGeometry();
     Pointer<RefineAlgorithm<NDIM> > refine_alg;
     Pointer<RefineOperator<NDIM> > refine_op;
     Pointer<CoarsenAlgorithm<NDIM> > coarsen_alg;
@@ -571,7 +585,7 @@ ConstraintIBMethod::initializeHierarchyRelatedData()
     coarsen_alg = new CoarsenAlgorithm<NDIM>();
     coarsen_op = grid_geom->lookupCoarsenOperator(d_u_fluidSolve_var, "CONSERVATIVE_COARSEN");
     coarsen_alg->registerCoarsen(d_u_fluidSolve_idx, d_u_fluidSolve_idx, coarsen_op);
-    d_ib_hier_integrator->registerCoarsenAlgorithm(d_object_name+"SYNC::u_fluidSolve", coarsen_alg);
+    registerCoarsenAlgorithm(d_object_name+"SYNC::u_fluidSolve", coarsen_alg);
     
     if(d_output_power)
     {
@@ -579,7 +593,7 @@ ConstraintIBMethod::initializeHierarchyRelatedData()
         coarsen_op = grid_geom->lookupCoarsenOperator(d_EulDefVel_var, "CONSERVATIVE_COARSEN");
         coarsen_alg->registerCoarsen(d_EulDefVel_scratch_idx,    d_EulDefVel_scratch_idx,    coarsen_op);
 	coarsen_alg->registerCoarsen(d_EulTagDefVel_scratch_idx, d_EulTagDefVel_scratch_idx, coarsen_op);
-        d_ib_hier_integrator->registerCoarsenAlgorithm(d_object_name+"SYNC::u_def/tag", coarsen_alg);
+        registerCoarsenAlgorithm(d_object_name+"SYNC::u_def/tag", coarsen_alg);
     }
     
     // Create algorithm for filling ghost cells needed during 
@@ -588,7 +602,7 @@ ConstraintIBMethod::initializeHierarchyRelatedData()
     refine_alg = new RefineAlgorithm<NDIM>();
     refine_op = NULL;
     refine_alg->registerRefine(d_u_fluidSolve_idx, d_u_fluidSolve_idx, d_u_fluidSolve_idx, refine_op);
-    d_ib_hier_integrator->registerGhostfillRefineAlgorithm(d_object_name+"FILL_GHOSTCELL::u_fluidSolve", refine_alg);
+    registerGhostfillRefineAlgorithm(d_object_name+"FILL_GHOSTCELL::u_fluidSolve", refine_alg);
 
     if(d_output_power)
     {
@@ -596,35 +610,20 @@ ConstraintIBMethod::initializeHierarchyRelatedData()
         refine_op = NULL;
         refine_alg->registerRefine(d_EulDefVel_scratch_idx,   d_EulDefVel_scratch_idx,    d_EulDefVel_scratch_idx, refine_op);
 	refine_alg->registerRefine(d_EulTagDefVel_scratch_idx,d_EulTagDefVel_scratch_idx, d_EulTagDefVel_scratch_idx, refine_op);
-        d_ib_hier_integrator->registerGhostfillRefineAlgorithm(d_object_name+"FILL_GHOSTCELL::u_def/tag", refine_alg);
+        registerGhostfillRefineAlgorithm(d_object_name+"FILL_GHOSTCELL::u_def/tag", refine_alg);
     }
     
     // Create algorithm for spreading correction.
     refine_alg = new RefineAlgorithm<NDIM>();
     refine_op = grid_geom->lookupRefineOperator(d_u_fluidSolve_var, "CONSERVATIVE_LINEAR_REFINE");
     refine_alg->registerRefine(d_u_fluidSolve_idx, d_u_fluidSolve_idx, u_scratch_idx, refine_op);
-    d_ib_hier_integrator->registerProlongRefineAlgorithm(d_object_name+"PROLONG::u_fluidSolve", refine_alg);
+    registerProlongRefineAlgorithm(d_object_name+"PROLONG::u_fluidSolve", refine_alg);
     
-    
-    bool from_restart = RestartManager::getManager()->isFromRestart();   
-    //create communication schedules for restart-run
-    if(from_restart)
-    {
-        const int coarsest_ln = 0;
-	const int finest_ln   = d_hierarchy->getFinestLevelNumber();
-        d_ib_hier_integrator->getGriddingAlgorithm()->getTagAndInitializeStrategy()->resetHierarchyConfiguration(
-	    d_hierarchy, coarsest_ln, finest_ln);
-    }
-    // set the initial velocity of lag points.
-    if(!from_restart)  setInitialLagrangianVelocity();  
-       
-    // calculate the volume of material point in the non-elastic domain.
-    if(!from_restart) calculateVolumeElement();
-    
-  
     return;
     
-} //initializeHierarchyRelatedData
+} //registerEulerianCommunicationAlgorithms
+
+
 
 void
 ConstraintIBMethod::registerConstraintIBKinematics(
@@ -1698,10 +1697,7 @@ ConstraintIBMethod::applyProjection()
         Pointer<PatchLevel<NDIM> > level = d_hierarchy->getPatchLevel(ln);
         level->allocatePatchData(scratch_idxs, d_FuRMoRP_new_time);
     }
-
-    d_hier_math_ops->resetLevels(coarsest_ln,finest_ln);
-    
-    
+        
     // Compute div U before applying the projection operator.
     const bool U_current_cf_bdry_synch = true;
     if(d_collocated_solver)
@@ -2132,8 +2128,8 @@ ConstraintIBMethod::interpolateFluidSolveVelocity()
     }
   
     d_l_data_manager->interp(d_u_fluidSolve_idx,F_data,X_data,
-        d_ib_hier_integrator->getCoarsenSchedules(d_object_name+"SYNC::u_fluidSolve"),
-	d_ib_hier_integrator->getGhostfillRefineSchedules(d_object_name+"FILL_GHOSTCELL::u_fluidSolve"),
+        getCoarsenSchedules(d_object_name+"SYNC::u_fluidSolve"),
+	getGhostfillRefineSchedules(d_object_name+"FILL_GHOSTCELL::u_fluidSolve"),
 	d_FuRMoRP_new_time); 
     
     return; 
@@ -2156,7 +2152,7 @@ ConstraintIBMethod::spreadCorrectedLagrangianVelocity()
     }
   
     d_l_data_manager->spread(d_u_fluidSolve_idx,F_data,X_data,
-        d_ib_hier_integrator->getProlongRefineSchedules(d_object_name+"PROLONG::u_fluidSolve"),
+        getProlongRefineSchedules(d_object_name+"PROLONG::u_fluidSolve"),
 	true,true); 
     
     return;
@@ -2168,7 +2164,8 @@ ConstraintIBMethod::synchronizeLevels()
 {
     const int coarsest_ln = 0;
     const int finest_ln   = d_hierarchy->getFinestLevelNumber();
-    const std::vector<SAMRAI::tbox::Pointer<SAMRAI::xfer::CoarsenSchedule<NDIM> > >& coarsen_schedules = d_ib_hier_integrator->getCoarsenSchedules(d_object_name+"SYNC::u_fluidSolve");
+    const std::vector<SAMRAI::tbox::Pointer<SAMRAI::xfer::CoarsenSchedule<NDIM> > >& coarsen_schedules = 
+        getCoarsenSchedules(d_object_name+"SYNC::u_fluidSolve");
     
     // Do the Coarsening Operation.
     for(int ln = finest_ln; ln > coarsest_ln; --ln)
