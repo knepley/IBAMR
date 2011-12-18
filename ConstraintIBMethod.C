@@ -572,6 +572,7 @@ ConstraintIBMethod::initializeHierarchyRelatedData()
     coarsen_op = grid_geom->lookupCoarsenOperator(d_u_fluidSolve_var, "CONSERVATIVE_COARSEN");
     coarsen_alg->registerCoarsen(d_u_fluidSolve_idx, d_u_fluidSolve_idx, coarsen_op);
     d_ib_hier_integrator->registerCoarsenAlgorithm(d_object_name+"SYNC::u_fluidSolve", coarsen_alg);
+    pout << "done dona done \n\n\n";
     
     if(d_output_power)
     {
@@ -606,7 +607,15 @@ ConstraintIBMethod::initializeHierarchyRelatedData()
     d_ib_hier_integrator->registerProlongRefineAlgorithm(d_object_name+"PROLONG::u_fluidSolve", refine_alg);
     
     
-    bool from_restart = RestartManager::getManager()->isFromRestart();      
+    bool from_restart = RestartManager::getManager()->isFromRestart();   
+    //create communication schedules for restart-run
+    if(from_restart)
+    {
+        const int coarsest_ln = 0;
+	const int finest_ln   = d_hierarchy->getFinestLevelNumber();
+        d_ib_hier_integrator->getGriddingAlgorithm()->getTagAndInitializeStrategy()->resetHierarchyConfiguration(
+	    d_hierarchy, coarsest_ln, finest_ln);
+    }
     // set the initial velocity of lag points.
     if(!from_restart)  setInitialLagrangianVelocity();  
        
