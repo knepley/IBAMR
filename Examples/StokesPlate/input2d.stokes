@@ -19,7 +19,7 @@ START_TIME           = 0.0e0                      // initial simulation time
 END_TIME             = 10.0                       // final simulation time
 MAX_INTEGRATOR_STEPS = 1000000000                 // Max no of steps.
 GROW_DT              = 2.0e0                      // growth factor for timesteps
-NUM_CYCLES           = 2                          // number of cycles of fixed-point iteration
+NUM_CYCLES           = 1                          // number of cycles of fixed-point iteration
 CONVECTIVE_OP_TYPE   = "PPM"                      // convective differencing discretization type
 CONVECTIVE_FORM      = "ADVECTIVE"                // how to compute the convective terms
 NORMALIZE_PRESSURE   = FALSE                      // whether to explicitly force the pressure to have mean zero
@@ -41,20 +41,19 @@ SECOND_ORDER_PRESSURE_UPDATE = TRUE
 USE_EXACT_PROJECTION_METHOD = FALSE
 
 VelocityBcCoefs_0 {
-   t_half = 0.5
-   tau = 0.125
+
 
    acoef_function_0 = "1.0"
-   acoef_function_1 = "0.0"
-   acoef_function_2 = "0.0"
-   acoef_function_3 = "0.0"
+   acoef_function_1 = "1.0"
+   acoef_function_2 = "1.0"
+   acoef_function_3 = "1.0"
 
    bcoef_function_0 = "0.0"
-   bcoef_function_1 = "1.0"
-   bcoef_function_2 = "1.0"
-   bcoef_function_3 = "1.0"
+   bcoef_function_1 = "0.0"
+   bcoef_function_2 = "0.0"
+   bcoef_function_3 = "0.0"
 
-   gcoef_function_0 = "(tanh((t-t_half)/tau)+tanh(t_half/tau))/(1+tanh(t_half/tau))"
+   gcoef_function_0 = "0.0"
    gcoef_function_1 = "0.0"
    gcoef_function_2 = "0.0"
    gcoef_function_3 = "0.0"
@@ -62,16 +61,16 @@ VelocityBcCoefs_0 {
 
 VelocityBcCoefs_1 {
    acoef_function_0 = "1.0"
-   acoef_function_1 = "0.0"
+   acoef_function_1 = "1.0"
    acoef_function_2 = "1.0"
    acoef_function_3 = "1.0"
 
    bcoef_function_0 = "0.0"
-   bcoef_function_1 = "1.0"
+   bcoef_function_1 = "0.0"
    bcoef_function_2 = "0.0"
    bcoef_function_3 = "0.0"
 
-   gcoef_function_0 = "cos(pi*X_1/16.0)*exp(-2.0*t)"
+   gcoef_function_0 = "0.0"
    gcoef_function_1 = "0.0"
    gcoef_function_2 = "0.0"
    gcoef_function_3 = "0.0"
@@ -127,14 +126,6 @@ ConstraintIBKinematics {
 
 }
 
-C_IB_4 = 3.0/8.0                         // corresponds to IB_4 delta function
-C_IB_6 = 67.0/128.0                      // corresponds to IB_6 delta function
-C = C_IB_4
-
-M_s = RHO/((C/DX_FINEST)^2)              // effective particle mass
-tau_s = 4.0*DT_MAX                       // decay half-life  for critically damped Kelvin-Voigt element
-K_s = M_s*(log(0.5)/tau_s)^2             // spring  constant for critically damped Kelvin-Voigt element
-E_s = 2.0*sqrt(K_s*M_s)                  // damping constant for critically damped Kelvin-Voigt element
 
 IBStandardInitializer {
    max_levels      = MAX_LEVELS
@@ -331,8 +322,8 @@ Main {
 
 CartesianGeometry {
    domain_boxes = [ (0,0) , (31 , 31) ]
-   x_lo         =  -1.5, - 1.5           // lower end of computational domain.
-   x_up         =   1.5,   1.5           // upper end of computational domain.
+   x_lo         =  -2.6, - 1.5           // lower end of computational domain.
+   x_up         =   2.6,   1.5           // upper end of computational domain.
    periodic_dimension = 1, 1
 }
 

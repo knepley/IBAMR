@@ -82,8 +82,6 @@ namespace
   
 //Timers.
 static Pointer<Timer> t_postprocessSolveFluidEquation;
-static Pointer<Timer> t_destroyPreviousLagrangianWorkspace;
-static Pointer<Timer> t_createNewLagrangianWorkspace;
 static Pointer<Timer> t_calculateCOMandMOIOfStructures;
 static Pointer<Timer> t_interpolateFluidSolveVelocity;
 static Pointer<Timer> t_calculateNewKinematicsVelocity;
@@ -92,7 +90,6 @@ static Pointer<Timer> t_correctVelocityOnLagrangianMesh;
 static Pointer<Timer> t_spreadCorrectedLagrangianVelocity;
 static Pointer<Timer> t_synchronizeLevels;
 static Pointer<Timer> t_applyProjection;
-static Pointer<Timer> t_calculateCurrentLagrangianVelocity;
 static Pointer<Timer> t_eulerStep;
 static Pointer<Timer> t_midpointStep;
 
@@ -358,8 +355,6 @@ ConstraintIBMethod::ConstraintIBMethod(
     //Setup the Timers.
     IBTK_DO_ONCE(
 	t_postprocessSolveFluidEquation      = TimerManager::getManager()->getTimer("IBAMR::ConstraintIBMethod::postprocessSolveFluidEquation()",true);
-        t_destroyPreviousLagrangianWorkspace = TimerManager::getManager()->getTimer("IBAMR::ConstraintIBMethod::destroyPreviousLagrangianWorkspace()",true);
-        t_createNewLagrangianWorkspace       = TimerManager::getManager()->getTimer("IBAMR::ConstraintIBMethod::createNewLagrangianWorkspace()",true);
         t_calculateCOMandMOIOfStructures     = TimerManager::getManager()->getTimer("IBAMR::ConstraintIBMethod::calculateCOMandMOIOfStructures()",true);
         t_interpolateFluidSolveVelocity      = TimerManager::getManager()->getTimer("IBAMR::ConstraintIBMethod::interpolateFluidSolveVelocity()",true);
         t_calculateNewKinematicsVelocity     = TimerManager::getManager()->getTimer("IBAMR::ConstraintIBMethod::calculateNewKinematicsVelocity()",true);
@@ -368,32 +363,11 @@ ConstraintIBMethod::ConstraintIBMethod(
         t_spreadCorrectedLagrangianVelocity  = TimerManager::getManager()->getTimer("IBAMR::ConstraintIBMethod::spreadCorrectedLagrangianVelocity()",true);
         t_synchronizeLevels                  = TimerManager::getManager()->getTimer("IBAMR::ConstraintIBMethod::synchronizeLevels()",true);
         t_applyProjection                    = TimerManager::getManager()->getTimer("IBAMR::ConstraintIBMethod::applyProjection()",true);
-        t_calculateCurrentLagrangianVelocity = TimerManager::getManager()->getTimer("IBAMR::ConstraintIBMethod::calculateCurrentLagrangianVelocity()",true);
 	t_eulerStep                          = TimerManager::getManager()->getTimer("IBAMR::ConstraintIBMethod::eulerStep()",true);
         t_midpointStep                       = TimerManager::getManager()->getTimer("IBAMR::ConstraintIBMethod::midpointStep()",true);
     );   
 
-    /*IBTK_DO_ONCE(
-	t_postprocessSolveFluidEquation      = TimerManager::getManager()->getTimer("IBAMR::ConstraintIBMethod::postprocessSolveFluidEquation()");
-        t_destroyPreviousLagrangianWorkspace = TimerManager::getManager()->getTimer("IBAMR::ConstraintIBMethod::destroyPreviousLagrangianWorkspace()");
-        t_createNewLagrangianWorkspace       = TimerManager::getManager()->getTimer("IBAMR::ConstraintIBMethod::createNewLagrangianWorkspace()");
-        t_calculateCOMandMOIOfStructures     = TimerManager::getManager()->getTimer("IBAMR::ConstraintIBMethod::calculateCOMandMOIOfStructures()");
-        t_interpolateFluidSolveVelocity      = TimerManager::getManager()->getTimer("IBAMR::ConstraintIBMethod::interpolateFluidSolveVelocity()");
-        t_calculateNewKinematicsVelocity     = TimerManager::getManager()->getTimer("IBAMR::ConstraintIBMethod::calculateNewKinematicsVelocity()");
-        t_calculateRigidMomentum             = TimerManager::getManager()->getTimer("IBAMR::ConstraintIBMethod::calculateRigidMomentum()");
-        t_correctVelocityOnLagrangianMesh    = TimerManager::getManager()->getTimer("IBAMR::ConstraintIBMethod::correctVelocityOnLagrangianMesh()");
-        t_spreadCorrectedLagrangianVelocity  = TimerManager::getManager()->getTimer("IBAMR::ConstraintIBMethod::spreadCorrectedLagrangianVelocity()");
-        t_synchronizeLevels                  = TimerManager::getManager()->getTimer("IBAMR::ConstraintIBMethod::synchronizeLevels()");
-        t_applyProjection                    = TimerManager::getManager()->getTimer("IBAMR::ConstraintIBMethod::applyProjection()");
-        t_calculateCurrentLagrangianVelocity = TimerManager::getManager()->getTimer("IBAMR::ConstraintIBMethod::calculateCurrentLagrangianVelocity()");
-	t_eulerStep                          = TimerManager::getManager()->getTimer("IBAMR::ConstraintIBMethod::eulerStep()");
-        t_midpointStep                       = TimerManager::getManager()->getTimer("IBAMR::ConstraintIBMethod::midpointStep()");
-	);*/
-
-
-
-
- return; 
+    return; 
 } // ConstraintIBMethod
 
 ConstraintIBMethod::~ConstraintIBMethod()
@@ -429,15 +403,7 @@ ConstraintIBMethod::postprocessSolveFluidEquations(
     
     setFurmorpTime(current_time,new_time);
     setINSCycleNumberAndCounter(cycle_num);
-
-    IBTK_TIMER_START(t_destroyPreviousLagrangianWorkspace);
-    destroyPreviousLagrangianWorkspace();
-    IBTK_TIMER_STOP(t_destroyPreviousLagrangianWorkspace);
-
-    IBTK_TIMER_START(t_createNewLagrangianWorkspace);
-    createNewLagrangianWorkspace();
-    IBTK_TIMER_STOP(t_createNewLagrangianWorkspace);
-
+    
     IBTK_TIMER_START(t_calculateCOMandMOIOfStructures);
     calculateCOMandMOIOfStructures();
     IBTK_TIMER_STOP(t_calculateCOMandMOIOfStructures);
@@ -472,12 +438,11 @@ ConstraintIBMethod::postprocessSolveFluidEquations(
         applyProjection();
         IBTK_TIMER_STOP(t_applyProjection);
     }
-
-    if(d_INS_current_cycle_num == 0)
+    
+    if(d_INS_current_cycle_num == d_INS_num_cycles - 1)
     {
-        IBTK_TIMER_START(t_calculateCurrentLagrangianVelocity);
-        calculateCurrentLagrangianVelocity();
-        IBTK_TIMER_STOP(t_calculateCurrentLagrangianVelocity);
+        if(d_output_drag) calculateDrag();
+            
     }
 
     IBTK_TIMER_STOP(t_postprocessSolveFluidEquation);
@@ -673,8 +638,8 @@ ConstraintIBMethod::putToDatabase(
         std::ostringstream defvelidentifier, defomegaidentifier;
 	defvelidentifier   << "VEL_COM_DEF_STRUCT_"   << struct_no;
 	defomegaidentifier << "OMEGA_COM_DEF_STRUCT_" << struct_no;
-        db->putDoubleArray(defvelidentifier.str(),  &d_vel_com_def_new  [struct_no][0],3);
-	db->putDoubleArray(defomegaidentifier.str(),&d_omega_com_def_new[struct_no][0],3);
+        db->putDoubleArray(defvelidentifier.str(),  &d_vel_com_def_current  [struct_no][0],3);
+	db->putDoubleArray(defomegaidentifier.str(),&d_omega_com_def_current[struct_no][0],3);
 	
 	std::ostringstream volelementidentifier;
 	volelementidentifier << "VOL_ELEMENT_STRUCT_" << struct_no;
@@ -683,8 +648,8 @@ ConstraintIBMethod::putToDatabase(
 	std::ostringstream rigvelidentifier, rigomegaidentifier;
 	rigvelidentifier   << "VEL_COM_RIG_STRUCT_"   << struct_no;
 	rigomegaidentifier << "OMEGA_COM_RIG_STRUCT_" << struct_no;
-        db->putDoubleArray(rigvelidentifier.str(),  &d_rigid_trans_vel_new[struct_no][0],3);
-	db->putDoubleArray(rigomegaidentifier.str(),&d_rigid_rot_vel_new[struct_no][0],3);
+        db->putDoubleArray(rigvelidentifier.str(),  &d_rigid_trans_vel_current[struct_no][0],3);
+	db->putDoubleArray(rigomegaidentifier.str(),&d_rigid_rot_vel_current[struct_no][0],3);
 	
 	std::ostringstream incrementedangleidentifier;
 	incrementedangleidentifier << "DELTA_THETA_STRUCT_" << struct_no;
@@ -696,7 +661,66 @@ ConstraintIBMethod::putToDatabase(
   
 } //putToDatabase
 
+void
+ConstraintIBMethod::preprocessIntegrateData(
+    double current_time,
+    double new_time,
+    int num_cycles)
+{
+   
+    IBMethod::preprocessIntegrateData(current_time,new_time,num_cycles);
+    
+    //Allocate memory for Lagrangian data.
+    const int coarsest_ln = 0;
+    const int finest_ln   = d_hierarchy->getFinestLevelNumber();
+    
+    d_l_data_U_interp      .resize(finest_ln+1);
+    d_l_data_U_correction  .resize(finest_ln+1);
+    d_l_data_U_new         .resize(finest_ln+1);
+    d_l_data_U_half        .resize(finest_ln+1);
+    d_l_data_X_new_Euler   .resize(finest_ln+1);
+    d_l_data_X_new_MidPoint.resize(finest_ln+1);
+    d_l_data_U_current     .resize(finest_ln+1);
+    
+    for(int ln = coarsest_ln; ln <= finest_ln; ++ln)
+    {
+        if(!d_l_data_manager->levelContainsLagrangianData(ln)) continue;
+	d_l_data_U_interp[ln]       = d_l_data_manager->createLData(d_object_name + "interp_lag_vel", ln, NDIM, false);  
+        d_l_data_U_correction[ln]   = d_l_data_manager->createLData(d_object_name + "correct_lag_vel", ln, NDIM, false);  
+        d_l_data_U_new[ln]          = d_l_data_manager->createLData(d_object_name + "new_lag_vel", ln, NDIM, false); 
+        d_l_data_U_half[ln]         = d_l_data_manager->createLData(d_object_name + "half_lag_vel", ln, NDIM, false); 
+	d_l_data_X_new_Euler[ln]    = d_l_data_manager->createLData(d_object_name + "X_Euler", ln, NDIM, false); 
+	d_l_data_X_new_MidPoint[ln] = d_l_data_manager->createLData(d_object_name + "X_MidPoint", ln, NDIM, false); 
+	d_l_data_U_current[ln]      = d_l_data_manager->createLData(d_object_name + "current_lag_vel", ln, NDIM, false); 
+    }
 
+    //Compue the current Lagrangian velocity according to constraint.
+    calculateCurrentLagrangianVelocity();
+    
+    return;
+  
+} //preprocessIntegrateData
+
+void
+ConstraintIBMethod::postprocessIntegrateData(
+    double current_time,
+    double new_time,
+    int num_cycles)
+{
+  
+    IBMethod::postprocessIntegrateData(current_time,new_time,num_cycles);
+    
+    //Deallocate memory for Lagrangian data.
+    d_l_data_U_interp      .clear();
+    d_l_data_U_correction  .clear();
+    d_l_data_U_new         .clear();
+    d_l_data_U_half        .clear();
+    d_l_data_X_new_Euler   .clear();
+    d_l_data_X_new_MidPoint.clear();
+    d_l_data_U_current     .clear();
+  
+    return; 
+}
 
 /////////////////////////////// PRIVATE ///////////////////////////////////////
 void 
@@ -761,8 +785,8 @@ ConstraintIBMethod::getFromRestart()
         std::ostringstream defvelidentifier, defomegaidentifier;
 	defvelidentifier   << "VEL_COM_DEF_STRUCT_"   << struct_no;
 	defomegaidentifier << "OMEGA_COM_DEF_STRUCT_" << struct_no;
-        db->getDoubleArray(defvelidentifier.str(),  &d_vel_com_def_new  [struct_no][0],3);
-	db->getDoubleArray(defomegaidentifier.str(),&d_omega_com_def_new[struct_no][0],3);
+        db->getDoubleArray(defvelidentifier.str(),  &d_vel_com_def_current  [struct_no][0],3);
+	db->getDoubleArray(defomegaidentifier.str(),&d_omega_com_def_current[struct_no][0],3);
 	
 	std::ostringstream volelementidentifier;
 	volelementidentifier << "VOL_ELEMENT_STRUCT_" << struct_no;
@@ -771,8 +795,8 @@ ConstraintIBMethod::getFromRestart()
 	std::ostringstream rigvelidentifier, rigomegaidentifier;
 	rigvelidentifier   << "VEL_COM_RIG_STRUCT_"   << struct_no;
 	rigomegaidentifier << "OMEGA_COM_RIG_STRUCT_" << struct_no;
-        db->getDoubleArray(rigvelidentifier.str(),  &d_rigid_trans_vel_new[struct_no][0],3);
-	db->getDoubleArray(rigomegaidentifier.str(),&d_rigid_rot_vel_new[struct_no][0],3);
+        db->getDoubleArray(rigvelidentifier.str(),  &d_rigid_trans_vel_current[struct_no][0],3);
+	db->getDoubleArray(rigomegaidentifier.str(),&d_rigid_rot_vel_current[struct_no][0],3);
 	
 	std::ostringstream incrementedangleidentifier;
 	incrementedangleidentifier << "DELTA_THETA_STRUCT_" << struct_no;
@@ -793,12 +817,15 @@ ConstraintIBMethod::setInitialLagrangianVelocity()
     
     for(int struct_no = 0; struct_no < d_no_structures; ++struct_no)
     {
-      const StructureParameters& struct_param = d_ib_kinematics[struct_no]->getStructureParameters();
+        const StructureParameters& struct_param = d_ib_kinematics[struct_no]->getStructureParameters();
       
-      d_ib_kinematics[struct_no]->setNewKinematicsVelocity(0.0,d_incremented_angle_from_reference_axis[struct_no],
-	  d_center_of_mass_current[struct_no], d_tagged_pt_position[struct_no] );
+        d_ib_kinematics[struct_no]->setNewKinematicsVelocity(0.0,d_incremented_angle_from_reference_axis[struct_no],
+	    d_center_of_mass_current[struct_no], d_tagged_pt_position[struct_no] );
       
-      if(struct_param.getStructureIsSelfTranslating()) calculateMomentumOfNewKinematicsVelocity(struct_no);      
+        if(struct_param.getStructureIsSelfTranslating()) calculateMomentumOfNewKinematicsVelocity(struct_no); 
+      
+        d_vel_com_def_current[struct_no]   = d_vel_com_def_new[struct_no];
+        d_omega_com_def_current[struct_no] = d_omega_com_def_new[struct_no];
     }        
     return;
   
@@ -807,7 +834,7 @@ ConstraintIBMethod::setInitialLagrangianVelocity()
 
 void
 ConstraintIBMethod::calculateCOMandMOIOfStructures()
-{    
+{   
     typedef ConstraintIBKinematics::StructureParameters StructureParameters;            
     const int coarsest_ln = 0;
     const int finest_ln   = d_hierarchy->getFinestLevelNumber();
@@ -819,16 +846,25 @@ ConstraintIBMethod::calculateCOMandMOIOfStructures()
 	  d_center_of_mass_new[struct_no][i] = 0.0;
     }
     
-    std::vector<std::vector<double> > tagged_position(d_no_structures,std::vector<double>(3,0.0));
-    
+    std::vector<std::vector<double> > tagged_position(d_no_structures,std::vector<double>(3,0.0));    
     for(int ln = coarsest_ln; ln <= finest_ln; ++ln)
     {
         if(!d_l_data_manager->levelContainsLagrangianData(ln)) continue;
-       
+	
 	//Get LData corresponding to the present position of the structures.
-       	const blitz::Array<double,2>& X_data   = *d_l_data_manager->getLData("X",ln)->getLocalFormVecArray();
+	Pointer<LData> ptr_x_lag_data;
+	if(MathUtilities<double>::equalEps(d_FuRMoRP_current_time,0.0) )
+	{  
+       	    ptr_x_lag_data  = d_l_data_manager->getLData("X",ln);
+	}	  
+	else
+	{
+	    ptr_x_lag_data = d_X_new_data[ln];
+	}
+	
+	const blitz::Array<double,2>& X_data   = *ptr_x_lag_data->getLocalFormVecArray();
 	const Pointer<LMesh> mesh              =  d_l_data_manager->getLMesh(ln);
-	const std::vector<LNode*>& local_nodes = mesh->getLocalNodes();
+	const std::vector<LNode*>& local_nodes =  mesh->getLocalNodes();
 	
 	// Get structures on this level.
         const std::vector<int> structIDs = d_l_data_manager->getLagrangianStructureIDs(ln);
@@ -865,9 +901,8 @@ ConstraintIBMethod::calculateCOMandMOIOfStructures()
 	        d_center_of_mass_new[location_struct_handle][d] += X_com[d];
 	    }	   
         }
-	d_l_data_manager->getLData("X",ln)->restoreArrays();     
+	ptr_x_lag_data->restoreArrays();     
     }
-    
     for(int struct_no = 0; struct_no < d_no_structures; ++struct_no)
     {
         const StructureParameters& struct_param = d_ib_kinematics[struct_no]->getStructureParameters();
@@ -882,8 +917,9 @@ ConstraintIBMethod::calculateCOMandMOIOfStructures()
     }
     
     //For cycle no = 0 the COM calculated will be the current COM.
-    if(d_INS_current_cycle_num == 0)
-    {
+    if(  (d_INS_current_cycle_num == 0 && d_INS_num_cycles > 1)    || 
+         (MathUtilities<double>::equalEps(d_FuRMoRP_current_time,0.0) && d_INS_num_cycles == 1 ) )
+    { 
         for(int struct_no = 0; struct_no < d_no_structures; ++struct_no)
         {
             d_center_of_mass_current[struct_no] = d_center_of_mass_new[struct_no];
@@ -903,7 +939,17 @@ ConstraintIBMethod::calculateCOMandMOIOfStructures()
         if(!d_l_data_manager->levelContainsLagrangianData(ln)) continue;
        
 	//Get LData corresponding to the present position of the structures.
-        const blitz::Array<double,2>& X_data   = *d_l_data_manager->getLData("X",ln)->getLocalFormVecArray();
+        Pointer<LData> ptr_x_lag_data;
+	if(MathUtilities<double>::equalEps(d_FuRMoRP_current_time,0.0))
+	{  
+       	    ptr_x_lag_data  = d_l_data_manager->getLData("X",ln);
+	}	  
+	else
+	{
+	    ptr_x_lag_data = d_X_new_data[ln];
+	}
+	
+	const blitz::Array<double,2>& X_data   = *ptr_x_lag_data->getLocalFormVecArray();
 	const Pointer<LMesh> mesh              =  d_l_data_manager->getLMesh(ln);
 	const std::vector<LNode*>& local_nodes =  mesh->getLocalNodes();
 	
@@ -952,7 +998,7 @@ ConstraintIBMethod::calculateCOMandMOIOfStructures()
 	    }
 	    d_moment_of_inertia_new[location_struct_handle] += Inertia;   
         }// all structs
-	d_l_data_manager->getLData("X",ln)->restoreArrays();      
+	ptr_x_lag_data->restoreArrays();      
     }// all levels
     
     for(int struct_no = 0; struct_no < d_no_structures; ++struct_no)
@@ -960,7 +1006,7 @@ ConstraintIBMethod::calculateCOMandMOIOfStructures()
         const StructureParameters& struct_param = d_ib_kinematics[struct_no]->getStructureParameters();
 	if(struct_param.getStructureIsSelfRotating()) SAMRAI_MPI::sumReduction(&d_moment_of_inertia_new[struct_no](0,0),9);     
     }
-       
+    
     //Fill-in symmetric part of inertia tensor.
     for(int struct_no = 0; struct_no < d_no_structures; ++struct_no)
     {       
@@ -970,7 +1016,8 @@ ConstraintIBMethod::calculateCOMandMOIOfStructures()
     }
     
     //For cycle no = 0 the inertia tensor calculated will be the current inertia tensor.
-    if(d_INS_current_cycle_num == 0)
+    if(  (d_INS_current_cycle_num == 0 && d_INS_num_cycles > 1) || 
+         (MathUtilities<double>::equalEps(d_FuRMoRP_current_time,0.0) && d_INS_num_cycles == 1 ) )
     {
         for(int struct_no = 0; struct_no < d_no_structures; ++struct_no)
         {
@@ -978,21 +1025,164 @@ ConstraintIBMethod::calculateCOMandMOIOfStructures()
         }
     }
     
+    //Find current COM and MOI when num of cycles = 1
+    if(d_INS_num_cycles == 1 && ! MathUtilities<double>::equalEps(d_FuRMoRP_current_time,0.0))
+    {    
+        //Zero out the COM vector.
+        for(int struct_no = 0; struct_no < d_no_structures; ++struct_no)
+        {
+            for(int i = 0; i < 3; ++i) 
+	        d_center_of_mass_current[struct_no][i] = 0.0;
+        }
+        std::vector<std::vector<double> > tagged_position(d_no_structures,std::vector<double>(3,0.0));    
+        for(int ln = coarsest_ln; ln <= finest_ln; ++ln)
+        {
+            if(!d_l_data_manager->levelContainsLagrangianData(ln)) continue;
+       
+	    //Get LData corresponding to the present position of the structures.
+	    const blitz::Array<double,2>& X_data   = *d_l_data_manager->getLData("X",ln)->getLocalFormVecArray();
+	    const Pointer<LMesh> mesh              =  d_l_data_manager->getLMesh(ln);
+	    const std::vector<LNode*>& local_nodes =  mesh->getLocalNodes();
+	
+	    // Get structures on this level.
+            const std::vector<int> structIDs = d_l_data_manager->getLagrangianStructureIDs(ln);
+            const int structs_on_this_ln     = structIDs.size();
+	
+            for(int struct_no = 0 ; struct_no < structs_on_this_ln; ++struct_no)
+            {
+	        std::pair<int,int> lag_idx_range = d_l_data_manager->getLagrangianStructureIndexRange(structIDs[struct_no],ln);
+	        Pointer<ConstraintIBKinematics> ptr_ib_kinematics = *std::find_if(d_ib_kinematics.begin(),d_ib_kinematics.end(),find_struct_handle(lag_idx_range));
+	        const int location_struct_handle = find_struct_handle_position(d_ib_kinematics.begin(),d_ib_kinematics.end(),ptr_ib_kinematics);
+	    
+	        blitz::TinyVector<double,NDIM> X_com(0.0);
+	        for(std::vector<LNode*>::const_iterator cit = local_nodes.begin(); cit != local_nodes.end(); ++cit)
+	        {
+	            const LNode* const node_idx = *cit;
+	            const int lag_idx = node_idx->getLagrangianIndex();
+	            if( lag_idx_range.first <= lag_idx && lag_idx < lag_idx_range.second)
+	            {
+		        const int local_idx   = node_idx->getLocalPETScIndex();
+		        const double* const X = &X_data(local_idx,0);
+		        for(unsigned int d = 0; d < NDIM; ++d)
+		        {
+                            X_com[d] += X[d];
+		        }
+		        if(lag_idx == d_tagged_pt_lag_idx[location_struct_handle])
+		        {
+		            for(unsigned int d = 0; d < NDIM; ++d) tagged_position[location_struct_handle][d] = X[d];
+		        }
+	            } 
+	        }	    
+	        for(int d = 0; d < NDIM; ++d)
+	        {
+	            d_center_of_mass_current[location_struct_handle][d] += X_com[d];
+	        }	   
+            }
+	    d_l_data_manager->getLData("X",ln)->restoreArrays();     
+        }
+        
+        for(int struct_no = 0; struct_no < d_no_structures; ++struct_no)
+        {
+            const StructureParameters& struct_param = d_ib_kinematics[struct_no]->getStructureParameters();
+	    const int total_nodes                   = struct_param.getTotalNodes();
+	    SAMRAI_MPI::sumReduction(&d_center_of_mass_current[struct_no][0],NDIM);
+	    SAMRAI_MPI::sumReduction(&tagged_position[struct_no][0],3);
+	    d_tagged_pt_position[struct_no] = tagged_position[struct_no];
+            for(int i = 0; i < 3; ++i) 
+	    {
+	        d_center_of_mass_current[struct_no][i] /= total_nodes;
+	    }	
+        }
+        
+        //Zero out the moment of inertia tensor.
+        for(int struct_no = 0; struct_no < d_no_structures; ++struct_no)
+        {
+            d_moment_of_inertia_current[struct_no] = 0.0; 
+        }
+   
+        for(int ln = coarsest_ln; ln <= finest_ln; ++ln)
+        {
+            if(!d_l_data_manager->levelContainsLagrangianData(ln)) continue;
+       
+	    //Get LData corresponding to the present position of the structures
+	    const blitz::Array<double,2>& X_data   = *d_l_data_manager->getLData("X",ln)->getLocalFormVecArray();
+	    const Pointer<LMesh> mesh              =  d_l_data_manager->getLMesh(ln);
+	    const std::vector<LNode*>& local_nodes =  mesh->getLocalNodes();
+	
+	    // Get structures on this level.
+            const std::vector<int> structIDs = d_l_data_manager->getLagrangianStructureIDs(ln);
+            const int structs_on_this_ln     = structIDs.size();
+	
+            for(int struct_no = 0 ; struct_no < structs_on_this_ln; ++struct_no)
+            {
+	        std::pair<int,int> lag_idx_range                  = d_l_data_manager->getLagrangianStructureIndexRange(structIDs[struct_no],ln);
+	        Pointer<ConstraintIBKinematics> ptr_ib_kinematics = *std::find_if(d_ib_kinematics.begin(),d_ib_kinematics.end(),find_struct_handle(lag_idx_range));
+	        const StructureParameters& struct_param           = ptr_ib_kinematics->getStructureParameters();
+	        if(!struct_param.getStructureIsSelfRotating()) continue;
+	    
+	        const int location_struct_handle = find_struct_handle_position(d_ib_kinematics.begin(),d_ib_kinematics.end(),ptr_ib_kinematics);
+	        std::vector<double> X_com        = d_center_of_mass_current[location_struct_handle]; 
+	    
+	        blitz::Array<double,2> Inertia(3,3);
+	        Inertia = 0.0;
+	        for(std::vector<LNode*>::const_iterator cit = local_nodes.begin(); cit != local_nodes.end(); ++cit)
+	        {
+	            const LNode* const node_idx = *cit;
+	            const int lag_idx = node_idx->getLagrangianIndex();
+	            if( lag_idx_range.first <= lag_idx && lag_idx < lag_idx_range.second)
+	            {
+		        const int local_idx   = node_idx->getLocalPETScIndex();
+		        const double* const X = &X_data(local_idx,0);
+#if (NDIM == 2)
+		        Inertia(0,0) += std::pow( X[1] - X_com[1] , 2);
+		        Inertia(0,1) += -(X[0] - X_com[0])*(X[1] - X_com[1]);
+		        Inertia(1,1) += std::pow( X[0] - X_com[0] , 2);
+		        Inertia(2,2) += std::pow( X[0] - X_com[0] , 2) + std::pow( X[1] - X_com[1] , 2);		    
+#endif
+		    
+#if (NDIM == 3)
+		        Inertia(0,0) += std::pow( X[1] - X_com[1] , 2) + std::pow( X[2] - X_com[2] , 2);
+		        Inertia(0,1) += -(X[0] - X_com[0])*(X[1] - X_com[1]);
+		        Inertia(0,2) += -(X[0] - X_com[0])*(X[2] - X_com[2]);
+		        Inertia(1,1) += std::pow( X[0] - X_com[0] , 2) + std::pow( X[2] - X_com[2] , 2);
+		        Inertia(1,2) += -(X[1] - X_com[1])*(X[2] - X_com[2]);
+		        Inertia(2,2) += std::pow( X[0] - X_com[0] , 2) + std::pow( X[1] - X_com[1] , 2);
+#endif
+	            }	     
+	        }
+	        d_moment_of_inertia_current[location_struct_handle] += Inertia;   
+            }// all structs
+	    d_l_data_manager->getLData("X",ln)->restoreArrays();      
+        }// all levels
+        
+        for(int struct_no = 0; struct_no < d_no_structures; ++struct_no)
+        {
+            const StructureParameters& struct_param = d_ib_kinematics[struct_no]->getStructureParameters();
+	    if(struct_param.getStructureIsSelfRotating()) SAMRAI_MPI::sumReduction(&d_moment_of_inertia_current[struct_no](0,0),9);     
+        }
+       
+        //Fill-in symmetric part of inertia tensor.
+        for(int struct_no = 0; struct_no < d_no_structures; ++struct_no)
+        {       
+	    d_moment_of_inertia_current[struct_no](1,0) = d_moment_of_inertia_current[struct_no](0,1);
+	    d_moment_of_inertia_current[struct_no](2,0) = d_moment_of_inertia_current[struct_no](0,2);
+            d_moment_of_inertia_current[struct_no](2,1) = d_moment_of_inertia_current[struct_no](1,2);
+        }         
+    } // find current COM and MOI for the case when no. of cycles = 1
     
     // write the COM and MOI to the output file    
     if( !SAMRAI_MPI::getRank() && d_INS_current_cycle_num == d_INS_num_cycles-1 && d_print_output && d_output_COM_coordinates
-       && (d_timestep_counter % d_output_interval ) == 0 )
+       && (d_timestep_counter % d_output_interval ) == 0 && !MathUtilities<double>::equalEps(d_FuRMoRP_current_time,0.0))
     {
         for(int struct_no = 0; struct_no < d_no_structures; ++struct_no)
 	{
             *d_position_COM_stream[struct_no] << d_FuRMoRP_current_time  << '\t'<< d_center_of_mass_current[struct_no][0] << '\t'
                                 << d_center_of_mass_current[struct_no][1]<< '\t'<< d_center_of_mass_current[struct_no][2] << std::endl;
 	}
-   }
-    
-    
+    }
+        
     if( !SAMRAI_MPI::getRank() && d_INS_current_cycle_num == d_INS_num_cycles -1 && d_print_output && d_output_MOI 
-       && (d_timestep_counter % d_output_interval ) == 0 )
+       && (d_timestep_counter % d_output_interval ) == 0 && !MathUtilities<double>::equalEps(d_FuRMoRP_current_time,0.0))
     {
         for(int struct_no = 0; struct_no < d_no_structures; ++struct_no)
 	{
@@ -1020,8 +1210,6 @@ ConstraintIBMethod::calculateNewKinematicsVelocity()
         //Theta_new = Theta_old + Omega_old*dt
         if (d_INS_current_cycle_num == 0)
         {
-	    d_vel_com_def_current[struct_no]   = d_vel_com_def_new[struct_no];
-            d_omega_com_def_current[struct_no] = d_omega_com_def_new[struct_no];
 	    for(int i = 0 ; i < 3; ++i)
 	         d_incremented_angle_from_reference_axis[struct_no][i] +=  (d_rigid_rot_vel_current[struct_no][i] - d_omega_com_def_current[struct_no][i])*dt;
        
@@ -1039,9 +1227,7 @@ ConstraintIBMethod::calculateNewKinematicsVelocity()
 void
 ConstraintIBMethod::calculateMomentumOfNewKinematicsVelocity(const int position_handle)
 {
-
-    typedef ConstraintIBKinematics::StructureParameters StructureParameters;
-    
+    typedef ConstraintIBKinematics::StructureParameters StructureParameters;  
     Pointer<ConstraintIBKinematics> ptr_ib_kinematics = d_ib_kinematics[position_handle];
     const StructureParameters& struct_param           = ptr_ib_kinematics->getStructureParameters();
     Array<int> calculate_trans_mom                    = struct_param.getCalculateTranslationalMomentum();
@@ -1115,7 +1301,7 @@ ConstraintIBMethod::calculateMomentumOfNewKinematicsVelocity(const int position_
 	    blitz::TinyVector<double,3> R_cross_U_def(0.0);
 	
 	    //Get LData corresponding to the present position of the structures.
-       	    const blitz::Array<double,2>& X_data   = *d_l_data_manager->getLData("X",ln)->getLocalFormVecArray();
+       	    const blitz::Array<double,2>& X_data   = *d_X_new_data[ln]->getLocalFormVecArray();
 	    const Pointer<LMesh> mesh              =  d_l_data_manager->getLMesh(ln);
 	    const std::vector<LNode*>& local_nodes =  mesh->getLocalNodes();
 
@@ -1154,7 +1340,8 @@ ConstraintIBMethod::calculateMomentumOfNewKinematicsVelocity(const int position_
 	    for(int d = 0; d < 3; ++d)
 	    {
 	      d_omega_com_def_new[position_handle][d] += R_cross_U_def[d];
-	    }            
+	    } 
+	    d_X_new_data[ln]->restoreArrays(); 
         } //all levels
         SAMRAI_MPI::sumReduction(&d_omega_com_def_new[position_handle][0],3);
     } //if struct is rotating
@@ -1170,7 +1357,15 @@ ConstraintIBMethod::calculateMomentumOfNewKinematicsVelocity(const int position_
         if(!calculate_rot_mom[d]) d_omega_com_def_new[position_handle][d] = 0.0;
       
 #endif
-    
+	
+    //copy the new def velocity at last cycle number.
+    if( d_INS_current_cycle_num == d_INS_num_cycles -1)
+    {
+        d_vel_com_def_current[position_handle]   = d_vel_com_def_new[position_handle];
+        d_omega_com_def_current[position_handle] = d_omega_com_def_new[position_handle];
+    }
+	
+	
     return;
 } //calculateMomentumOfNewKinematicsVelocity
 
@@ -1301,16 +1496,7 @@ ConstraintIBMethod::calculateVolumeElement()
 void
 ConstraintIBMethod::calculateRigidMomentum()
 {
-  
-    if(d_INS_current_cycle_num == 0)
-    {
-        for(int struct_no = 0; struct_no < d_no_structures; ++ struct_no)
-        {
-            d_rigid_trans_vel_current[struct_no] = d_rigid_trans_vel_new[struct_no]; 
-	    d_rigid_rot_vel_current[struct_no]   = d_rigid_rot_vel_new[struct_no];
-        }
-    }
-    
+      
     //Zero out new rigid momentum.
     for(int struct_no = 0; struct_no < d_no_structures; ++ struct_no)
     {
@@ -1390,7 +1576,7 @@ ConstraintIBMethod::calculateRigidMomentum()
        
 	//Get ponter to LData.
         const blitz::Array<double,2>& U_interp_data = *d_l_data_U_interp[ln]->getLocalFormVecArray();
-	const blitz::Array<double,2>& X_data        = *d_l_data_manager->getLData("X",ln)->getLocalFormVecArray();
+       	const blitz::Array<double,2>& X_data        = *d_X_new_data[ln]->getLocalFormVecArray();
 	const Pointer<LMesh> mesh                   =  d_l_data_manager->getLMesh(ln);
 	const std::vector<LNode*>& local_nodes      =  mesh->getLocalNodes();
 	
@@ -1438,7 +1624,7 @@ ConstraintIBMethod::calculateRigidMomentum()
 	    for(int d = 0; d < 3; ++d) d_rigid_rot_vel_new[location_struct_handle][d] += Omega_rigid[d];   
         }// all structs
 	d_l_data_U_interp[ln]->restoreArrays(); 
-	d_l_data_manager->getLData("X",ln)->restoreArrays();
+	d_X_new_data[ln]->restoreArrays();
     }// all levels
     
     for(int struct_no = 0; struct_no < d_no_structures; ++struct_no)
@@ -1459,16 +1645,27 @@ ConstraintIBMethod::calculateRigidMomentum()
 #endif
 	}
     }
+    
+    //copy the new velocity to current velocity at last cycle number.
+    if(d_INS_current_cycle_num == d_INS_num_cycles -1)
+    {
+        for(int struct_no = 0; struct_no < d_no_structures; ++ struct_no)
+        {
+            d_rigid_trans_vel_current[struct_no] = d_rigid_trans_vel_new[struct_no]; 
+	    d_rigid_rot_vel_current[struct_no]   = d_rigid_rot_vel_new[struct_no];
+        }
+    }
+   
   
     if( !SAMRAI_MPI::getRank() && d_INS_current_cycle_num == d_INS_num_cycles-1 && d_print_output && d_output_trans_vel
        && (d_timestep_counter % d_output_interval ) == 0 )
     {
         for(int struct_no = 0; struct_no < d_no_structures; ++struct_no)
 	{
-            *d_trans_vel_stream[struct_no] << d_FuRMoRP_current_time      << '\t'<< d_rigid_trans_vel_current[struct_no][0] << '\t'
-                                << d_rigid_trans_vel_current[struct_no][1]<< '\t'<< d_rigid_trans_vel_current[struct_no][2] <<'\t' 
-                                << d_vel_com_def_current[struct_no][0]    << '\t'<< d_vel_com_def_current[struct_no][1]     << '\t' 
-                                << d_vel_com_def_current[struct_no][2]    << std::endl;
+            *d_trans_vel_stream[struct_no] << d_FuRMoRP_new_time      << '\t'<< d_rigid_trans_vel_new[struct_no][0] << '\t'
+                                << d_rigid_trans_vel_new[struct_no][1]<< '\t'<< d_rigid_trans_vel_new[struct_no][2] <<'\t' 
+                                << d_vel_com_def_new[struct_no][0]    << '\t'<< d_vel_com_def_new[struct_no][1]     << '\t' 
+                                << d_vel_com_def_new[struct_no][2]    << std::endl;
 	}
     }
     
@@ -1477,10 +1674,10 @@ ConstraintIBMethod::calculateRigidMomentum()
     {
         for(int struct_no = 0; struct_no < d_no_structures; ++struct_no)
 	{
-            *d_rot_vel_stream[struct_no] << d_FuRMoRP_current_time       << '\t'<< d_rigid_rot_vel_current[struct_no][0] << '\t'
-                                << d_rigid_rot_vel_current[struct_no][1] << '\t'<< d_rigid_rot_vel_current[struct_no][2] <<'\t' 
-                                << d_omega_com_def_current[struct_no][0] << '\t'<< d_omega_com_def_current[struct_no][1] << '\t' 
-                                << d_omega_com_def_current[struct_no][2] << std::endl;
+            *d_rot_vel_stream[struct_no] << d_FuRMoRP_new_time       << '\t'<< d_rigid_rot_vel_new[struct_no][0] << '\t'
+                                << d_rigid_rot_vel_new[struct_no][1] << '\t'<< d_rigid_rot_vel_new[struct_no][2] <<'\t' 
+                                << d_omega_com_def_new[struct_no][0] << '\t'<< d_omega_com_def_new[struct_no][1] << '\t' 
+                                << d_omega_com_def_new[struct_no][2] << std::endl;
 	}
     }
     
@@ -1490,7 +1687,7 @@ ConstraintIBMethod::calculateRigidMomentum()
 
 void
 ConstraintIBMethod::calculateCurrentLagrangianVelocity()
-{
+{    
     typedef ConstraintIBKinematics::StructureParameters StructureParameters;
     const int coarsest_ln = 0;
     const int finest_ln   = d_hierarchy->getFinestLevelNumber();
@@ -1596,10 +1793,10 @@ ConstraintIBMethod::correctVelocityOnLagrangianMesh()
         const blitz::Array<double,2>& U_interp_data = *d_l_data_U_interp[ln]->getLocalFormVecArray();
         blitz::Array<double,2>& U_corr_data         = *d_l_data_U_correction[ln]->getLocalFormVecArray();
 	blitz::Array<double,2>& U_new_data          = *d_l_data_U_new[ln]->getLocalFormVecArray();
-	const blitz::Array<double,2>& X_data        = *d_l_data_manager->getLData("X",ln)->getLocalFormVecArray();
 	
-	const Pointer<LMesh> mesh                   = d_l_data_manager->getLMesh(ln);
-	const std::vector<LNode*>& local_nodes      = mesh->getLocalNodes();
+	const blitz::Array<double,2>& X_data        = *d_X_new_data[ln]->getLocalFormVecArray();	
+	const Pointer<LMesh> mesh                   =  d_l_data_manager->getLMesh(ln);
+	const std::vector<LNode*>& local_nodes      =  mesh->getLocalNodes();
 	
 	// Get structures on this level.
         const std::vector<int> structIDs = d_l_data_manager->getLagrangianStructureIDs(ln);
@@ -1673,7 +1870,7 @@ ConstraintIBMethod::correctVelocityOnLagrangianMesh()
 	d_l_data_U_interp[ln]->restoreArrays(); 
 	d_l_data_U_correction[ln]->restoreArrays(); 
 	d_l_data_U_new[ln]->restoreArrays(); 
-	d_l_data_manager->getLData("X",ln)->restoreArrays();
+	d_X_new_data[ln]->restoreArrays();
     }// all levels  
       
     return;
@@ -1949,22 +2146,19 @@ ConstraintIBMethod::eulerStep(
     IBMethod::eulerStep(current_time, new_time);
     
     IBTK_TIMER_START(t_eulerStep);
-    
-    if(d_INS_num_cycles > 1)
+
+    updateStructurePositionEulerStep();    
+    const int coarsest_ln = 0;
+    const int finest_ln = d_hierarchy->getFinestLevelNumber();
+    int ierr;
+    for (int ln = coarsest_ln; ln <= finest_ln; ++ln)
     {
-        updateStructurePositionEulerStep();
-    
-        const int coarsest_ln = 0;
-        const int finest_ln = d_hierarchy->getFinestLevelNumber();
-        int ierr;
-        for (int ln = coarsest_ln; ln <= finest_ln; ++ln)
-        {
-            if (!d_l_data_manager->levelContainsLagrangianData(ln)) continue;
-            ierr = VecCopy(d_l_data_X_new_Euler[ln]->getVec(), d_X_new_data[ln]->getVec());  IBTK_CHKERRQ(ierr);
-        }
+        if (!d_l_data_manager->levelContainsLagrangianData(ln)) continue;
+        ierr = VecCopy(d_l_data_X_new_Euler[ln]->getVec(), d_X_new_data[ln]->getVec());  IBTK_CHKERRQ(ierr);
     }
-    
+       
     IBTK_TIMER_STOP(t_eulerStep);
+    
     return;
   
 } //eulerStep
@@ -2065,53 +2259,8 @@ ConstraintIBMethod::midpointStep(
   
 } //eulerStep
 
-void
-ConstraintIBMethod::createNewLagrangianWorkspace()
-{
-    const int coarsest_ln = 0;
-    const int finest_ln   = d_hierarchy->getFinestLevelNumber();
-    d_l_data_U_interp      .resize(finest_ln+1);
-    d_l_data_U_correction  .resize(finest_ln+1);
-    d_l_data_U_new         .resize(finest_ln+1);
-    d_l_data_U_half        .resize(finest_ln+1);
-    d_l_data_X_new_Euler   .resize(finest_ln+1);
-    d_l_data_X_new_MidPoint.resize(finest_ln+1);
-    if (d_INS_current_cycle_num == 0)  d_l_data_U_current.resize(finest_ln+1);
-    
-    for(int ln = coarsest_ln; ln <= finest_ln; ++ln)
-    {
-        if(!d_l_data_manager->levelContainsLagrangianData(ln)) continue;
-	d_l_data_U_interp[ln]       = d_l_data_manager->createLData(d_object_name + "interp_lag_vel", ln, NDIM, false);  
-        d_l_data_U_correction[ln]   = d_l_data_manager->createLData(d_object_name + "correct_lag_vel", ln, NDIM, false);  
-        d_l_data_U_new[ln]          = d_l_data_manager->createLData(d_object_name + "new_lag_vel", ln, NDIM, false); 
-        d_l_data_U_half[ln]         = d_l_data_manager->createLData(d_object_name + "half_lag_vel", ln, NDIM, false); 
-	d_l_data_X_new_Euler[ln]    = d_l_data_manager->createLData(d_object_name + "X_Euler", ln, NDIM, false); 
-	d_l_data_X_new_MidPoint[ln] = d_l_data_manager->createLData(d_object_name + "X_MidPoint", ln, NDIM, false); 
-        if (d_INS_current_cycle_num == 0) 
-	   d_l_data_U_current[ln]   = d_l_data_manager->createLData(d_object_name + "current_lag_vel", ln, NDIM, false); 
-
-    }
-    
-    return;
-} //createLagrangianWorkspace
-
 
 void
-ConstraintIBMethod::destroyPreviousLagrangianWorkspace()
-{
-
-    d_l_data_U_interp      .clear();
-    d_l_data_U_correction  .clear();
-    d_l_data_U_new         .clear();
-    d_l_data_U_half        .clear();
-    d_l_data_X_new_Euler   .clear();
-    d_l_data_X_new_MidPoint.clear();
-    
-
-    return;
-} //destroyLagrangianWorkspace
-
-inline void
 ConstraintIBMethod::interpolateFluidSolveVelocity()
 {
     const int coarsest_ln = 0;
@@ -2124,7 +2273,7 @@ ConstraintIBMethod::interpolateFluidSolveVelocity()
     {
         if(!d_l_data_manager->levelContainsLagrangianData(ln)) continue;
 	F_data[ln] = d_l_data_U_interp[ln];  
-	X_data[ln] = d_l_data_manager->getLData("X",ln);
+	X_data[ln] = d_X_new_data[ln];
     }
   
     d_l_data_manager->interp(d_u_fluidSolve_idx,F_data,X_data,
@@ -2148,7 +2297,7 @@ ConstraintIBMethod::spreadCorrectedLagrangianVelocity()
     {
         if(!d_l_data_manager->levelContainsLagrangianData(ln)) continue;
 	F_data[ln] = d_l_data_U_correction[ln];  
-	X_data[ln] = d_l_data_manager->getLData("X",ln);
+	X_data[ln] = d_X_new_data[ln];
     }
   
     d_l_data_manager->spread(d_u_fluidSolve_idx,F_data,X_data,
@@ -2193,6 +2342,90 @@ ConstraintIBMethod::calculateMidPointVelocity()
     return;
   
 }// calculateMidPointVelocity
+
+void
+ConstraintIBMethod::calculateDrag()
+{
+    typedef ConstraintIBKinematics::StructureParameters StructureParameters;
+    const int coarsest_ln = 0;
+    const int finest_ln   = d_hierarchy->getFinestLevelNumber();
+    const double dt       = d_FuRMoRP_new_time - d_FuRMoRP_current_time;
+    
+    std::vector<std::vector<double> > inertia_force   (d_no_structures, std::vector<double>(3,0.0));
+    std::vector<std::vector<double> > constraint_force(d_no_structures, std::vector<double>(3,0.0));
+    
+    for(int ln = coarsest_ln; ln <= finest_ln; ++ln)
+    {
+        if(!d_l_data_manager->levelContainsLagrangianData(ln)) continue;  
+      
+        const blitz::Array<double,2>& U_new_data           = *d_l_data_U_new       [ln]->getLocalFormVecArray();
+	const blitz::Array<double,2>& U_current_data       = *d_l_data_U_current   [ln]->getLocalFormVecArray();
+	const blitz::Array<double,2>& U_correction_data    = *d_l_data_U_correction[ln]->getLocalFormVecArray();
+	
+	const Pointer<LMesh> mesh                   = d_l_data_manager->getLMesh(ln);
+	const std::vector<LNode*>& local_nodes      = mesh->getLocalNodes();
+	
+	// Get structures on this level.
+        const std::vector<int> structIDs = d_l_data_manager->getLagrangianStructureIDs(ln);
+        const int structs_on_this_ln     = structIDs.size();
+      
+	for(int struct_no = 0 ; struct_no < structs_on_this_ln; ++struct_no)
+        {
+	    std::pair<int,int> lag_idx_range = d_l_data_manager->getLagrangianStructureIndexRange(structIDs[struct_no],ln);
+	    Pointer<ConstraintIBKinematics> ptr_ib_kinematics = *std::find_if(d_ib_kinematics.begin(),d_ib_kinematics.end(),find_struct_handle(lag_idx_range));
+	    const int location_struct_handle = find_struct_handle_position(d_ib_kinematics.begin(),d_ib_kinematics.end(),ptr_ib_kinematics);
+;
+	      
+	    for(std::vector<LNode*>::const_iterator cit = local_nodes.begin(); cit != local_nodes.end(); ++cit)
+	    {
+	        const LNode* const node_idx = *cit;
+	        const int lag_idx = node_idx->getLagrangianIndex();
+	        if( lag_idx_range.first <= lag_idx && lag_idx < lag_idx_range.second)
+	        {
+		    const int local_idx = node_idx->getLocalPETScIndex();
+		    const double* const U_new        = &U_new_data        (local_idx,0);
+		    const double* const U_current    = &U_current_data    (local_idx,0);
+		    const double* const U_correction = &U_correction_data (local_idx,0);
+
+		    for(int d = 0 ; d < NDIM; ++d)
+		    {
+			inertia_force   [location_struct_handle][d] += U_new[d] - U_current[d];
+			constraint_force[location_struct_handle][d] += U_correction[d];
+		    }
+	        }	     
+	    }
+        }// all structs
+        d_l_data_U_new       [ln]->restoreArrays(); 
+        d_l_data_U_current   [ln]->restoreArrays();   
+	d_l_data_U_correction[ln]->restoreArrays();   
+    } 
+    
+    for(int struct_no = 0 ; struct_no < d_no_structures; ++struct_no)
+    {
+        SAMRAI_MPI::sumReduction(&inertia_force[struct_no][0],3);
+	SAMRAI_MPI::sumReduction(&constraint_force[struct_no][0],3); 
+	for(int d = 0 ; d < NDIM; ++d)
+        {
+            inertia_force[struct_no][d]    *= (d_rho_fluid/dt)*d_vol_element[struct_no];
+	    constraint_force[struct_no][d] *= (d_rho_fluid/dt);
+        }
+    }
+    
+    if( !SAMRAI_MPI::getRank() && d_print_output && d_output_drag && (d_timestep_counter % d_output_interval ) == 0 )
+    {
+        for(int struct_no = 0; struct_no < d_no_structures; ++struct_no)
+	{
+            *d_drag_force_stream[struct_no] << d_FuRMoRP_new_time    << '\t'<< inertia_force[struct_no][0] << '\t'
+                                << inertia_force[struct_no][1]       << '\t'<< inertia_force[struct_no][2] <<'\t' 
+                                << constraint_force[struct_no][0]    << '\t'<< constraint_force[struct_no][1] << '\t' 
+                                << constraint_force[struct_no][2]    << std::endl;
+	}
+    }
+    
+    return; 
+
+  
+} //calculateDrag
 
 
 } //IBAMR

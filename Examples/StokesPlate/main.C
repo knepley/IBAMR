@@ -140,7 +140,7 @@ main(
         
         const int num_structures = input_db->getIntegerWithDefault("num_structures",1);
         Pointer<ConstraintIBMethod> ib_method_ops = new ConstraintIBMethod(
-            "ConstraintIBMethod", app_initializer->getComponentDatabase("ConstraintIBMethod"),navier_stokes_integrator, num_structures);
+            "ConstraintIBMethod", app_initializer->getComponentDatabase("ConstraintIBMethod"), num_structures);
         Pointer<IBHierarchyIntegrator> time_integrator = new IBHierarchyIntegrator(
             "IBHierarchyIntegrator", app_initializer->getComponentDatabase("IBHierarchyIntegrator"), ib_method_ops, navier_stokes_integrator);
 	

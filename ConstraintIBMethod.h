@@ -83,16 +83,34 @@ public:
    initializeHierarchyOperatorsandData();
 
     /*!
-     * Register Eulerian variables with IBStrategy class.
+     * Register Eulerian variables with base IBStrategy class.
      */
     virtual void
     registerEulerianVariables();
 
     /*!
-     *  Register Eulerian communication algorithms.
+     *  Register Eulerian communication algorithms with base IBStrategy class.
      */
     virtual void
     registerEulerianCommunicationAlgorithms();
+    
+    /*!
+     *  Create Lagrangian workspace.
+     */
+    virtual void
+    preprocessIntegrateData(
+        double current_time,
+	double new_time,
+	int num_cycles);
+    
+    /*!
+     *  Destroy Lagrangian workspace.
+     */
+    virtual void
+    postprocessIntegrateData(
+        double current_time,
+	double new_time,
+	int num_cycles);
 
     /*!
      * \brief Register kinematics of the immersed structure(s) with this class.
@@ -171,18 +189,6 @@ private:
      */
     void
     getFromRestart();
-
-    /*!
-     * Allocate LData to work with.
-     */
-    void
-    createNewLagrangianWorkspace();
-
-    /*!
-     * Deallocate LData.
-     */
-    void
-    destroyPreviousLagrangianWorkspace();
 
     /*!
      * Set initial Lagrangian velocity on material points.
@@ -306,11 +312,23 @@ private:
     calculateMidPointVelocity();
 
     /*!
-     * Calculate Drag, Kinetic Energy, Power.
+     * Calculate Drag on the immersed structures.
      */
     void
-    calculateDragKEPower();
-
+    calculateDrag();
+    
+    /*!
+     * Calculate kinetic energy of the immersed structures.
+     */
+    void
+    calculateKE();
+ 
+    /*!
+     * Calculate power spent during swimming.
+     */
+    void
+    calculatePower();
+    
     /*!
      * Hierarchy math operator.
      */
@@ -345,11 +363,6 @@ private:
      * If divergence free projection is needed after FuRMoRP algorithm?
      */
     bool d_needs_div_free_projection;
-
-    /*!
-     * Lagrangian position update method.
-     */
-    std::string d_lag_position_update_method;
 
     /*!
      * Rigid translational velocity of the structures.
@@ -401,8 +414,6 @@ private:
      */
     double d_rho_fluid, d_mu_fluid;
 
-    // Printing out the information as the code proceeds
-
     /*!
      * Iteration_counter for printing stuff.
      */
@@ -446,7 +457,7 @@ private:
     int d_u_scratch_idx, d_u_fluidSolve_idx , d_phi_idx, d_Div_u_scratch_idx;
 
     /*!
-     * The following variables are needed to solve cell centered poison equation for \phi ,which is
+     * The following variables are needed to solve cell centered poison equation for \f$ \phi \f$ ,which is
      * used to project the corrected background fluid velocity on divergence free field to remove kinkiness
      * introduced via FuRMoRP algorithm.
      */

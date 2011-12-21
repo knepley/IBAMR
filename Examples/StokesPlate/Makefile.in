@@ -1,8 +1,8 @@
 ######################################################################
 ## Here specify the location of the IBAMR source and the location
 ## where IBAMR has been built.
-IBAMR_SRC_DIR = $HOME/SOFTWARES/LIBRARIESIBAMR/boyceg/IBAMR
-IBAMR_BUILD_DIR = $HOME/SOFTWARES/LIBRARIESIBAMR/boyceg/ibamr-objs-opt
+IBAMR_SRC_DIR = /path/to/IBAMR
+IBAMR_BUILD_DIR = /path/to/ibamr-objs-opt
 
 ######################################################################
 ## Include variables specific to the particular IBAMR build.
