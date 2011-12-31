@@ -176,7 +176,7 @@ ConstraintIBKinematics::putToDatabase(
 
 /////////////////////// TEMPLATE INSTANTIATION ///////////////////////////////
 
- #include <tbox/Pointer.C>
-template class Pointer<IBAMR::ConstraintIBKinematics>;
+// #include <tbox/Pointer.C>
+//template class Pointer<IBAMR::ConstraintIBKinematics>;
 
 //////////////////////////////////////////////////////////////////////////////

@@ -59,10 +59,6 @@
 #include <ibtk/FACPreconditioner.h>
 #include <ibtk/CCPoissonFACOperator.h>
 #include <ibtk/ibtk_utilities.h>
-#include <ibtk/LEInteractor.h>
-
-
-
 
 // C++ INCLUDES
 #include <limits>

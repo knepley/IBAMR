@@ -30,7 +30,6 @@
 #include <VariableContext.h>
 #include <LocationIndexRobinBcCoefs.h>
 #include <PoissonSpecifications.h>
-#include <VisItDataWriter.h>
 
 // IBAMR INCLUDES
 #include <ibamr/IBMethod.h>
@@ -44,7 +43,6 @@
 #include <ibtk/PETScKrylovLinearSolver.h>
 #include <ibtk/CCPoissonFACOperator.h>
 #include <ibtk/FACPreconditioner.h>
-#include <ibtk/LSiloDataWriter.h>
 
 // BLITZ INCLUDES
 #include <blitz/array.h>
