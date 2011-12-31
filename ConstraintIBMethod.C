@@ -59,6 +59,7 @@
 #include <ibtk/FACPreconditioner.h>
 #include <ibtk/CCPoissonFACOperator.h>
 #include <ibtk/ibtk_utilities.h>
+#include <ibtk/LEInteractor.h>
 
 
 
@@ -403,7 +404,7 @@ ConstraintIBMethod::postprocessSolveFluidEquations(
     
     setFurmorpTime(current_time,new_time);
     setINSCycleNumberAndCounter(cycle_num);
-    
+
     IBTK_TIMER_START(t_calculateCOMandMOIOfStructures);
     calculateCOMandMOIOfStructures();
     IBTK_TIMER_STOP(t_calculateCOMandMOIOfStructures);
@@ -419,7 +420,7 @@ ConstraintIBMethod::postprocessSolveFluidEquations(
     IBTK_TIMER_START(t_calculateRigidMomentum);
     calculateRigidMomentum();
     IBTK_TIMER_STOP(t_calculateRigidMomentum);
-
+    
     IBTK_TIMER_START(t_correctVelocityOnLagrangianMesh);
     correctVelocityOnLagrangianMesh();
     IBTK_TIMER_STOP(t_correctVelocityOnLagrangianMesh);
@@ -441,8 +442,7 @@ ConstraintIBMethod::postprocessSolveFluidEquations(
     
     if(d_INS_current_cycle_num == d_INS_num_cycles - 1)
     {
-        if(d_output_drag) calculateDrag();
-            
+        if(d_output_drag) calculateDrag();         
     }
 
     IBTK_TIMER_STOP(t_postprocessSolveFluidEquation);
@@ -500,16 +500,18 @@ ConstraintIBMethod::registerEulerianVariables()
 void
 ConstraintIBMethod::initializeHierarchyOperatorsandData()
 {
-
-    // Obtain the Hierarchy data operations objects.
-    d_hier_math_ops                                 = getHierarchyMathOps();
-    HierarchyDataOpsManager<NDIM>* hier_ops_manager = HierarchyDataOpsManager<NDIM>::getManager();
-    Pointer<CellVariable<NDIM,double> > cc_var      = new CellVariable<NDIM,double>("cc_var");
-    d_hier_cc_data_ops                              = hier_ops_manager->getOperationsDouble(cc_var, d_hierarchy, true);
-    Pointer<SideVariable<NDIM,double> > sc_var      = new SideVariable<NDIM,double>("sc_var");
-    d_hier_sc_data_ops                              = hier_ops_manager->getOperationsDouble(sc_var, d_hierarchy, true);
-    d_wgt_cc_idx                                    = d_hier_math_ops->getCellWeightPatchDescriptorIndex();
-    d_volume                                        = d_hier_math_ops->getVolumeOfPhysicalDomain();
+    if(d_needs_div_free_projection)
+    {
+        // Obtain the Hierarchy data operations objects.
+        d_hier_math_ops                                 = getHierarchyMathOps();
+        HierarchyDataOpsManager<NDIM>* hier_ops_manager = HierarchyDataOpsManager<NDIM>::getManager();
+        Pointer<CellVariable<NDIM,double> > cc_var      = new CellVariable<NDIM,double>("cc_var");
+        d_hier_cc_data_ops                              = hier_ops_manager->getOperationsDouble(cc_var, d_hierarchy, true);
+        Pointer<SideVariable<NDIM,double> > sc_var      = new SideVariable<NDIM,double>("sc_var");
+        d_hier_sc_data_ops                              = hier_ops_manager->getOperationsDouble(sc_var, d_hierarchy, true);
+        d_wgt_cc_idx                                    = d_hier_math_ops->getCellWeightPatchDescriptorIndex();
+        d_volume                                        = d_hier_math_ops->getVolumeOfPhysicalDomain();
+    }
     
     bool from_restart = RestartManager::getManager()->isFromRestart();
     if(!from_restart)
@@ -1186,11 +1188,11 @@ ConstraintIBMethod::calculateCOMandMOIOfStructures()
     {
         for(int struct_no = 0; struct_no < d_no_structures; ++struct_no)
 	{
-            *d_moment_of_inertia_stream[struct_no] << d_FuRMoRP_current_time   << '\t' << d_moment_of_inertia_current[struct_no](0,0) << '\t'
-                                << d_moment_of_inertia_current[struct_no](0,1) << '\t'<< d_moment_of_inertia_current[struct_no](0,2)  << '\t'
-                                << d_moment_of_inertia_current[struct_no](1,0) << '\t'<< d_moment_of_inertia_current[struct_no](1,1)  << '\t'
-                                << d_moment_of_inertia_current[struct_no](1,2) << '\t'<< d_moment_of_inertia_current[struct_no](2,0)  << '\t'
-                                << d_moment_of_inertia_current[struct_no](2,1) << '\t'<< d_moment_of_inertia_current[struct_no](2,2)  << std::endl;
+            *d_moment_of_inertia_stream[struct_no] << d_FuRMoRP_current_time   << '\t'<< d_moment_of_inertia_current[struct_no](0,0) << '\t'
+                                << d_moment_of_inertia_current[struct_no](0,1) << '\t'<< d_moment_of_inertia_current[struct_no](0,2) << '\t'
+                                << d_moment_of_inertia_current[struct_no](1,0) << '\t'<< d_moment_of_inertia_current[struct_no](1,1) << '\t'
+                                << d_moment_of_inertia_current[struct_no](1,2) << '\t'<< d_moment_of_inertia_current[struct_no](2,0) << '\t'
+                                << d_moment_of_inertia_current[struct_no](2,1) << '\t'<< d_moment_of_inertia_current[struct_no](2,2) << std::endl;
 	}
    }
        
@@ -2290,6 +2292,7 @@ ConstraintIBMethod::spreadCorrectedLagrangianVelocity()
 {
     const int coarsest_ln = 0;
     const int finest_ln   = d_hierarchy->getFinestLevelNumber();
+    
     std::vector<SAMRAI::tbox::Pointer<IBTK::LData> > F_data(finest_ln+1,  SAMRAI::tbox::Pointer<IBTK::LData>(NULL) );
     std::vector<SAMRAI::tbox::Pointer<IBTK::LData> > X_data(finest_ln+1,  SAMRAI::tbox::Pointer<IBTK::LData>(NULL) );
     
