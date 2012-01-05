@@ -247,9 +247,7 @@ ConstraintIBMethod::ConstraintIBMethod(
     bool from_restart = RestartManager::getManager()->isFromRestart();
     if (from_restart) getFromRestart();
     if (!input_db.isNull()) getFromInput(input_db, from_restart);
-     
-
-        
+             
     // Setup the cell centered Poisson Solver needed for projection.
     if (d_needs_div_free_projection)
     {
@@ -395,12 +393,11 @@ ConstraintIBMethod::postprocessSolveFluidEquations(
     int cycle_num)
 {
     IBMethod::postprocessSolveFluidEquations(current_time, new_time, cycle_num);
-     
     IBTK_TIMER_START(t_postprocessSolveFluidEquation);
     
     setFurmorpTime(current_time,new_time);
     setINSCycleNumberAndCounter(cycle_num);
-
+    
     IBTK_TIMER_START(t_calculateCOMandMOIOfStructures);
     calculateCOMandMOIOfStructures();
     IBTK_TIMER_STOP(t_calculateCOMandMOIOfStructures);
@@ -416,7 +413,7 @@ ConstraintIBMethod::postprocessSolveFluidEquations(
     IBTK_TIMER_START(t_calculateRigidMomentum);
     calculateRigidMomentum();
     IBTK_TIMER_STOP(t_calculateRigidMomentum);
-    
+
     IBTK_TIMER_START(t_correctVelocityOnLagrangianMesh);
     correctVelocityOnLagrangianMesh();
     IBTK_TIMER_STOP(t_correctVelocityOnLagrangianMesh);
@@ -819,8 +816,10 @@ ConstraintIBMethod::setInitialLagrangianVelocity()
       
         d_ib_kinematics[struct_no]->setNewKinematicsVelocity(0.0,d_incremented_angle_from_reference_axis[struct_no],
 	    d_center_of_mass_current[struct_no], d_tagged_pt_position[struct_no] );
-      
-        if(struct_param.getStructureIsSelfTranslating()) calculateMomentumOfNewKinematicsVelocity(struct_no); 
+	
+	d_ib_kinematics[struct_no]->setNewShape();
+        
+	if(struct_param.getStructureIsSelfTranslating()) calculateMomentumOfNewKinematicsVelocity(struct_no); 
       
         d_vel_com_def_current[struct_no]   = d_vel_com_def_new[struct_no];
         d_omega_com_def_current[struct_no] = d_omega_com_def_new[struct_no];
@@ -963,7 +962,7 @@ ConstraintIBMethod::calculateCOMandMOIOfStructures()
 	    if(!struct_param.getStructureIsSelfRotating()) continue;
 	    
 	    const int location_struct_handle = find_struct_handle_position(d_ib_kinematics.begin(),d_ib_kinematics.end(),ptr_ib_kinematics);
-	    std::vector<double> X_com        = d_center_of_mass_new[location_struct_handle]; 
+	    const std::vector<double>& X_com        = d_center_of_mass_new[location_struct_handle]; 
 	    
 	    blitz::Array<double,2> Inertia(3,3);
 	    Inertia = 0.0;
@@ -979,8 +978,7 @@ ConstraintIBMethod::calculateCOMandMOIOfStructures()
 		    Inertia(0,0) += std::pow( X[1] - X_com[1] , 2);
 		    Inertia(0,1) += -(X[0] - X_com[0])*(X[1] - X_com[1]);
 		    Inertia(1,1) += std::pow( X[0] - X_com[0] , 2);
-		    Inertia(2,2) += std::pow( X[0] - X_com[0] , 2) + std::pow( X[1] - X_com[1] , 2);
-		    
+		    Inertia(2,2) += std::pow( X[0] - X_com[0] , 2) + std::pow( X[1] - X_com[1] , 2);		    
 #endif
 		    
 #if (NDIM == 3)
@@ -1119,7 +1117,7 @@ ConstraintIBMethod::calculateCOMandMOIOfStructures()
 	        if(!struct_param.getStructureIsSelfRotating()) continue;
 	    
 	        const int location_struct_handle = find_struct_handle_position(d_ib_kinematics.begin(),d_ib_kinematics.end(),ptr_ib_kinematics);
-	        std::vector<double> X_com        = d_center_of_mass_current[location_struct_handle]; 
+	        const std::vector<double>& X_com = d_center_of_mass_current[location_struct_handle]; 
 	    
 	        blitz::Array<double,2> Inertia(3,3);
 	        Inertia = 0.0;
@@ -1212,7 +1210,9 @@ ConstraintIBMethod::calculateNewKinematicsVelocity()
 	         d_incremented_angle_from_reference_axis[struct_no][i] +=  (d_rigid_rot_vel_current[struct_no][i] - d_omega_com_def_current[struct_no][i])*dt;
        
             d_ib_kinematics[struct_no]->setNewKinematicsVelocity(d_FuRMoRP_new_time, d_incremented_angle_from_reference_axis[struct_no], 
-                d_center_of_mass_current[struct_no], d_tagged_pt_position[struct_no]);	    
+                d_center_of_mass_current[struct_no], d_tagged_pt_position[struct_no]);	
+         	    
+	    d_ib_kinematics[struct_no]->setNewShape();
          } 
          
          if(struct_param.getStructureIsSelfTranslating()) calculateMomentumOfNewKinematicsVelocity(struct_no); 
@@ -1236,8 +1236,8 @@ ConstraintIBMethod::calculateMomentumOfNewKinematicsVelocity(const int position_
     const int total_nodes                             = struct_param.getTotalNodes();
     
     //Zero out linear momentum of kinematics velocity of the structure.
-    for(int i = 0; i < 3; ++i) 
-	d_vel_com_def_new[position_handle][i] = 0.0;
+    for(int d = 0; d < 3; ++d) 
+	d_vel_com_def_new[position_handle][d] = 0.0;
    
     //Calculate linear momentum
     for(int ln = coarsest_ln, itr = 0; ln <= finest_ln && static_cast<unsigned int>(itr) < range.size(); ++ln,++itr)
@@ -1254,6 +1254,8 @@ ConstraintIBMethod::calculateMomentumOfNewKinematicsVelocity(const int position_
 	//on this level.
 	const Pointer<LMesh> mesh          = d_l_data_manager->getLMesh(ln);
 	const std::vector<LNode*>& local_nodes = mesh->getLocalNodes();
+        const std::vector<std::vector<double> >& new_vel = ptr_ib_kinematics->getNewKinematicsVelocity(ln);
+
 	for(std::vector<LNode*>::const_iterator cit = local_nodes.begin(); cit != local_nodes.end(); ++cit)
 	{
 	    const LNode* const node_idx = *cit;
@@ -1262,7 +1264,7 @@ ConstraintIBMethod::calculateMomentumOfNewKinematicsVelocity(const int position_
 	    {
 		for(unsigned int d = 0; d < NDIM; ++d)
 		{
-                    U_com_def[d] += ptr_ib_kinematics->getNewKinematicsVelocity(ln)[d][lag_idx - offset];
+		  U_com_def[d] += new_vel[d][lag_idx - offset];
 		}
 	    }
 	}	    	
@@ -1293,15 +1295,26 @@ ConstraintIBMethod::calculateMomentumOfNewKinematicsVelocity(const int position_
 #ifdef DEBUG_CHECK_ASSERTIONS
             TBOX_ASSERT(d_l_data_manager->levelContainsLagrangianData(ln));
 #endif
-       	
-            std::pair<int,int> lag_idx_range = range[itr];
+
+	    std::pair<int,int> lag_idx_range = range[itr];
 	    const int offset = lag_idx_range.first;
 	    blitz::TinyVector<double,3> R_cross_U_def(0.0);
 	
 	    //Get LData corresponding to the present position of the structures.
-       	    const blitz::Array<double,2>& X_data   = *d_X_new_data[ln]->getLocalFormVecArray();
+	    Pointer<LData> ptr_x_lag_data;
+	    if(MathUtilities<double>::equalEps(d_FuRMoRP_current_time,0.0) )
+	    {  
+		ptr_x_lag_data  = d_l_data_manager->getLData("X",ln);
+	    }	  
+	    else
+	    {
+	        ptr_x_lag_data = d_X_new_data[ln];
+	    }
+	    TBOX_ASSERT(!ptr_x_lag_data.isNull());
+       	    const blitz::Array<double,2>& X_data   = *ptr_x_lag_data->getLocalFormVecArray();
 	    const Pointer<LMesh> mesh              =  d_l_data_manager->getLMesh(ln);
 	    const std::vector<LNode*>& local_nodes =  mesh->getLocalNodes();
+            const std::vector<std::vector<double> >& new_vel = ptr_ib_kinematics->getNewKinematicsVelocity(ln);
 
 	    for(std::vector<LNode*>::const_iterator cit = local_nodes.begin(); cit != local_nodes.end(); ++cit)
 	    {
@@ -1312,26 +1325,26 @@ ConstraintIBMethod::calculateMomentumOfNewKinematicsVelocity(const int position_
 	            const int local_idx = node_idx->getLocalPETScIndex();
 		    const double* const X = &X_data(local_idx,0);
 #if (NDIM == 2)
-		    double x_cm = X[0] - d_center_of_mass_new[position_handle][0];
-		    double y_cm = X[1] - d_center_of_mass_new[position_handle][1];
-		    R_cross_U_def[2] +=  ( x_cm*(ptr_ib_kinematics->getNewKinematicsVelocity(ln))[1][lag_idx - offset] 
-	                -y_cm*(ptr_ib_kinematics->getNewKinematicsVelocity(ln))[0][lag_idx - offset] );
+		    double x = X[0] - d_center_of_mass_new[position_handle][0];
+		    double y = X[1] - d_center_of_mass_new[position_handle][1];
+		    R_cross_U_def[2] +=  (  x*(new_vel[1][lag_idx - offset]) 
+					   -y*(new_vel[0][lag_idx - offset]) );
 
 #endif
 		    
 #if (NDIM == 3)
-	            double x_cm = X[0] - d_center_of_mass_new[position_handle][0];
-		    double y_cm = X[1] - d_center_of_mass_new[position_handle][1];
-		    double z_cm = X[2] - d_center_of_mass_new[position_handle][2];
+	            double x = X[0] - d_center_of_mass_new[position_handle][0];
+		    double y = X[1] - d_center_of_mass_new[position_handle][1];
+		    double z = X[2] - d_center_of_mass_new[position_handle][2];
 		    
-		    R_cross_U_def[0]  +=  ( y_cm*(ptr_ib_kinematics->getNewKinematicsVelocity(ln))[2][lag_idx - offset] 
-	                        -z_cm* (ptr_ib_kinematics->getNewKinematicsVelocity(ln))[1][lag_idx - offset] );
+		    R_cross_U_def[0]  +=  ( y*(new_vel[2][lag_idx - offset]) 
+					   -z*(new_vel[1][lag_idx - offset]) );
 	    
-	            R_cross_U_def[1] +=  ( -x_cm*(ptr_ib_kinematics->getNewKinematicsVelocity(ln))[2][lag_idx - offset] 
-	                         +z_cm*(ptr_ib_kinematics->getNewKinematicsVelocity(ln))[0][lag_idx - offset] );
+	            R_cross_U_def[1] +=  ( -x*(new_vel[2][lag_idx - offset]) 
+					   +z*(new_vel[0][lag_idx - offset]) );
 	    
-	            R_cross_U_def[2] +=  ( x_cm*(ptr_ib_kinematics->getNewKinematicsVelocity(ln))[1][lag_idx - offset] 
-	                        -y_cm*(ptr_ib_kinematics->getNewKinematicsVelocity(ln))[0][lag_idx - offset] );		   
+	            R_cross_U_def[2] +=  ( x*(new_vel[1][lag_idx - offset])
+					  -y*(new_vel[0][lag_idx - offset]) );		   
 #endif
 	        }
 	    }
@@ -1339,31 +1352,31 @@ ConstraintIBMethod::calculateMomentumOfNewKinematicsVelocity(const int position_
 	    {
 	      d_omega_com_def_new[position_handle][d] += R_cross_U_def[d];
 	    } 
-	    d_X_new_data[ln]->restoreArrays(); 
+	    ptr_x_lag_data->restoreArrays(); 
         } //all levels
         SAMRAI_MPI::sumReduction(&d_omega_com_def_new[position_handle][0],3);
-    } //if struct is rotating
-    
+	
     // Find angular velocity of deformational velocity.
 #if (NDIM == 2)
-    d_omega_com_def_new[position_handle][2] /= d_moment_of_inertia_new[position_handle](2,2);               
+        d_omega_com_def_new[position_handle][2] /= d_moment_of_inertia_new[position_handle](2,2);               
 #endif
  
 #if (NDIM == 3)       
-    solveSystemOfEqns(d_omega_com_def_new[position_handle],d_moment_of_inertia_new[position_handle]); 
-    for(int d = 0; d < 3; ++d)
-        if(!calculate_rot_mom[d]) d_omega_com_def_new[position_handle][d] = 0.0;
-      
-#endif
+        solveSystemOfEqns(d_omega_com_def_new[position_handle],d_moment_of_inertia_new[position_handle]); 
+        for(int d = 0; d < 3; ++d)
+            if(!calculate_rot_mom[d]) d_omega_com_def_new[position_handle][d] = 0.0;     
+#endif	
+		
+	//copy the new def velocity at last cycle number.
+        if( d_INS_current_cycle_num == d_INS_num_cycles -1)
+        {
+            d_vel_com_def_current[position_handle]   = d_vel_com_def_new[position_handle];
+            d_omega_com_def_current[position_handle] = d_omega_com_def_new[position_handle];
+        }
 	
-    //copy the new def velocity at last cycle number.
-    if( d_INS_current_cycle_num == d_INS_num_cycles -1)
-    {
-        d_vel_com_def_current[position_handle]   = d_vel_com_def_new[position_handle];
-        d_omega_com_def_current[position_handle] = d_omega_com_def_new[position_handle];
-    }
-	
-	
+    } //if struct is rotating
+    
+
     return;
 } //calculateMomentumOfNewKinematicsVelocity
 
@@ -1567,6 +1580,7 @@ ConstraintIBMethod::calculateRigidMomentum()
 	}
     }
   
+   
     //Calculate rigid rotational velocity.
     for(int ln = coarsest_ln; ln <= finest_ln; ++ln)
     {
@@ -1602,20 +1616,18 @@ ConstraintIBMethod::calculateRigidMomentum()
 		    const double* const U = &U_interp_data(local_idx,0);
 		    const double* const X = &X_data       (local_idx,0);
 #if (NDIM == 2)
-		    Omega_rigid[2] +=  (X[0]-d_center_of_mass_new[location_struct_handle][0])*U[1] 
-		                     - (X[1]-d_center_of_mass_new[location_struct_handle][1])*U[0]; 
+		    double x = X[0] - d_center_of_mass_new[location_struct_handle][0];
+		    double y = X[1] - d_center_of_mass_new[location_struct_handle][1];
+		    Omega_rigid[2] +=  x*U[1] - y*U[0]; 
 #endif
 		    
 #if (NDIM == 3)
-		   Omega_rigid[0] +=  (X[1]-d_center_of_mass_new[location_struct_handle][1])*U[2] 
-		                     -(X[1]-d_center_of_mass_new[location_struct_handle][2])*U[1];	
-				     
-		   Omega_rigid[1] += -(X[0]-d_center_of_mass_new[location_struct_handle][0])*U[2] 
-		                     +(X[2]-d_center_of_mass_new[location_struct_handle][2])*U[0];
-				     
-		   Omega_rigid[2] +=  (X[0]-d_center_of_mass_new[location_struct_handle][0])*U[1] 
-		                     -(X[1]-d_center_of_mass_new[location_struct_handle][1])*U[0];		     
-		    
+		   double x = X[0] - d_center_of_mass_new[location_struct_handle][0];
+		   double y = X[1] - d_center_of_mass_new[location_struct_handle][1];
+		   double z = X[2] - d_center_of_mass_new[location_struct_handle][2];
+		   Omega_rigid[0] +=  y*U[2] -z*U[1];					     
+		   Omega_rigid[1] += -x*U[2] +z*U[0];
+		   Omega_rigid[2] +=  x*U[1] -y*U[0];		     	    
 #endif
 	        }	     
 	    }
@@ -1678,7 +1690,7 @@ ConstraintIBMethod::calculateRigidMomentum()
                                 << d_omega_com_def_new[struct_no][2] << std::endl;
 	}
     }
-    
+        
     return;
   
 } //calculateRigidMomentum
@@ -1713,7 +1725,8 @@ ConstraintIBMethod::calculateCurrentLagrangianVelocity()
 	    Pointer<ConstraintIBKinematics> ptr_ib_kinematics = *std::find_if(d_ib_kinematics.begin(),d_ib_kinematics.end(),find_struct_handle(lag_idx_range));
 	    const int location_struct_handle = find_struct_handle_position(d_ib_kinematics.begin(),d_ib_kinematics.end(),ptr_ib_kinematics);
 	    const StructureParameters& struct_param  = ptr_ib_kinematics->getStructureParameters();
-	     
+	    const std::vector<std::vector<double> >& current_vel = ptr_ib_kinematics->getCurrentKinematicsVelocity(ln); 
+
 	    for(std::vector<LNode*>::const_iterator cit = local_nodes.begin(); cit != local_nodes.end(); ++cit)
 	    {
 	        const LNode* const node_idx = *cit;
@@ -1742,7 +1755,7 @@ ConstraintIBMethod::calculateCurrentLagrangianVelocity()
 			    for(int d = 0; d < NDIM ; ++d)
 			    {
 			        U_current[d]  =  d_rigid_trans_vel_current[location_struct_handle][d] - d_vel_com_def_current[location_struct_handle][d] + WxR[d] 
-			               + (ptr_ib_kinematics->getCurrentKinematicsVelocity(ln))[d][lag_idx - offset];		            
+			             + current_vel[d][lag_idx - offset];		            
 			    }					    					    
 			}//rotating
 			else
@@ -1750,7 +1763,7 @@ ConstraintIBMethod::calculateCurrentLagrangianVelocity()
 			    for(int d = 0; d < NDIM ; ++d)
 			    {
 			        U_current[d]  =  d_rigid_trans_vel_current[location_struct_handle][d] - d_vel_com_def_current[location_struct_handle][d]  
-			                   + (ptr_ib_kinematics->getCurrentKinematicsVelocity(ln))[d][lag_idx - offset];
+			            + current_vel[d][lag_idx - offset];
 			    }
 			  
 			}//not rotating			
@@ -1759,7 +1772,7 @@ ConstraintIBMethod::calculateCurrentLagrangianVelocity()
 		    {		        
 		      	for(int d = 0; d < NDIM ; ++d)
 			{
-			    U_current[d]  =  (ptr_ib_kinematics->getCurrentKinematicsVelocity(ln))[d][lag_idx - offset];
+			    U_current[d]  =  current_vel[d][lag_idx - offset];
 			}		      
 		    } //imposed momentum
 		    
@@ -1807,7 +1820,8 @@ ConstraintIBMethod::correctVelocityOnLagrangianMesh()
 	    Pointer<ConstraintIBKinematics> ptr_ib_kinematics = *std::find_if(d_ib_kinematics.begin(),d_ib_kinematics.end(),find_struct_handle(lag_idx_range));
 	    const int location_struct_handle = find_struct_handle_position(d_ib_kinematics.begin(),d_ib_kinematics.end(),ptr_ib_kinematics);
 	    const StructureParameters& struct_param  = ptr_ib_kinematics->getStructureParameters();
-	     
+	    const std::vector<std::vector<double> >& new_vel = ptr_ib_kinematics->getNewKinematicsVelocity(ln); 
+
 	    for(std::vector<LNode*>::const_iterator cit = local_nodes.begin(); cit != local_nodes.end(); ++cit)
 	    {
 	        const LNode* const node_idx = *cit;
@@ -1838,7 +1852,7 @@ ConstraintIBMethod::correctVelocityOnLagrangianMesh()
 			    for(int d = 0; d < NDIM ; ++d)
 			    {
 			        U_new[d]  =  d_rigid_trans_vel_new[location_struct_handle][d] - d_vel_com_def_new[location_struct_handle][d] + WxR[d] 
-			                   + (ptr_ib_kinematics->getNewKinematicsVelocity(ln))[d][lag_idx - offset];
+			                   + new_vel[d][lag_idx - offset];
 			        U_corr[d] =  (U_new[d] - U[d])*d_vol_element[location_struct_handle];			            
 			    }					    					    
 			}//rotating
@@ -1847,8 +1861,8 @@ ConstraintIBMethod::correctVelocityOnLagrangianMesh()
 			    for(int d = 0; d < NDIM ; ++d)
 			    {
 			        U_new[d]  =  d_rigid_trans_vel_new[location_struct_handle][d] - d_vel_com_def_new[location_struct_handle][d]  
-			                   + (ptr_ib_kinematics->getNewKinematicsVelocity(ln))[d][lag_idx - offset];
-			        U_corr[d] =  (U_new[d] - U[d])*d_vol_element[location_struct_handle];			            
+			                   + new_vel[d][lag_idx - offset];
+			        U_corr[d] =  (U_new[d] - U[d])*d_vol_element[location_struct_handle];	            
 			    }
 			  
 			}//not rotating			
@@ -1857,7 +1871,7 @@ ConstraintIBMethod::correctVelocityOnLagrangianMesh()
 		    {		        
 		      	for(int d = 0; d < NDIM ; ++d)
 			{
-			    U_new[d]  =  (ptr_ib_kinematics->getNewKinematicsVelocity(ln))[d][lag_idx - offset];
+			    U_new[d]  =  new_vel[d][lag_idx - offset];
 			    U_corr[d] =  (U_new[d] - U[d])*d_vol_element[location_struct_handle];			            
 			}		      
 		    } //imposed momentum
@@ -2098,7 +2112,8 @@ ConstraintIBMethod::updateStructurePositionEulerStep()
 	    const int location_struct_handle = find_struct_handle_position(d_ib_kinematics.begin(),d_ib_kinematics.end(),ptr_ib_kinematics);
 	    const StructureParameters& struct_param  = ptr_ib_kinematics->getStructureParameters();
 	    const std::string position_update_method = struct_param.getPositionUpdateMethod();
-	      
+	    const std::vector<std::vector<double> >& new_shape  = ptr_ib_kinematics->getNewShape(ln);
+	    
 	    for(std::vector<LNode*>::const_iterator cit = local_nodes.begin(); cit != local_nodes.end(); ++cit)
 	    {
 	        const LNode* const node_idx = *cit;
@@ -2120,11 +2135,15 @@ ConstraintIBMethod::updateStructurePositionEulerStep()
 		    {		      
 		      	for(int d = 0 ; d < NDIM; ++d)
 			{
-			    X_new[d] = d_center_of_mass_current[location_struct_handle][d]+ (ptr_ib_kinematics->getNewShape(ln))[d][lag_idx - offset]
+			    X_new[d] = d_center_of_mass_current[location_struct_handle][d]+ new_shape[d][lag_idx - offset]
 			        + dt*(d_rigid_trans_vel_current[location_struct_handle][d]);
 			}		      
 		    }
-
+		    else
+		    {
+		        TBOX_ERROR("ConstraintIBMethod::updateStructurePositionEulerStep():: Unknown position update method encountered"
+			            << "Supported methods are : CONSTRAINT_VELOCITY and CONSTRAINT_POSITION " << std::endl);  
+		    }
 	        }	     
 	    }
         }// all structs
@@ -2194,7 +2213,8 @@ ConstraintIBMethod::updateStructurePositionMidPointStep()
 	    const int location_struct_handle = find_struct_handle_position(d_ib_kinematics.begin(),d_ib_kinematics.end(),ptr_ib_kinematics);
 	    const StructureParameters& struct_param  = ptr_ib_kinematics->getStructureParameters();
 	    const std::string position_update_method = struct_param.getPositionUpdateMethod();
-	      
+	    const std::vector<std::vector<double> >& new_shape  = ptr_ib_kinematics->getNewShape(ln);
+
 	    for(std::vector<LNode*>::const_iterator cit = local_nodes.begin(); cit != local_nodes.end(); ++cit)
 	    {
 	        const LNode* const node_idx = *cit;
@@ -2213,14 +2233,18 @@ ConstraintIBMethod::updateStructurePositionMidPointStep()
 			}		      		      
 		    }
 		    else if(position_update_method == "CONSTRAINT_POSITION")
-		    {		      
+		    {	
 		      	for(int d = 0 ; d < NDIM; ++d)
 			{
-			    X_new[d] = d_center_of_mass_current[location_struct_handle][d]+ (ptr_ib_kinematics->getNewShape(ln))[d][lag_idx - offset]
+			    X_new[d] = d_center_of_mass_current[location_struct_handle][d]+ new_shape[d][lag_idx - offset]
 			        + dt*0.5*(d_rigid_trans_vel_current[location_struct_handle][d] + d_rigid_trans_vel_new[location_struct_handle][d]);
 			}		      
 		    }
-
+		    else
+		    {
+		        TBOX_ERROR("ConstraintIBMethod::updateStructurePositionMidPointStep():: Unknown position update method encountered"
+			            << "Supported methods are : CONSTRAINT_VELOCITY and CONSTRAINT_POSITION " << std::endl);  
+		    }
 	        }	     
 	    }
         }// all structs
