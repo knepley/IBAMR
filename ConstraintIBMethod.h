@@ -244,14 +244,14 @@ private:
      * \brief Set the time at which FuRMoRP is applied.
      */
     void
-    setFurmorpTime(
+    setFuRMoRPTime(
         const double current_time,
         const double new_time)
     {
         d_FuRMoRP_current_time = current_time;
         d_FuRMoRP_new_time     = new_time;
         return;
-    }// setFurmorpTime
+    }// setFuRMoRPTime
 
     /*!
      * Interpolate fluid solve velocity from Eulerian grid onto the Lagrangian mesh.
@@ -260,10 +260,16 @@ private:
     interpolateFluidSolveVelocity();
 
     /*!
-     * Calculate the rigid translational and rotational velocity.
+     * Calculate the rigid translational velocity.
      */
     void
-    calculateRigidMomentum();
+    calculateRigidTranslationalMomentum();
+    
+    /*!
+     * Calculate the rigid rotational velocity.
+     */
+    void
+    calculateRigidRotationalMomentum();
 
     /*!
      * Calculate current velocity on the material points.

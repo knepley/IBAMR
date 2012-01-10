@@ -395,7 +395,7 @@ ConstraintIBMethod::postprocessSolveFluidEquations(
     IBMethod::postprocessSolveFluidEquations(current_time, new_time, cycle_num);
     IBTK_TIMER_START(t_postprocessSolveFluidEquation);
     
-    setFurmorpTime(current_time,new_time);
+    setFuRMoRPTime(current_time,new_time);
     setINSCycleNumberAndCounter(cycle_num);
     
     IBTK_TIMER_START(t_calculateCOMandMOIOfStructures);
@@ -411,7 +411,8 @@ ConstraintIBMethod::postprocessSolveFluidEquations(
     IBTK_TIMER_STOP(t_calculateNewKinematicsVelocity);
 
     IBTK_TIMER_START(t_calculateRigidMomentum);
-    calculateRigidMomentum();
+    calculateRigidTranslationalMomentum();
+    calculateRigidRotationalMomentum();
     IBTK_TIMER_STOP(t_calculateRigidMomentum);
 
     IBTK_TIMER_START(t_correctVelocityOnLagrangianMesh);
@@ -962,7 +963,7 @@ ConstraintIBMethod::calculateCOMandMOIOfStructures()
 	    if(!struct_param.getStructureIsSelfRotating()) continue;
 	    
 	    const int location_struct_handle = find_struct_handle_position(d_ib_kinematics.begin(),d_ib_kinematics.end(),ptr_ib_kinematics);
-	    const std::vector<double>& X_com        = d_center_of_mass_new[location_struct_handle]; 
+	    const std::vector<double>& X_com = d_center_of_mass_new[location_struct_handle]; 
 	    
 	    blitz::Array<double,2> Inertia(3,3);
 	    Inertia = 0.0;
@@ -1022,13 +1023,13 @@ ConstraintIBMethod::calculateCOMandMOIOfStructures()
     }
     
     //Find current COM and MOI when num of cycles = 1
-    if(d_INS_num_cycles == 1 && ! MathUtilities<double>::equalEps(d_FuRMoRP_current_time,0.0))
+    if(d_INS_num_cycles == 1 && !MathUtilities<double>::equalEps(d_FuRMoRP_current_time,0.0))
     {    
         //Zero out the COM vector.
         for(int struct_no = 0; struct_no < d_no_structures; ++struct_no)
         {
-            for(int i = 0; i < 3; ++i) 
-	        d_center_of_mass_current[struct_no][i] = 0.0;
+            for(int d = 0; d < 3; ++d) 
+	        d_center_of_mass_current[struct_no][d] = 0.0;
         }
         std::vector<std::vector<double> > tagged_position(d_no_structures,std::vector<double>(3,0.0));    
         for(int ln = coarsest_ln; ln <= finest_ln; ++ln)
@@ -1191,6 +1192,7 @@ ConstraintIBMethod::calculateCOMandMOIOfStructures()
    }
        
     return;
+    
 } //calculateCOMandMOIOfStructures
 
 
@@ -1199,6 +1201,7 @@ ConstraintIBMethod::calculateNewKinematicsVelocity()
 {      
     typedef ConstraintIBKinematics::StructureParameters StructureParameters;
     const double dt = d_FuRMoRP_new_time - d_FuRMoRP_current_time;
+    
     for(int struct_no = 0; struct_no < d_no_structures; ++struct_no)
     {
         const StructureParameters& struct_param = d_ib_kinematics[struct_no]->getStructureParameters();
@@ -1206,8 +1209,8 @@ ConstraintIBMethod::calculateNewKinematicsVelocity()
         //Theta_new = Theta_old + Omega_old*dt
         if (d_INS_current_cycle_num == 0)
         {
-	    for(int i = 0 ; i < 3; ++i)
-	         d_incremented_angle_from_reference_axis[struct_no][i] +=  (d_rigid_rot_vel_current[struct_no][i] - d_omega_com_def_current[struct_no][i])*dt;
+	    for(int d = 0; d < 3; ++d)
+	         d_incremented_angle_from_reference_axis[struct_no][d] +=  (d_rigid_rot_vel_current[struct_no][d] - d_omega_com_def_current[struct_no][d])*dt;
        
             d_ib_kinematics[struct_no]->setNewKinematicsVelocity(d_FuRMoRP_new_time, d_incremented_angle_from_reference_axis[struct_no], 
                 d_center_of_mass_current[struct_no], d_tagged_pt_position[struct_no]);	
@@ -1281,6 +1284,12 @@ ConstraintIBMethod::calculateMomentumOfNewKinematicsVelocity(const int position_
 	    d_vel_com_def_new[position_handle][d] /= total_nodes;
 	else
 	    d_vel_com_def_new[position_handle][d] = 0.0;
+    }
+    
+    //copy the new def velocity at last cycle number.
+    if( d_INS_current_cycle_num == d_INS_num_cycles -1)
+    {
+        d_vel_com_def_current[position_handle]   = d_vel_com_def_new[position_handle];
     }
 	
     //Calculate angular momentum.
@@ -1358,7 +1367,7 @@ ConstraintIBMethod::calculateMomentumOfNewKinematicsVelocity(const int position_
 	
     // Find angular velocity of deformational velocity.
 #if (NDIM == 2)
-        d_omega_com_def_new[position_handle][2] /= d_moment_of_inertia_new[position_handle](2,2);               
+        d_omega_com_def_new[position_handle][2] /=  d_moment_of_inertia_new[position_handle](2,2);               
 #endif
  
 #if (NDIM == 3)       
@@ -1370,10 +1379,9 @@ ConstraintIBMethod::calculateMomentumOfNewKinematicsVelocity(const int position_
 	//copy the new def velocity at last cycle number.
         if( d_INS_current_cycle_num == d_INS_num_cycles -1)
         {
-            d_vel_com_def_current[position_handle]   = d_vel_com_def_new[position_handle];
             d_omega_com_def_current[position_handle] = d_omega_com_def_new[position_handle];
         }
-	
+       
     } //if struct is rotating
     
 
@@ -1505,17 +1513,13 @@ ConstraintIBMethod::calculateVolumeElement()
 
 
 void
-ConstraintIBMethod::calculateRigidMomentum()
+ConstraintIBMethod::calculateRigidTranslationalMomentum()
 {
       
     //Zero out new rigid momentum.
     for(int struct_no = 0; struct_no < d_no_structures; ++ struct_no)
     {
-        for(int d = 0; d < NDIM; ++d)
-	{
-            d_rigid_trans_vel_new[struct_no][d] = 0.0; 
-	    d_rigid_rot_vel_new[struct_no][d]   = 0.0;
-	}
+        for(int d = 0; d < 3; ++d)   d_rigid_trans_vel_new[struct_no][d] = 0.0; 
     }
     
     typedef ConstraintIBKinematics::StructureParameters StructureParameters;
@@ -1580,7 +1584,50 @@ ConstraintIBMethod::calculateRigidMomentum()
 	}
     }
   
+    
+    //copy the new velocity to current velocity at last cycle number.
+    if(d_INS_current_cycle_num == d_INS_num_cycles -1)
+    {
+        for(int struct_no = 0; struct_no < d_no_structures; ++ struct_no)
+        {
+            d_rigid_trans_vel_current[struct_no] = d_rigid_trans_vel_new[struct_no]; 
+        }
+    }
    
+  
+    if( !SAMRAI_MPI::getRank() && d_INS_current_cycle_num == d_INS_num_cycles-1 && d_print_output && d_output_trans_vel
+       && (d_timestep_counter % d_output_interval ) == 0 )
+    {
+        for(int struct_no = 0; struct_no < d_no_structures; ++struct_no)
+	{
+            *d_trans_vel_stream[struct_no] << d_FuRMoRP_new_time      << '\t'<< d_rigid_trans_vel_new[struct_no][0] << '\t'
+                                << d_rigid_trans_vel_new[struct_no][1]<< '\t'<< d_rigid_trans_vel_new[struct_no][2] <<'\t' 
+                                << d_vel_com_def_new[struct_no][0]    << '\t'<< d_vel_com_def_new[struct_no][1]     << '\t' 
+                                << d_vel_com_def_new[struct_no][2]    << std::endl;
+	}
+    }
+    
+
+    return;
+  
+} //calculateRigidTranslationalMomentum
+
+
+void
+ConstraintIBMethod::calculateRigidRotationalMomentum()
+{
+  
+    //Zero out new rigid momentum.
+    for(int struct_no = 0; struct_no < d_no_structures; ++struct_no)
+    {
+        for(int d = 0; d < 3; ++d)  d_rigid_rot_vel_new[struct_no][d]   = 0.0;
+	
+    }
+    
+    typedef ConstraintIBKinematics::StructureParameters StructureParameters;
+    const int coarsest_ln = 0;
+    const int finest_ln   = d_hierarchy->getFinestLevelNumber();
+  
     //Calculate rigid rotational velocity.
     for(int ln = coarsest_ln; ln <= finest_ln; ++ln)
     {
@@ -1591,6 +1638,7 @@ ConstraintIBMethod::calculateRigidMomentum()
        	const blitz::Array<double,2>& X_data        = *d_X_new_data[ln]->getLocalFormVecArray();
 	const Pointer<LMesh> mesh                   =  d_l_data_manager->getLMesh(ln);
 	const std::vector<LNode*>& local_nodes      =  mesh->getLocalNodes();
+	
 	
 	// Get structures on this level.
         const std::vector<int> structIDs = d_l_data_manager->getLagrangianStructureIDs(ln);
@@ -1614,17 +1662,17 @@ ConstraintIBMethod::calculateRigidMomentum()
 	        {
 		    const int local_idx = node_idx->getLocalPETScIndex();
 		    const double* const U = &U_interp_data(local_idx,0);
-		    const double* const X = &X_data       (local_idx,0);
+		    const double* const X = &X_data(local_idx,0);
 #if (NDIM == 2)
-		    double x = X[0] - d_center_of_mass_new[location_struct_handle][0];
-		    double y = X[1] - d_center_of_mass_new[location_struct_handle][1];
+		    const double x = X[0] - d_center_of_mass_new[location_struct_handle][0];
+		    const double y = X[1] - d_center_of_mass_new[location_struct_handle][1];
 		    Omega_rigid[2] +=  x*U[1] - y*U[0]; 
 #endif
 		    
 #if (NDIM == 3)
-		   double x = X[0] - d_center_of_mass_new[location_struct_handle][0];
-		   double y = X[1] - d_center_of_mass_new[location_struct_handle][1];
-		   double z = X[2] - d_center_of_mass_new[location_struct_handle][2];
+		   const double x = X[0] - d_center_of_mass_new[location_struct_handle][0];
+		   const double y = X[1] - d_center_of_mass_new[location_struct_handle][1];
+		   const double z = X[2] - d_center_of_mass_new[location_struct_handle][2];
 		   Omega_rigid[0] +=  y*U[2] -z*U[1];					     
 		   Omega_rigid[1] += -x*U[2] +z*U[0];
 		   Omega_rigid[2] +=  x*U[1] -y*U[0];		     	    
@@ -1637,6 +1685,7 @@ ConstraintIBMethod::calculateRigidMomentum()
 	d_X_new_data[ln]->restoreArrays();
     }// all levels
     
+    
     for(int struct_no = 0; struct_no < d_no_structures; ++struct_no)
     {
         const StructureParameters& struct_param = d_ib_kinematics[struct_no]->getStructureParameters();
@@ -1644,7 +1693,7 @@ ConstraintIBMethod::calculateRigidMomentum()
 	{
 	    SAMRAI_MPI::sumReduction(&d_rigid_rot_vel_new[struct_no][0],3); 
 #if (NDIM == 2)
-	    d_rigid_rot_vel_new[struct_no][2] /= d_moment_of_inertia_new[struct_no](2,2);
+	    d_rigid_rot_vel_new[struct_no][2] /=  d_moment_of_inertia_new[struct_no](2,2);
 #endif
 	    
 #if (NDIM == 3)
@@ -1659,26 +1708,13 @@ ConstraintIBMethod::calculateRigidMomentum()
     //copy the new velocity to current velocity at last cycle number.
     if(d_INS_current_cycle_num == d_INS_num_cycles -1)
     {
-        for(int struct_no = 0; struct_no < d_no_structures; ++ struct_no)
+        for(int struct_no = 0; struct_no < d_no_structures; ++struct_no)
         {
-            d_rigid_trans_vel_current[struct_no] = d_rigid_trans_vel_new[struct_no]; 
 	    d_rigid_rot_vel_current[struct_no]   = d_rigid_rot_vel_new[struct_no];
         }
     }
    
   
-    if( !SAMRAI_MPI::getRank() && d_INS_current_cycle_num == d_INS_num_cycles-1 && d_print_output && d_output_trans_vel
-       && (d_timestep_counter % d_output_interval ) == 0 )
-    {
-        for(int struct_no = 0; struct_no < d_no_structures; ++struct_no)
-	{
-            *d_trans_vel_stream[struct_no] << d_FuRMoRP_new_time      << '\t'<< d_rigid_trans_vel_new[struct_no][0] << '\t'
-                                << d_rigid_trans_vel_new[struct_no][1]<< '\t'<< d_rigid_trans_vel_new[struct_no][2] <<'\t' 
-                                << d_vel_com_def_new[struct_no][0]    << '\t'<< d_vel_com_def_new[struct_no][1]     << '\t' 
-                                << d_vel_com_def_new[struct_no][2]    << std::endl;
-	}
-    }
-    
     if( !SAMRAI_MPI::getRank() && d_INS_current_cycle_num == d_INS_num_cycles-1 && d_print_output && d_output_rot_vel
        && (d_timestep_counter % d_output_interval ) == 0 )
     {
@@ -1690,10 +1726,10 @@ ConstraintIBMethod::calculateRigidMomentum()
                                 << d_omega_com_def_new[struct_no][2] << std::endl;
 	}
     }
-        
+  
     return;
   
-} //calculateRigidMomentum
+}//calculateRigidRotationalMomentum
 
 void
 ConstraintIBMethod::calculateCurrentLagrangianVelocity()
@@ -1743,19 +1779,19 @@ ConstraintIBMethod::calculateCurrentLagrangianVelocity()
 			{
 		            for(int d = 0; d < NDIM ; ++d)  R[d] = X[d] - d_center_of_mass_current[location_struct_handle][d]; 
 			    
-		            WxR[0] =  R[2]*(d_rigid_rot_vel_current[location_struct_handle][1] - d_omega_com_def_current[location_struct_handle][1]) 
-		                     -R[1]*(d_rigid_rot_vel_current[location_struct_handle][2] - d_omega_com_def_current[location_struct_handle][2]);
+		            WxR[0] =  R[2]*(d_rigid_rot_vel_current[location_struct_handle][1]  -d_omega_com_def_current[location_struct_handle][1]) 
+		                     -R[1]*(d_rigid_rot_vel_current[location_struct_handle][2]  -d_omega_com_def_current[location_struct_handle][2]);
 					     
-                            WxR[1] = -R[2]*(d_rigid_rot_vel_current[location_struct_handle][0] - d_omega_com_def_current[location_struct_handle][0])
-			             +R[0]*(d_rigid_rot_vel_current[location_struct_handle][2] - d_omega_com_def_current[location_struct_handle][2]);
+                            WxR[1] = -R[2]*(d_rigid_rot_vel_current[location_struct_handle][0]  -d_omega_com_def_current[location_struct_handle][0])
+			             +R[0]*(d_rigid_rot_vel_current[location_struct_handle][2]  -d_omega_com_def_current[location_struct_handle][2]);
 					     
-                            WxR[2] =  R[1]*(d_rigid_rot_vel_current[location_struct_handle][0] - d_omega_com_def_current[location_struct_handle][0])
-			             -R[0]*(d_rigid_rot_vel_current[location_struct_handle][1] - d_omega_com_def_current[location_struct_handle][1]);
+                            WxR[2] =  R[1]*(d_rigid_rot_vel_current[location_struct_handle][0]  -d_omega_com_def_current[location_struct_handle][0])
+			             -R[0]*(d_rigid_rot_vel_current[location_struct_handle][1]  -d_omega_com_def_current[location_struct_handle][1]);
 					    
 			    for(int d = 0; d < NDIM ; ++d)
 			    {
-			        U_current[d]  =  d_rigid_trans_vel_current[location_struct_handle][d] - d_vel_com_def_current[location_struct_handle][d] + WxR[d] 
-			             + current_vel[d][lag_idx - offset];		            
+			        U_current[d]  =  d_rigid_trans_vel_current[location_struct_handle][d] - d_vel_com_def_current[location_struct_handle][d] 
+			            + WxR[d] + current_vel[d][lag_idx - offset];		            
 			    }					    					    
 			}//rotating
 			else
@@ -1808,7 +1844,7 @@ ConstraintIBMethod::correctVelocityOnLagrangianMesh()
 	const blitz::Array<double,2>& X_data        = *d_X_new_data[ln]->getLocalFormVecArray();	
 	const Pointer<LMesh> mesh                   =  d_l_data_manager->getLMesh(ln);
 	const std::vector<LNode*>& local_nodes      =  mesh->getLocalNodes();
-	
+
 	// Get structures on this level.
         const std::vector<int> structIDs = d_l_data_manager->getLagrangianStructureIDs(ln);
         const int structs_on_this_ln     = structIDs.size();
@@ -1840,24 +1876,24 @@ ConstraintIBMethod::correctVelocityOnLagrangianMesh()
 			{
 		            for(int d = 0; d < NDIM ; ++d)  R[d] = X[d] - d_center_of_mass_new[location_struct_handle][d]; 
 			    
-		            WxR[0] =  R[2]*(d_rigid_rot_vel_new[location_struct_handle][1] - d_omega_com_def_new[location_struct_handle][1]) 
-		                     -R[1]*(d_rigid_rot_vel_new[location_struct_handle][2] - d_omega_com_def_new[location_struct_handle][2]);
+		            WxR[0] =  R[2]*(d_rigid_rot_vel_new[location_struct_handle][1]  -d_omega_com_def_new[location_struct_handle][1]) 
+		                     -R[1]*(d_rigid_rot_vel_new[location_struct_handle][2]  -d_omega_com_def_new[location_struct_handle][2]);
 					     
-                            WxR[1] = -R[2]*(d_rigid_rot_vel_new[location_struct_handle][0] - d_omega_com_def_new[location_struct_handle][0])
-			             +R[0]*(d_rigid_rot_vel_new[location_struct_handle][2] - d_omega_com_def_new[location_struct_handle][2]);
+                            WxR[1] = -R[2]*(d_rigid_rot_vel_new[location_struct_handle][0]  -d_omega_com_def_new[location_struct_handle][0])
+			            + R[0]*(d_rigid_rot_vel_new[location_struct_handle][2]  -d_omega_com_def_new[location_struct_handle][2]);
 					     
-                            WxR[2] =  R[1]*(d_rigid_rot_vel_new[location_struct_handle][0] - d_omega_com_def_new[location_struct_handle][0])
-			             -R[0]*(d_rigid_rot_vel_new[location_struct_handle][1] - d_omega_com_def_new[location_struct_handle][1]);
+                            WxR[2] =  R[1]*(d_rigid_rot_vel_new[location_struct_handle][0]  -d_omega_com_def_new[location_struct_handle][0])
+			             -R[0]*(d_rigid_rot_vel_new[location_struct_handle][1]  -d_omega_com_def_new[location_struct_handle][1]);
 					    
 			    for(int d = 0; d < NDIM ; ++d)
 			    {
-			        U_new[d]  =  d_rigid_trans_vel_new[location_struct_handle][d] - d_vel_com_def_new[location_struct_handle][d] + WxR[d] 
-			                   + new_vel[d][lag_idx - offset];
-			        U_corr[d] =  (U_new[d] - U[d])*d_vol_element[location_struct_handle];			            
-			    }					    					    
+			        U_new[d]  =  d_rigid_trans_vel_new[location_struct_handle][d] - d_vel_com_def_new[location_struct_handle][d] 
+			            + WxR[d] + new_vel[d][lag_idx - offset];
+			        U_corr[d] =  (U_new[d] - U[d])*d_vol_element[location_struct_handle];	
+			    }
 			}//rotating
 			else
-			{			  
+			{			
 			    for(int d = 0; d < NDIM ; ++d)
 			    {
 			        U_new[d]  =  d_rigid_trans_vel_new[location_struct_handle][d] - d_vel_com_def_new[location_struct_handle][d]  
@@ -1868,7 +1904,7 @@ ConstraintIBMethod::correctVelocityOnLagrangianMesh()
 			}//not rotating			
 		    }
 		    else
-		    {		        
+		    {	
 		      	for(int d = 0; d < NDIM ; ++d)
 			{
 			    U_new[d]  =  new_vel[d][lag_idx - offset];
@@ -2132,8 +2168,8 @@ ConstraintIBMethod::updateStructurePositionEulerStep()
 			}		      		      
 		    }
 		    else if(position_update_method == "CONSTRAINT_POSITION")
-		    {		      
-		      	for(int d = 0 ; d < NDIM; ++d)
+		    {		
+		        for(int d = 0 ; d < NDIM; ++d)
 			{
 			    X_new[d] = d_center_of_mass_current[location_struct_handle][d]+ new_shape[d][lag_idx - offset]
 			        + dt*(d_rigid_trans_vel_current[location_struct_handle][d]);
@@ -2322,7 +2358,7 @@ ConstraintIBMethod::spreadCorrectedLagrangianVelocity()
 	F_data[ln] = d_l_data_U_correction[ln];  
 	X_data[ln] = d_X_new_data[ln];
     }
-  
+   
     d_l_data_manager->spread(d_u_fluidSolve_idx,F_data,X_data,
         getProlongRefineSchedules(d_object_name+"PROLONG::u_fluidSolve"),
 	true,true); 
