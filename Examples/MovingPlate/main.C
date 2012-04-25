@@ -42,7 +42,7 @@
 #include <StandardTagAndInitialize.h>
 
 // Headers for application-specific algorithm/data structure objects
-#include <ibamr/IBHierarchyIntegrator.h>
+#include <ibamr/IBExplicitHierarchyIntegrator.h>
 #include <ibamr/IBMethod.h>
 #include <ibamr/IBStandardForceGen.h>
 #include <ibamr/IBStandardInitializer.h>
@@ -55,7 +55,7 @@
 
 // Application
 #include "../../ConstraintIBMethod.h"
-#include "MovingPlateKinematics.h"
+#include "RigidBodyKinematics.h"
 
 // Function prototypes
 void
@@ -141,7 +141,7 @@ main(
         const int num_structures = input_db->getIntegerWithDefault("num_structures",1);
         Pointer<ConstraintIBMethod> ib_method_ops = new ConstraintIBMethod(
             "ConstraintIBMethod", app_initializer->getComponentDatabase("ConstraintIBMethod"), num_structures);
-        Pointer<IBHierarchyIntegrator> time_integrator = new IBHierarchyIntegrator(
+        Pointer<IBHierarchyIntegrator> time_integrator = new IBExplicitHierarchyIntegrator(
             "IBHierarchyIntegrator", app_initializer->getComponentDatabase("IBHierarchyIntegrator"), ib_method_ops, navier_stokes_integrator);
 	
         Pointer<CartesianGridGeometry<NDIM> > grid_geometry = new CartesianGridGeometry<NDIM>(
@@ -230,12 +230,17 @@ main(
 	
 
         //Create ConstraintIBKinematics objects
-	Pointer<ConstraintIBKinematics> ib_kinematics = new MovingPlateKinematics("MOVING_PLATE",
-             app_initializer->getComponentDatabase("ConstraintIBKinematics")->getDatabase("MovingPlate"),ib_method_ops->getLDataManager());
-	ib_method_ops->registerConstraintIBKinematics(vector<Pointer<ConstraintIBKinematics> >(1,ib_kinematics));
+        vector<Pointer<ConstraintIBKinematics> > ibkinematics_ops_vec;
+	Pointer<ConstraintIBKinematics> ib_kinematics_op;
+        //struct_0
+        ib_kinematics_op = new RigidBodyKinematics("MOVING_PLATE",
+            app_initializer->getComponentDatabase("ConstraintIBKinematics")->getDatabase("MovingPlate"),ib_method_ops->getLDataManager());
+        ibkinematics_ops_vec.push_back(ib_kinematics_op);
+
+        //register ConstraintIBKinematics objects with ConstraintIBMethod.
+	ib_method_ops->registerConstraintIBKinematics(ibkinematics_ops_vec);
 	ib_method_ops->initializeHierarchyOperatorsandData();
-     
-											  
+     											  
         // Deallocate initialization objects.
         ib_method_ops->freeLInitStrategy();
         ib_initializer.setNull();
