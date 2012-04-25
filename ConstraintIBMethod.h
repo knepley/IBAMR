@@ -122,6 +122,45 @@ public:
         const std::vector<SAMRAI::tbox::Pointer<IBAMR::ConstraintIBKinematics> >& ib_kinematics_op);
 
     /*!
+     * \brief Register any preprocess fluid solve callback functions.
+     */
+    inline void
+    registerPreProcessSolveFluidEquationsCallBackFunction(
+	void (*ptr_preprocess_callbackfnc)(const double, const double, const int, void* ), 
+        void* ctx)
+    {
+
+        d_prefluidsolve_callback_fns.push_back(ptr_preprocess_callbackfnc);
+        d_prefluidsolve_callback_fns_ctx.push_back(ctx);
+
+        return;
+    }//registerPreProcessSolveFluidEquationsCallBackFunction
+
+    /*!
+     * \brief Calculate any body forces for INS solver over here.
+     */
+    virtual void
+    preprocessSolveFluidEquations(
+        double current_time,
+	double new_time,
+	int cycle_num);
+
+    /*!
+     * \brief Register any postprocess fluid solve callback functions.
+     */
+    inline void
+    registerPostProcessSolveFluidEquationsCallBackFunction(
+	void (*ptr_postprocess_callbackfnc)(const double, const double, const int, void* ) , 
+        void* ctx)
+    {
+
+        d_postfluidsolve_callback_fns.push_back(ptr_postprocess_callbackfnc);
+        d_postfluidsolve_callback_fns_ctx.push_back(ctx);
+
+        return;
+    }//registerPostProcessSolveFluidEquationsCallBackFunction
+
+    /*!
      * \brief Apply the FuRMoRP algorithm in IBAMR::IBStrategy::postprocessSolveFluidEquations method.
      */
     virtual void
@@ -153,6 +192,24 @@ public:
     putToDatabase(
         SAMRAI::tbox::Pointer<SAMRAI::tbox::Database> db);
 
+    /*!
+     * Get the volume element associated with material points.
+     */
+    inline const std::vector<double>&
+    getVolumeElement()
+    {
+      return d_vol_element;
+      
+    }//getVolumeElement
+    
+    /*!
+     * Get LData associated with Lagrange multiplier force field.
+     */
+    inline const std::vector<SAMRAI::tbox::Pointer<IBTK::LData> >&
+    getLagrangeMultiplier()
+    {
+        return d_l_data_U_correction; 
+    }
     
 private:
  
@@ -493,6 +550,12 @@ private:
      */
     std::vector<std::ofstream*>  d_trans_vel_stream, d_rot_vel_stream, d_drag_force_stream, d_moment_of_inertia_stream,
         d_kinetic_energy_stream,d_position_COM_stream, d_power_spent_stream;
+
+    /*!
+     * Pre and post fluid solve call back functions and contexts.
+     */
+    std::vector<void(*)(const double, const double, const int, void*)> d_prefluidsolve_callback_fns, d_postfluidsolve_callback_fns;
+    std::vector<void*> d_prefluidsolve_callback_fns_ctx, d_postfluidsolve_callback_fns_ctx;
 };
 }// namespace IBAMR
 

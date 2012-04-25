@@ -1,0 +1,304 @@
+// Filename: RigidBodyKinematics.h
+// Written by amneet bhalla on meghnad@mech.northwestern.edu
+// Created on 12/20/2011.
+
+// This is a concrete class which provides kinematics of a rigid solid to ConstraintIBMethod class.
+
+
+#include "RigidBodyKinematics.h"
+
+/////////////////////////////////// INCLUDES /////////////////////////////////////
+
+
+
+//SAMRAI INCLUDES
+#include <tbox/Utilities.h>
+#include <tbox/SAMRAI_MPI.h>
+#include <tbox/PIO.h>
+
+
+//IBAMR INCLUDES
+#include <ibamr/namespaces.h>
+
+//IBTK INCLUDES
+
+// IBTK THIRD-PARTY INCLUDES
+#include <ibtk/muParser.h>
+
+//C++ INCLUDES
+#include <string>
+
+namespace IBAMR
+{
+  
+namespace
+{
+  
+static const double PII =   3.14159265358979323846264338327950288419716939937510;
+  
+} //namespace anonymous
+
+RigidBodyKinematics::RigidBodyKinematics(
+    const std::string& object_name,
+    Pointer<Database> input_db,
+    LDataManager* l_data_manager,
+    bool register_for_restart )
+    : ConstraintIBKinematics(object_name,input_db,l_data_manager,register_for_restart),
+      d_parser_time(new double),
+      d_parser_posn(new double[NDIM]),
+      d_center_of_mass(3,0.0),
+      d_incremented_angle_from_reference_axis(3,0.0), 
+      d_tagged_pt_position(3,0.0)
+{
+    
+    // NOTE: Parent class constructor registers class with the restart manager, sets object name. 
+
+    // Read-in kinematics velocity functions
+    for (int d = 0 ; d < NDIM; ++d)
+    {
+        std::ostringstream stream;
+	stream << "_function_" << d;
+	const std::string postfix = stream.str();
+	std::string key_name = "kinematics_velocity" + postfix;
+	  
+	if( input_db->isString(key_name) )
+	{	    
+	    d_kinematicsvel_function_strings.push_back(input_db->getString(key_name));
+	}
+	else
+	{
+	    d_kinematicsvel_function_strings.push_back("0.0");
+	    TBOX_WARNING("RigidBodyKinematics::RigidBodyKinematics() :\n" << "  no function corresponding to key " 
+	        << key_name <<  "found for dimension = " << d << "; using kinematics_vel = 0.0. " << std::endl); 
+	}
+	
+	d_kinematicsvel_parsers.push_back(new mu::Parser());
+        d_kinematicsvel_parsers.back()->SetExpr(d_kinematicsvel_function_strings.back());
+	d_all_parsers.push_back(d_kinematicsvel_parsers.back());
+    }
+    
+    // Define constants and variables for the parsers.
+    for (std::vector<mu::Parser*>::const_iterator cit = d_all_parsers.begin(); cit != d_all_parsers.end(); ++cit)
+    {	
+	// Various names for pi.
+        (*cit)->DefineConst("pi", PII);
+        (*cit)->DefineConst("Pi", PII);
+        (*cit)->DefineConst("PI", PII);
+	  
+        // Variables
+        (*cit)->DefineVar("T", d_parser_time);
+        (*cit)->DefineVar("t", d_parser_time);
+	for (int d = 0; d < NDIM; ++d)
+        {
+            std::ostringstream stream;
+            stream << d;
+            const std::string postfix = stream.str();
+            (*cit)->DefineVar("X"  + postfix, &(d_parser_posn[d]));
+            (*cit)->DefineVar("x"  + postfix, &(d_parser_posn[d]));
+            (*cit)->DefineVar("X_" + postfix, &(d_parser_posn[d]));
+            (*cit)->DefineVar("x_" + postfix, &(d_parser_posn[d]));
+	    
+        }
+          
+    }
+
+    //Set the size of vectors.
+    const StructureParameters& struct_param = getStructureParameters();
+    const int coarsest_ln                   = struct_param.getCoarsestLevelNumber();
+    const int finest_ln                     = struct_param.getFinestLevelNumber();
+    const int total_levels                  = finest_ln - coarsest_ln + 1; 
+    d_new_kinematics_vel.resize(total_levels);
+    d_current_kinematics_vel.resize(total_levels);
+    
+    const std::vector<std::pair<int,int> >& idx_range = struct_param.getLagIdxRange();
+    for(int ln = 0 ; ln < total_levels ; ++ln)
+    {
+        const int nodes_this_ln = idx_range[ln].second - idx_range[ln].first;
+        d_new_kinematics_vel[ln].resize(NDIM);
+        d_current_kinematics_vel[ln].resize(NDIM);
+        for(int d = 0; d < NDIM; ++d)
+        {
+           d_new_kinematics_vel[ln][d].resize(nodes_this_ln);	
+           d_current_kinematics_vel[ln][d].resize(nodes_this_ln);
+        }
+    }
+        
+    bool from_restart = RestartManager::getManager()->isFromRestart();
+    if (from_restart) 
+    {
+        getFromRestart();
+	setRigidBodySpecificVelocity(d_current_time,d_incremented_angle_from_reference_axis,d_center_of_mass,d_tagged_pt_position);
+	d_new_kinematics_vel = d_current_kinematics_vel;
+	setNewShape();
+    }
+    
+    return;
+  
+} //RigidBodyKinematics
+
+
+RigidBodyKinematics::~RigidBodyKinematics()
+{
+    for (std::vector<mu::Parser*>::const_iterator cit = d_all_parsers.begin(); cit != d_all_parsers.end(); ++cit)
+    {
+        delete (*cit);
+    }
+    delete d_parser_time;
+    delete [] d_parser_posn;
+    return;
+  
+}//~RigidBodyKinematics
+
+void
+RigidBodyKinematics::putToDatabase(
+    Pointer<Database> db)
+{
+    
+    db->putDouble("d_current_time",d_current_time);
+    db->putDoubleArray("d_center_of_mass", &d_center_of_mass[0],3);
+    db->putDoubleArray("d_incremented_angle_from_reference_axis",&d_incremented_angle_from_reference_axis[0],3);
+    db->putDoubleArray("d_tagged_pt_position",&d_tagged_pt_position[0],3);
+   
+    return;
+  
+} //putToDatabase
+
+void
+RigidBodyKinematics::getFromRestart()
+{
+  
+    Pointer<Database> restart_db = RestartManager::getManager()->getRootDatabase();
+    Pointer<Database> db;
+    if (restart_db->isDatabase(d_object_name))
+    {
+        db = restart_db->getDatabase(d_object_name);
+    }
+    else
+    {
+        TBOX_ERROR(d_object_name << ":  Restart database corresponding to "
+                   << d_object_name << " not found in restart file." << std::endl);
+    }
+    
+    d_current_time = db->getDouble("d_current_time");
+    d_new_time     = d_current_time;
+    db->getDoubleArray("d_center_of_mass", &d_center_of_mass[0],3);
+    db->getDoubleArray("d_incremented_angle_from_reference_axis",&d_incremented_angle_from_reference_axis[0],3);
+    db->getDoubleArray("d_tagged_pt_position",&d_tagged_pt_position[0],3);
+  
+    return;
+    
+}//getFromRestart
+
+void
+RigidBodyKinematics::setRigidBodySpecificVelocity(
+    const double time,
+    const std::vector<double>& incremented_angle_from_reference_axis,
+    const std::vector<double>& center_of_mass,
+    const std::vector<double>& tagged_pt_position)
+{
+
+    std::vector<double> vel_parser(NDIM);
+    *d_parser_time = time;
+    for(int d = 0; d < NDIM; ++d) d_parser_posn[d] = center_of_mass[d];
+    for(int d = 0; d < NDIM; ++d) vel_parser[d]    = d_kinematicsvel_parsers[d]->Eval();
+
+    const StructureParameters& struct_param = getStructureParameters();
+    const int coarsest_ln                   = struct_param.getCoarsestLevelNumber();
+    const int finest_ln                     = struct_param.getFinestLevelNumber();
+    const int total_levels                  = finest_ln - coarsest_ln + 1; 
+    const std::vector<std::pair<int,int> >& idx_range = struct_param.getLagIdxRange();
+
+    for(int ln = 0 ; ln < total_levels ; ++ln)
+    {
+        const int nodes_this_ln = idx_range[ln].second - idx_range[ln].first;
+        for(int d = 0; d < NDIM; ++d)
+        {
+	    for(int idx = 0; idx < nodes_this_ln; ++idx)  d_current_kinematics_vel[ln][d][idx] = vel_parser[d];
+        }
+    }
+  
+    return;
+
+}//setRigidBodySpecificVelocity
+
+
+void
+RigidBodyKinematics::setNewKinematicsVelocity(
+     const double new_time,
+     const std::vector<double>& incremented_angle_from_reference_axis,
+     const std::vector<double>& center_of_mass,
+     const std::vector<double>& tagged_pt_position)
+{
+  
+    d_new_time                              = new_time;
+    d_incremented_angle_from_reference_axis = incremented_angle_from_reference_axis;
+    d_center_of_mass                        = center_of_mass;
+    d_tagged_pt_position                    = tagged_pt_position;
+    
+    setRigidBodySpecificVelocity(d_new_time,d_incremented_angle_from_reference_axis,d_center_of_mass,d_tagged_pt_position);
+    if(MathUtilities<double>::equalEps(d_new_time,0.0))
+        d_new_kinematics_vel = d_current_kinematics_vel;
+    else
+        d_new_kinematics_vel.swap(d_current_kinematics_vel);
+     
+    d_current_time = d_new_time;
+    return;
+  
+}//setNewKinematicsVelocity
+
+
+const std::vector<std::vector<double> >&
+RigidBodyKinematics::getNewKinematicsVelocity(
+    const int level) const
+{
+
+    const StructureParameters& struct_param = getStructureParameters();
+    const int coarsest_ln  = struct_param.getCoarsestLevelNumber();
+    
+#ifdef DEBUG_CHECK_ASSERTIONS
+    const int finest_ln    = struct_param.getFinestLevelNumber();
+    TBOX_ASSERT(coarsest_ln <= level && level <= finest_ln);
+#endif
+         
+    return d_new_kinematics_vel[level - coarsest_ln];
+    
+
+} //getNewKinematicsVelocity
+
+
+const std::vector<std::vector<double> >&
+RigidBodyKinematics::getCurrentKinematicsVelocity(const int level) const
+{
+    const StructureParameters& struct_param = getStructureParameters();
+    const int coarsest_ln  = struct_param.getCoarsestLevelNumber();
+   
+#ifdef DEBUG_CHECK_ASSERTIONS
+    const int finest_ln    = struct_param.getFinestLevelNumber();
+    TBOX_ASSERT(coarsest_ln <= level && level <= finest_ln);
+#endif
+
+    return d_current_kinematics_vel[level - coarsest_ln];
+
+  
+} //getCurrentKinematicsVelocity
+
+void
+RigidBodyKinematics::setNewShape()
+{
+    //intentionally left blank
+    return;
+  
+} //setNewShape
+
+const std::vector<std::vector<double> >&
+RigidBodyKinematics::getNewShape(const int /*level*/) const
+{
+  
+    return d_new_shape;
+  
+} //getNewShape
+
+
+
+
+} //namespace IBAMR

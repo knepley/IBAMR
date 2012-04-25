@@ -288,7 +288,7 @@ ConstraintIBMethod::ConstraintIBMethod(
 
         // NOTE: We always use homogeneous Neumann boundary conditions for the
         // velocity correction projection Poisson solver.
-        d_velcorrection_projection_solver->setNullspace(true, NULL);
+        d_velcorrection_projection_solver->setNullspace(true);
     }
     else
     {
@@ -386,6 +386,22 @@ ConstraintIBMethod::~ConstraintIBMethod()
     return;
 } //~ConstraintIBMethod
 
+
+void
+ConstraintIBMethod::preprocessSolveFluidEquations(
+    double current_time, 
+    double new_time, 
+    int cycle_num)
+{
+    IBMethod::preprocessSolveFluidEquations(current_time, new_time, cycle_num);
+
+    //call any registered pre fluid solve callback functions.
+    for(unsigned i = 0; i < d_prefluidsolve_callback_fns.size(); ++i) 
+      d_prefluidsolve_callback_fns[i](current_time, new_time, cycle_num, d_prefluidsolve_callback_fns_ctx[i]);
+
+    return;
+}
+
 void
 ConstraintIBMethod::postprocessSolveFluidEquations(
     double current_time, 
@@ -393,6 +409,8 @@ ConstraintIBMethod::postprocessSolveFluidEquations(
     int cycle_num)
 {
     IBMethod::postprocessSolveFluidEquations(current_time, new_time, cycle_num);
+
+     
     IBTK_TIMER_START(t_postprocessSolveFluidEquation);
     
     setFuRMoRPTime(current_time,new_time);
@@ -440,6 +458,10 @@ ConstraintIBMethod::postprocessSolveFluidEquations(
     }
 
     IBTK_TIMER_STOP(t_postprocessSolveFluidEquation);
+    
+    //call any other registered post fluid solve callback functions.
+    for(unsigned i = 0; i < d_postfluidsolve_callback_fns.size(); ++i) 
+      d_postfluidsolve_callback_fns[i](current_time, new_time, cycle_num,d_postfluidsolve_callback_fns_ctx[i]);
 
     return;
     
@@ -451,7 +473,7 @@ ConstraintIBMethod::registerEulerianVariables()
     IBMethod::registerEulerianVariables();
     
     // Obtain the type of INS fluid solver and velocity variable.
-    d_u_fluidSolve_var                             = d_ib_solver->getINSHierarchyIntegrator()->getVelocityVariable();
+    d_u_fluidSolve_var                             = d_ib_solver->getVelocityVariable();
     Pointer<CellVariable<NDIM,double> > cc_vel_var = d_u_fluidSolve_var;
     Pointer<SideVariable<NDIM,double> > sc_vel_var = d_u_fluidSolve_var;
     if(!cc_vel_var.isNull()) d_collocated_solver   = true;
@@ -460,7 +482,7 @@ ConstraintIBMethod::registerEulerianVariables()
     d_scratch_context                              = var_db->getContext(d_object_name + "::SCRATCH");  
     
     // Initialize  variables & variable contexts associated with projection step.
-    if(d_collocated_solver) d_u_var         = new CellVariable<NDIM,double>(d_object_name + "::u"     );
+    if(d_collocated_solver) d_u_var         = new CellVariable<NDIM,double>(d_object_name + "::u"    , NDIM );
     if(d_staggered_solver)  d_u_var         = new SideVariable<NDIM,double>(d_object_name + "::u"     );
     d_Div_u_var                             = new CellVariable<NDIM,double>(d_object_name + "::Div_u" );
     d_phi_var                               = new CellVariable<NDIM,double>(d_object_name + "::phi"   );
@@ -527,8 +549,8 @@ ConstraintIBMethod::registerEulerianCommunicationAlgorithms()
     IBMethod::registerEulerianCommunicationAlgorithms();
     
     VariableDatabase<NDIM>* var_db                 = VariableDatabase<NDIM>::getDatabase();
-    Pointer<VariableContext> u_new_ctx             = d_ib_solver->getINSHierarchyIntegrator()->getNewContext();
-    Pointer<VariableContext> u_scratch_ctx         = d_ib_solver->getINSHierarchyIntegrator()->getScratchContext();
+    Pointer<VariableContext> u_new_ctx             = d_ib_solver->getNewContext();
+    Pointer<VariableContext> u_scratch_ctx         = d_ib_solver->getScratchContext();
     d_u_fluidSolve_idx                             = var_db->mapVariableAndContextToIndex(d_u_fluidSolve_var, u_new_ctx);
     const int u_scratch_idx                        = var_db->mapVariableAndContextToIndex(d_u_fluidSolve_var, u_scratch_ctx);
     
@@ -714,7 +736,7 @@ ConstraintIBMethod::postprocessIntegrateData(
     d_l_data_X_new_Euler   .clear();
     d_l_data_X_new_MidPoint.clear();
     d_l_data_U_current     .clear();
-  
+    
     return; 
 }
 
@@ -815,6 +837,7 @@ ConstraintIBMethod::setInitialLagrangianVelocity()
     {
         const StructureParameters& struct_param = d_ib_kinematics[struct_no]->getStructureParameters();
       
+
         d_ib_kinematics[struct_no]->setNewKinematicsVelocity(0.0,d_incremented_angle_from_reference_axis[struct_no],
 	    d_center_of_mass_current[struct_no], d_tagged_pt_position[struct_no] );
 	
@@ -1012,6 +1035,7 @@ ConstraintIBMethod::calculateCOMandMOIOfStructures()
         d_moment_of_inertia_new[struct_no](2,1) = d_moment_of_inertia_new[struct_no](1,2);
     }
     
+
     //For cycle no = 0 the inertia tensor calculated will be the current inertia tensor.
     if(  (d_INS_current_cycle_num == 0 && d_INS_num_cycles > 1) || 
          (MathUtilities<double>::equalEps(d_FuRMoRP_current_time,0.0) && d_INS_num_cycles == 1 ) )
@@ -1393,6 +1417,7 @@ void
 ConstraintIBMethod::calculateVolumeElement()
 {  
     typedef ConstraintIBKinematics::StructureParameters StructureParameters;  
+    
     // Initialize variables and variable contexts associated with Eulerian tracking of the Lagrangian points.
     VariableDatabase<NDIM>* var_db        = VariableDatabase<NDIM>::getDatabase();
     const IntVector<NDIM> cell_ghosts     = 0; 
@@ -1492,6 +1517,11 @@ ConstraintIBMethod::calculateVolumeElement()
 	
 	
 	tbox::plog << " ++++++++++++++++ " << " STRUCTURE NO. " << struct_no << "  ++++++++++++++++++++++++++ \n\n\n" 
+                   << " VOLUME OF THE MATERIAL ELEMENT           = " << d_vol_element[struct_no] << "\n"
+                   << " VOLUME OF THE STRUCTURE                  = " << vol_structures[struct_no] << "\n"
+                   << " ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n" << std::endl;
+
+	tbox::pout << " ++++++++++++++++ " << " STRUCTURE NO. " << struct_no << "  ++++++++++++++++++++++++++ \n\n\n" 
                    << " VOLUME OF THE MATERIAL ELEMENT           = " << d_vol_element[struct_no] << "\n"
                    << " VOLUME OF THE STRUCTURE                  = " << vol_structures[struct_no] << "\n"
                    << " ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n" << std::endl;
@@ -1889,7 +1919,8 @@ ConstraintIBMethod::correctVelocityOnLagrangianMesh()
 			    {
 			        U_new[d]  =  d_rigid_trans_vel_new[location_struct_handle][d] - d_vel_com_def_new[location_struct_handle][d] 
 			            + WxR[d] + new_vel[d][lag_idx - offset];
-			        U_corr[d] =  (U_new[d] - U[d])*d_vol_element[location_struct_handle];	
+			        U_corr[d] =  (U_new[d] - U[d])*d_vol_element[location_struct_handle];
+
 			    }
 			}//rotating
 			else
@@ -1898,7 +1929,8 @@ ConstraintIBMethod::correctVelocityOnLagrangianMesh()
 			    {
 			        U_new[d]  =  d_rigid_trans_vel_new[location_struct_handle][d] - d_vel_com_def_new[location_struct_handle][d]  
 			                   + new_vel[d][lag_idx - offset];
-			        U_corr[d] =  (U_new[d] - U[d])*d_vol_element[location_struct_handle];	            
+			        U_corr[d] =  (U_new[d] - U[d])*d_vol_element[location_struct_handle];	
+				
 			    }
 			  
 			}//not rotating			
@@ -1908,7 +1940,8 @@ ConstraintIBMethod::correctVelocityOnLagrangianMesh()
 		      	for(int d = 0; d < NDIM ; ++d)
 			{
 			    U_new[d]  =  new_vel[d][lag_idx - offset];
-			    U_corr[d] =  (U_new[d] - U[d])*d_vol_element[location_struct_handle];			            
+			    U_corr[d] =  (U_new[d] - U[d])*d_vol_element[location_struct_handle];	
+			    
 			}		      
 		    } //imposed momentum
 		    
@@ -2014,7 +2047,7 @@ ConstraintIBMethod::applyProjection()
 
     // NOTE: We always use homogeneous Neumann boundary conditions for the
     // velocity correction projection Poisson solver.
-    d_velcorrection_projection_solver->setNullspace(true, NULL);
+    d_velcorrection_projection_solver->setNullspace(true);
     
     // Solve the projection Poisson problem.
     d_velcorrection_projection_solver->initializeSolverState(sol_vec,rhs_vec);
@@ -2171,14 +2204,21 @@ ConstraintIBMethod::updateStructurePositionEulerStep()
 		    {		
 		        for(int d = 0 ; d < NDIM; ++d)
 			{
-			    X_new[d] = d_center_of_mass_current[location_struct_handle][d]+ new_shape[d][lag_idx - offset]
-			        + dt*(d_rigid_trans_vel_current[location_struct_handle][d]);
+			  X_new[d] = d_center_of_mass_current[location_struct_handle][d]+  new_shape[d][lag_idx - offset]
+			      + dt*(d_rigid_trans_vel_current[location_struct_handle][d]) ;
 			}		      
 		    }
+		    else if(position_update_method == "CONSTRAINT_EXPT_POSITION")
+		    {		
+		        for(int d = 0 ; d < NDIM; ++d)
+			{
+			  X_new[d] =  new_shape[d][lag_idx - offset];
+			}		      
+		    }		    
 		    else
 		    {
 		        TBOX_ERROR("ConstraintIBMethod::updateStructurePositionEulerStep():: Unknown position update method encountered"
-			            << "Supported methods are : CONSTRAINT_VELOCITY and CONSTRAINT_POSITION " << std::endl);  
+			            << "Supported methods are : CONSTRAINT_VELOCITY, CONSTRAINT_POSITION AND CONSTRAINT_EXPT_POSITION " << std::endl);  
 		    }
 	        }	     
 	    }
@@ -2272,14 +2312,21 @@ ConstraintIBMethod::updateStructurePositionMidPointStep()
 		    {	
 		      	for(int d = 0 ; d < NDIM; ++d)
 			{
-			    X_new[d] = d_center_of_mass_current[location_struct_handle][d]+ new_shape[d][lag_idx - offset]
-			        + dt*0.5*(d_rigid_trans_vel_current[location_struct_handle][d] + d_rigid_trans_vel_new[location_struct_handle][d]);
+			  X_new[d] = d_center_of_mass_current[location_struct_handle][d]+  new_shape[d][lag_idx - offset]
+			      + dt*0.5*(d_rigid_trans_vel_current[location_struct_handle][d] + d_rigid_trans_vel_new[location_struct_handle][d]);
 			}		      
 		    }
+		    else if(position_update_method == "CONSTRAINT_EXPT_POSITION")
+		    {	
+		      	for(int d = 0 ; d < NDIM; ++d)
+			{
+			  X_new[d] = new_shape[d][lag_idx - offset];
+			}		      
+		    }		    
 		    else
 		    {
 		        TBOX_ERROR("ConstraintIBMethod::updateStructurePositionMidPointStep():: Unknown position update method encountered"
-			            << "Supported methods are : CONSTRAINT_VELOCITY and CONSTRAINT_POSITION " << std::endl);  
+			            << "Supported methods are : CONSTRAINT_VELOCITY, CONSTRAINT_POSITION AND CONSTRAINT_EXPT_POSITION " << std::endl);  
 		    }
 	        }	     
 	    }

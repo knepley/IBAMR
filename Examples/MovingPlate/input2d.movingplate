@@ -4,9 +4,9 @@ MU = 1.0/Re       // the viscosity required to attain the specified Reynolds num
 RHO = 1.0
 
 // grid spacing parameters
-MAX_LEVELS = 3                            // maximum number of levels in locally refined grid
+MAX_LEVELS = 4                            // maximum number of levels in locally refined grid
 REF_RATIO  = 4                            // refinement ratio between levels
-REF_RATIO_FINEST = 4                      // refinement ratio for the finest level.
+REF_RATIO_FINEST = 2                      // refinement ratio for the finest level.
 N = 16                                    // actual    number of grid cells on coarsest grid level
 NFINEST = (REF_RATIO^(MAX_LEVELS - 1))*N  // effective number of grid cells on finest   grid level
 L = 16.0                                  // width of computational domain
@@ -16,7 +16,7 @@ DX_FINEST = L/NFINEST
 DELTA_FUNCTION       = "IB_4"
 SOLVER_TYPE          = "STAGGERED"                // the fluid solver to use (STAGGERED or COLLOCATED)
 START_TIME           = 0.0e0                      // initial simulation time
-END_TIME             = 16.0                       // final simulation time
+END_TIME             = 15.0                       // final simulation time
 MAX_INTEGRATOR_STEPS = 1000000000                 // Max no of steps.
 GROW_DT              = 2.0e0                      // growth factor for timesteps
 NUM_CYCLES           = 1                          // number of cycles of fixed-point iteration
@@ -115,29 +115,29 @@ num_structures = 1
 ConstraintIBKinematics {
 
      MovingPlate {
-     structure_names                  = "movingplate2d"
-     structure_levels                 = MAX_LEVELS - 1
+     structure_names                  = "movingplate2d" 
+     structure_levels                 =  MAX_LEVELS - 1
      calculate_translational_momentum = 0,0,0
      calculate_rotational_momentum    = 0,0,0
      lag_position_update_method       = "CONSTRAINT_VELOCITY"
      tagged_pt_identifier             = MAX_LEVELS - 1, 0  // level, relative idx of lag point
-     vel_plate                        = 1.0
+     
+     kinematics_velocity_function_0  = "1.0"
+     kinematics_velocity_function_1  = "0.0"
+
     }
 
 }
-
-C_IB_4 = 3.0/8.0                         // corresponds to IB_4 delta function
-C_IB_6 = 67.0/128.0                      // corresponds to IB_6 delta function
-C = C_IB_4
-
 
 
 IBStandardInitializer {
    max_levels      = MAX_LEVELS
    structure_names = "movingplate2d"
+
    movingplate2d {
       level_number = MAX_LEVELS - 1
    }
+  
 }
 
 INSCollocatedHierarchyIntegrator {
@@ -318,7 +318,7 @@ Main {
    restart_dump_dirname        = "restart_IB2d"
 
 // hierarchy data dump parameters
-   data_dump_interval          = 0                     // zero to turn off
+   data_dump_interval          = 40                     // zero to turn off
    data_dump_dirname           = "hier_data_IB2d"
 
 // timer dump parameters
@@ -327,9 +327,9 @@ Main {
 
 CartesianGeometry {
    domain_boxes = [ (0,0) , (63 , 63) ]
-   x_lo         =  -8.0, - 11.0           // lower end of computational domain.
-   x_up         =   24.0,  11.0           // upper end of computational domain.
-   periodic_dimension = 1, 1
+   x_lo         =  -8.1, - 11.1           // lower end of computational domain.
+   x_up         =   24.1,  11.1           // upper end of computational domain.
+   periodic_dimension = 0, 0
 }
 
 GriddingAlgorithm {

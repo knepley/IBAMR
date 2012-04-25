@@ -94,10 +94,11 @@ ConstraintIBKinematics::StructureParameters::StructureParameters(
     }
     
     d_lag_position_update_method    = input_db->getString("lag_position_update_method");
-    if(d_lag_position_update_method != "CONSTRAINT_VELOCITY" && d_lag_position_update_method != "CONSTRAINT_POSITION" )
+    if(d_lag_position_update_method != "CONSTRAINT_VELOCITY" && d_lag_position_update_method != "CONSTRAINT_POSITION" 
+        && d_lag_position_update_method != "CONSTRAINT_EXPT_POSITION"  )
     {
         TBOX_ERROR("ERROR:: StructureParameters::StructureParameters( ) " << "\n"
-                  << "Update methods supported are CONSTRAINT_VELOCITY and CONSTRAINT_POSITION \n\n"
+                  << "Update methods supported are CONSTRAINT_VELOCITY, CONSTRAINT_POSITION AND  CONSTRAINT_EXPT_POSITION\n\n"
 		  << std::endl);
     }
     
@@ -175,8 +176,7 @@ ConstraintIBKinematics::putToDatabase(
 
 
 /////////////////////// TEMPLATE INSTANTIATION ///////////////////////////////
-
-// #include <tbox/Pointer.C>
+//#include <tbox/Pointer.C>
 //template class Pointer<IBAMR::ConstraintIBKinematics>;
 
 //////////////////////////////////////////////////////////////////////////////
