@@ -85,6 +85,8 @@ IBHierarchyIntegrator {
    dt_max               = DT_MAX
    enable_logging       = ENABLE_LOGGING
    max_integrator_steps = MAX_INTEGRATOR_STEPS
+   error_on_dt_change   = FALSE
+   warn_on_dt_change    = TRUE
 }
 
 ConstraintIBMethod {

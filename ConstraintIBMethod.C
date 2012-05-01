@@ -237,6 +237,7 @@ ConstraintIBMethod::ConstraintIBMethod(
     d_output_rot_vel            (false),
     d_output_COM_coordinates    (false),
     d_output_MOI                (false),
+    d_output_eul_mom            (false),
     d_dir_name            ("./ConstraintIBMethodDump"),
     d_base_output_filename("ImmersedStructrue")    
 {
@@ -344,7 +345,10 @@ ConstraintIBMethod::ConstraintIBMethod(
 	    if(from_restart) d_power_spent_stream[struct_no]       = new std::ofstream(power_spent.str().c_str(), std::fstream::app);
 	    else             d_power_spent_stream[struct_no]       = new std::ofstream(power_spent.str().c_str(), std::fstream::out);
 	}
-
+	
+        //Output Eulerian momentum.
+	if(from_restart) d_eulerian_mom_stream.open("EULERIAN_MOMENTUM.TXT", std::fstream::app | std::fstream::out);
+	else             d_eulerian_mom_stream.open("EULERIAN_MOMENTUM.TXT", std::fstream::out);       
     }
     
     //Setup the Timers.
@@ -454,8 +458,11 @@ ConstraintIBMethod::postprocessSolveFluidEquations(
     
     if(d_INS_current_cycle_num == d_INS_num_cycles - 1)
     {
-        if(d_output_drag) calculateDrag();         
+        if(d_output_drag) calculateDrag();   
+	if(d_output_eul_mom) calculateEulerianMomentum();
     }
+
+
 
     IBTK_TIMER_STOP(t_postprocessSolveFluidEquation);
     
@@ -466,6 +473,63 @@ ConstraintIBMethod::postprocessSolveFluidEquations(
     return;
     
 }
+
+void
+ConstraintIBMethod::calculateEulerianMomentum()
+{
+  
+    //Compute Eulerian momentum.
+    std::vector<double> momentum(3,0.0);
+    const int coarsest_ln = 0;
+    const int finest_ln   = d_hierarchy->getFinestLevelNumber();
+	    	    
+    SAMRAIVectorReal<NDIM,double> wgt_sc("sc_wgt_original",d_hierarchy, coarsest_ln, finest_ln);
+    wgt_sc.addComponent(d_hier_math_ops->getSideWeightVariable(),d_hier_math_ops->getSideWeightPatchDescriptorIndex());
+	    
+    for(int active = 0; active < NDIM; ++active)
+    {
+        Pointer<SAMRAIVectorReal<NDIM,double> > wgt_sc_active = wgt_sc.cloneVector("");
+	wgt_sc_active->allocateVectorData();
+	wgt_sc_active->copyVector(Pointer<SAMRAIVectorReal<NDIM,double> >(&wgt_sc,false));
+	       
+	//Zero out components other than active dimension.
+	const int wgt_sc_active_idx = wgt_sc_active->getComponentDescriptorIndex(0);
+	for(int ln = coarsest_ln; ln <= finest_ln; ++ln)
+	{
+	    Pointer<PatchLevel<NDIM> > level = d_hierarchy->getPatchLevel(ln);
+            for(PatchLevel<NDIM>::Iterator p(level); p ; p++)
+            {
+	        Pointer<Patch<NDIM> > patch = level->getPatch(p());
+	        Pointer<SideData<NDIM,double> >  wgt_sc_active_data = patch->getPatchData(wgt_sc_active_idx);
+		for(int d = 0 ; d < NDIM; ++d)
+		{
+		    if(d != active)
+	            {
+		        ArrayData<NDIM,double>& arraydata =  wgt_sc_active_data->getArrayData(d);
+			arraydata.fill(0.0);
+		    }	
+		}
+            }    
+        }
+                
+        momentum[active] = d_hier_sc_data_ops->dot(d_u_fluidSolve_idx,wgt_sc_active_idx);
+		
+	wgt_sc_active->deallocateVectorData();
+	wgt_sc_active->freeVectorComponents();
+	wgt_sc_active.setNull();
+    }
+	      
+    
+    if( !SAMRAI_MPI::getRank() && d_print_output && (d_timestep_counter % d_output_interval) == 0 )
+    {
+        d_eulerian_mom_stream << d_FuRMoRP_new_time  << '\t'<< momentum[0] << '\t'
+                              << momentum[1] << '\t'  << momentum[2] << '\t' << std::endl;   
+    }
+    
+    return;
+    
+}//calculateEulerianMomentum
+
 
 void
 ConstraintIBMethod::registerEulerianVariables()
@@ -764,9 +828,14 @@ ConstraintIBMethod::getFromInput(
     d_output_rot_vel                  = output_db->getBoolWithDefault( "output_rig_rotvel" , d_output_rot_vel);
     d_output_COM_coordinates          = output_db->getBoolWithDefault( "output_com_coords" , d_output_COM_coordinates);
     d_output_MOI                      = output_db->getBoolWithDefault( "output_moment_inertia" , d_output_MOI);
+    d_output_eul_mom                  = output_db->getBoolWithDefault( "output_eulerian_mom" , d_output_eul_mom);
     d_dir_name                        = output_db->getStringWithDefault("output_dirname", d_dir_name) + "/";
     d_base_output_filename            = d_dir_name + output_db->getStringWithDefault("base_filename",d_base_output_filename);
     
+    //Sanity check.
+    if(d_output_eul_mom && !d_needs_div_free_projection) 
+        TBOX_ERROR("ERROR ConstraintIBMethod::getFromInput() Eulerian momentum is calculated only when divergence free projection is active" << std::endl);
+      
     if(!from_restart) tbox::Utilities::recursiveMkdir(d_dir_name);
     else
     {
@@ -837,7 +906,6 @@ ConstraintIBMethod::setInitialLagrangianVelocity()
     {
         const StructureParameters& struct_param = d_ib_kinematics[struct_no]->getStructureParameters();
       
-
         d_ib_kinematics[struct_no]->setNewKinematicsVelocity(0.0,d_incremented_angle_from_reference_axis[struct_no],
 	    d_center_of_mass_current[struct_no], d_tagged_pt_position[struct_no] );
 	
@@ -1035,7 +1103,6 @@ ConstraintIBMethod::calculateCOMandMOIOfStructures()
         d_moment_of_inertia_new[struct_no](2,1) = d_moment_of_inertia_new[struct_no](1,2);
     }
     
-
     //For cycle no = 0 the inertia tensor calculated will be the current inertia tensor.
     if(  (d_INS_current_cycle_num == 0 && d_INS_num_cycles > 1) || 
          (MathUtilities<double>::equalEps(d_FuRMoRP_current_time,0.0) && d_INS_num_cycles == 1 ) )

@@ -395,6 +395,12 @@ private:
      */
     void
     calculatePower();
+    
+    /*!
+     * Calculate Eulerian Momentum.
+     */
+    void
+    calculateEulerianMomentum();
        
     /*!
      * Hierarchy math operator.
@@ -490,7 +496,7 @@ private:
      * Bools for outputing stuff which is calculated on the fly.
      */
     bool d_print_output, d_output_drag, d_output_kinetic_energy, d_output_power,d_output_trans_vel,
-         d_output_rot_vel, d_output_COM_coordinates, d_output_MOI;
+         d_output_rot_vel, d_output_COM_coordinates, d_output_MOI, d_output_eul_mom;
 
     /*!
      * output file name string.
@@ -550,6 +556,11 @@ private:
      */
     std::vector<std::ofstream*>  d_trans_vel_stream, d_rot_vel_stream, d_drag_force_stream, d_moment_of_inertia_stream,
         d_kinetic_energy_stream,d_position_COM_stream, d_power_spent_stream;
+	
+    /*!
+     * Stream for calculating Eulerian momentum.
+     */
+    std::fstream d_eulerian_mom_stream;
 
     /*!
      * Pre and post fluid solve call back functions and contexts.
