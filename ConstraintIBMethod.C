@@ -458,11 +458,10 @@ ConstraintIBMethod::postprocessSolveFluidEquations(
     
     if(d_INS_current_cycle_num == d_INS_num_cycles - 1)
     {
-        if(d_output_drag) calculateDrag();   
+        if(d_output_drag)    calculateDrag();   
 	if(d_output_eul_mom) calculateEulerianMomentum();
+	if(d_output_power)   calculatePower();
     }
-
-
 
     IBTK_TIMER_STOP(t_postprocessSolveFluidEquation);
     
@@ -580,18 +579,17 @@ ConstraintIBMethod::registerEulerianVariables()
 void
 ConstraintIBMethod::initializeHierarchyOperatorsandData()
 {
-    if(d_needs_div_free_projection)
-    {
-        // Obtain the Hierarchy data operations objects.
-        d_hier_math_ops                                 = getHierarchyMathOps();
-        HierarchyDataOpsManager<NDIM>* hier_ops_manager = HierarchyDataOpsManager<NDIM>::getManager();
-        Pointer<CellVariable<NDIM,double> > cc_var      = new CellVariable<NDIM,double>("cc_var");
-        d_hier_cc_data_ops                              = hier_ops_manager->getOperationsDouble(cc_var, d_hierarchy, true);
-        Pointer<SideVariable<NDIM,double> > sc_var      = new SideVariable<NDIM,double>("sc_var");
-        d_hier_sc_data_ops                              = hier_ops_manager->getOperationsDouble(sc_var, d_hierarchy, true);
-        d_wgt_cc_idx                                    = d_hier_math_ops->getCellWeightPatchDescriptorIndex();
-        d_volume                                        = d_hier_math_ops->getVolumeOfPhysicalDomain();
-    }
+    
+    // Obtain the Hierarchy data operations objects.
+    d_hier_math_ops                                 = getHierarchyMathOps();
+    HierarchyDataOpsManager<NDIM>* hier_ops_manager = HierarchyDataOpsManager<NDIM>::getManager();
+    Pointer<CellVariable<NDIM,double> > cc_var      = new CellVariable<NDIM,double>("cc_var");
+    d_hier_cc_data_ops                              = hier_ops_manager->getOperationsDouble(cc_var, d_hierarchy, true);
+    Pointer<SideVariable<NDIM,double> > sc_var      = new SideVariable<NDIM,double>("sc_var");
+    d_hier_sc_data_ops                              = hier_ops_manager->getOperationsDouble(sc_var, d_hierarchy, true);
+    d_wgt_cc_idx                                    = d_hier_math_ops->getCellWeightPatchDescriptorIndex();
+    d_volume                                        = d_hier_math_ops->getVolumeOfPhysicalDomain();
+    
     
     bool from_restart = RestartManager::getManager()->isFromRestart();
     if(!from_restart)
@@ -834,7 +832,7 @@ ConstraintIBMethod::getFromInput(
     
     //Sanity check.
     if(d_output_eul_mom && !d_needs_div_free_projection) 
-        TBOX_ERROR("ERROR ConstraintIBMethod::getFromInput() Eulerian momentum is calculated only when divergence free projection is active" << std::endl);
+        TBOX_WARNING("WARNING ConstraintIBMethod::getFromInput() Eulerian momentum is calculated but divergence free projection is not active" << std::endl);
       
     if(!from_restart) tbox::Utilities::recursiveMkdir(d_dir_name);
     else
@@ -1046,7 +1044,7 @@ ConstraintIBMethod::calculateCOMandMOIOfStructures()
         const std::vector<int> structIDs = d_l_data_manager->getLagrangianStructureIDs(ln);
         const int structs_on_this_ln     = structIDs.size();
 	
-        for(int struct_no = 0 ; struct_no < structs_on_this_ln; ++struct_no)
+        for(int struct_no = 0; struct_no < structs_on_this_ln; ++struct_no)
         {
 	    std::pair<int,int> lag_idx_range                  = d_l_data_manager->getLagrangianStructureIndexRange(structIDs[struct_no],ln);
 	    Pointer<ConstraintIBKinematics> ptr_ib_kinematics = *std::find_if(d_ib_kinematics.begin(),d_ib_kinematics.end(),find_struct_handle(lag_idx_range));
@@ -1317,7 +1315,8 @@ ConstraintIBMethod::calculateNewKinematicsVelocity()
 }//calculateNewKinematicsVelocity
 
 void
-ConstraintIBMethod::calculateMomentumOfNewKinematicsVelocity(const int position_handle)
+ConstraintIBMethod::calculateMomentumOfNewKinematicsVelocity(
+    const int position_handle)
 {
     typedef ConstraintIBKinematics::StructureParameters StructureParameters;  
     Pointer<ConstraintIBKinematics> ptr_ib_kinematics = d_ib_kinematics[position_handle];
@@ -2542,7 +2541,7 @@ ConstraintIBMethod::calculateDrag()
         const std::vector<int> structIDs = d_l_data_manager->getLagrangianStructureIDs(ln);
         const int structs_on_this_ln     = structIDs.size();
       
-	for(int struct_no = 0 ; struct_no < structs_on_this_ln; ++struct_no)
+	for(int struct_no = 0; struct_no < structs_on_this_ln; ++struct_no)
         {
 	    std::pair<int,int> lag_idx_range = d_l_data_manager->getLagrangianStructureIndexRange(structIDs[struct_no],ln);
 	    Pointer<ConstraintIBKinematics> ptr_ib_kinematics = *std::find_if(d_ib_kinematics.begin(),d_ib_kinematics.end(),find_struct_handle(lag_idx_range));
@@ -2560,7 +2559,7 @@ ConstraintIBMethod::calculateDrag()
 		    const double* const U_current    = &U_current_data    (local_idx,0);
 		    const double* const U_correction = &U_correction_data (local_idx,0);
 
-		    for(int d = 0 ; d < NDIM; ++d)
+		    for(int d = 0; d < NDIM; ++d)
 		    {
 			inertia_force   [location_struct_handle][d] += U_new[d] - U_current[d];
 			constraint_force[location_struct_handle][d] += U_correction[d];
@@ -2573,7 +2572,7 @@ ConstraintIBMethod::calculateDrag()
 	d_l_data_U_correction[ln]->restoreArrays();   
     } 
     
-    for(int struct_no = 0 ; struct_no < d_no_structures; ++struct_no)
+    for(int struct_no = 0; struct_no < d_no_structures; ++struct_no)
     {
         SAMRAI_MPI::sumReduction(&inertia_force[struct_no][0],3);
 	SAMRAI_MPI::sumReduction(&constraint_force[struct_no][0],3); 
@@ -2599,6 +2598,90 @@ ConstraintIBMethod::calculateDrag()
 
   
 } //calculateDrag
+
+void
+ConstraintIBMethod::calculatePower()
+{
+    typedef ConstraintIBKinematics::StructureParameters StructureParameters;
+    const int coarsest_ln = 0;
+    const int finest_ln   = d_hierarchy->getFinestLevelNumber();
+    const double dt       = d_FuRMoRP_new_time - d_FuRMoRP_current_time;
+    
+    std::vector<std::vector<double> > inertia_power   (d_no_structures, std::vector<double>(3,0.0));
+    std::vector<std::vector<double> > constraint_power(d_no_structures, std::vector<double>(3,0.0));
+    
+    for(int ln = coarsest_ln; ln <= finest_ln; ++ln)
+    {
+        if(!d_l_data_manager->levelContainsLagrangianData(ln)) continue;  
+      
+        const blitz::Array<double,2>& U_new_data           = *d_l_data_U_new       [ln]->getLocalFormVecArray();
+	const blitz::Array<double,2>& U_current_data       = *d_l_data_U_current   [ln]->getLocalFormVecArray();
+	const blitz::Array<double,2>& U_correction_data    = *d_l_data_U_correction[ln]->getLocalFormVecArray();
+	
+	const Pointer<LMesh> mesh                   = d_l_data_manager->getLMesh(ln);
+	const std::vector<LNode*>& local_nodes      = mesh->getLocalNodes();
+	
+	// Get structures on this level.
+        const std::vector<int> structIDs = d_l_data_manager->getLagrangianStructureIDs(ln);
+        const int structs_on_this_ln     = structIDs.size();
+      
+	for(int struct_no = 0; struct_no < structs_on_this_ln; ++struct_no)
+        {
+	    std::pair<int,int> lag_idx_range = d_l_data_manager->getLagrangianStructureIndexRange(structIDs[struct_no],ln);
+	    Pointer<ConstraintIBKinematics> ptr_ib_kinematics = *std::find_if(d_ib_kinematics.begin(),d_ib_kinematics.end(),find_struct_handle(lag_idx_range));
+	    const int location_struct_handle = find_struct_handle_position(d_ib_kinematics.begin(),d_ib_kinematics.end(),ptr_ib_kinematics);
+;
+	      
+	    for(std::vector<LNode*>::const_iterator cit = local_nodes.begin(); cit != local_nodes.end(); ++cit)
+	    {
+	        const LNode* const node_idx = *cit;
+	        const int lag_idx = node_idx->getLagrangianIndex();
+	        if( lag_idx_range.first <= lag_idx && lag_idx < lag_idx_range.second)
+	        {
+		    const int local_idx = node_idx->getLocalPETScIndex();
+		    const double* const U_new        = &U_new_data        (local_idx,0);
+		    const double* const U_current    = &U_current_data    (local_idx,0);
+		    const double* const U_correction = &U_correction_data (local_idx,0);
+
+		    for(int d = 0; d < NDIM; ++d)
+		    {
+			inertia_power   [location_struct_handle][d] += (U_new[d] - U_current[d])*U_new[d];
+			constraint_power[location_struct_handle][d] += U_correction[d]*U_new[d];
+		    }
+	        }	     
+	    }
+        }// all structs
+        d_l_data_U_new       [ln]->restoreArrays(); 
+        d_l_data_U_current   [ln]->restoreArrays();   
+	d_l_data_U_correction[ln]->restoreArrays();   
+    } 
+    
+    for(int struct_no = 0; struct_no < d_no_structures; ++struct_no)
+    {
+        SAMRAI_MPI::sumReduction(&inertia_power[struct_no][0],3);
+	SAMRAI_MPI::sumReduction(&constraint_power[struct_no][0],3); 
+	for(int d = 0 ; d < NDIM; ++d)
+        {
+            inertia_power[struct_no][d]    *= (d_rho_fluid/dt)*d_vol_element[struct_no];
+	    constraint_power[struct_no][d] *= (d_rho_fluid/dt);
+        }
+    }
+    
+    if( !SAMRAI_MPI::getRank() && d_print_output && d_output_drag && (d_timestep_counter % d_output_interval ) == 0 )
+    {
+        for(int struct_no = 0; struct_no < d_no_structures; ++struct_no)
+	{
+            *d_power_spent_stream[struct_no] << d_FuRMoRP_new_time   << '\t'<< inertia_power[struct_no][0]    << '\t'
+                                << inertia_power[struct_no][1]       << '\t'<< inertia_power[struct_no][2]    <<'\t' 
+                                << constraint_power[struct_no][0]    << '\t'<< constraint_power[struct_no][1] << '\t' 
+                                << constraint_power[struct_no][2]    <<  std::endl;
+	}
+    }
+    
+    
+    return; 
+  
+} //calculatePower
 
 
 } //IBAMR
