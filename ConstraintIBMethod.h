@@ -41,7 +41,7 @@
 #include <ibtk/HierarchyGhostCellInterpolation.h>
 #include <ibtk/CCLaplaceOperator.h>
 #include <ibtk/PETScKrylovLinearSolver.h>
-#include <ibtk/CCPoissonFACOperator.h>
+#include <ibtk/CCPoissonPointRelaxationFACOperator.h>
 #include <ibtk/FACPreconditioner.h>
 
 // BLITZ INCLUDES
@@ -538,7 +538,7 @@ private:
     SAMRAI::solv::PoissonSpecifications*                 d_velcorrection_projection_spec;
     SAMRAI::tbox::Pointer<IBTK::CCLaplaceOperator>       d_velcorrection_projection_op;
     SAMRAI::tbox::Pointer<IBTK::PETScKrylovLinearSolver> d_velcorrection_projection_solver;
-    SAMRAI::tbox::Pointer<IBTK::CCPoissonFACOperator>    d_velcorrection_projection_fac_op;
+    SAMRAI::tbox::Pointer<IBTK::CCPoissonPointRelaxationFACOperator>  d_velcorrection_projection_fac_op;
     SAMRAI::tbox::Pointer<SAMRAI::tbox::Database>        d_velcorrection_projection_fac_pc_db;
     SAMRAI::tbox::Pointer<IBTK::FACPreconditioner>       d_velcorrection_projection_fac_pc;
 

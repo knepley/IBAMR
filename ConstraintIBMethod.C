@@ -57,7 +57,7 @@
 #include <ibtk/CCLaplaceOperator.h>
 #include <ibtk/PETScKrylovLinearSolver.h>
 #include <ibtk/FACPreconditioner.h>
-#include <ibtk/CCPoissonFACOperator.h>
+#include <ibtk/CCPoissonPointRelaxationFACOperator.h>
 #include <ibtk/ibtk_utilities.h>
 
 // C++ INCLUDES
@@ -274,7 +274,7 @@ ConstraintIBMethod::ConstraintIBMethod(
                 " ConstraintIBMethodProjection:: Poisson FAC PC solver database is null." << std::endl);
 	}
 
-        d_velcorrection_projection_fac_op  = new CCPoissonFACOperator(d_object_name + ":: ConstraintIBMethodProjection::PoissonFACOperator", 
+        d_velcorrection_projection_fac_op  = new CCPoissonPointRelaxationFACOperator(d_object_name + ":: ConstraintIBMethodProjection::PoissonFACOperator", 
              d_velcorrection_projection_fac_pc_db);
         d_velcorrection_projection_fac_op->setPoissonSpecifications(*d_velcorrection_projection_spec);
         d_velcorrection_projection_fac_pc  = new IBTK::FACPreconditioner(d_object_name + "::ConstraintIBMethodProjection::PoissonPreconditioner",
