@@ -57,7 +57,7 @@ public:
      */
     static double
     L1Norm(
-        const SAMRAI::solv::SAMRAIVectorReal<NDIM,double>* samrai_vector,
+        const SAMRAI::solv::SAMRAIVectorReal<double>* samrai_vector,
         bool local_only=false);
 
     /*!
@@ -65,7 +65,7 @@ public:
      */
     static double
     L2Norm(
-        const SAMRAI::solv::SAMRAIVectorReal<NDIM,double>* samrai_vector,
+        const SAMRAI::solv::SAMRAIVectorReal<double>* samrai_vector,
         bool local_only=false);
 
     /*!
@@ -73,7 +73,7 @@ public:
      */
     static double
     maxNorm(
-        const SAMRAI::solv::SAMRAIVectorReal<NDIM,double>* samrai_vector,
+        const SAMRAI::solv::SAMRAIVectorReal<double>* samrai_vector,
         bool local_only=false);
 
 protected:
@@ -114,14 +114,14 @@ private:
      */
     static double
     L1Norm_local(
-        const SAMRAI::solv::SAMRAIVectorReal<NDIM,double>* samrai_vector);
+        const SAMRAI::solv::SAMRAIVectorReal<double>* samrai_vector);
 
     /*!
      * \brief Compute the local L2 norm.
      */
     static double
     L2Norm_local(
-        const SAMRAI::solv::SAMRAIVectorReal<NDIM,double>* samrai_vector);
+        const SAMRAI::solv::SAMRAIVectorReal<double>* samrai_vector);
 };
 }// namespace IBTK
 

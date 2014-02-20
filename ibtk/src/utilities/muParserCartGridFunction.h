@@ -40,18 +40,18 @@
 #include <string>
 #include <vector>
 
-#include "CartesianGridGeometry.h"
-#include "PatchLevel.h"
+#include "SAMRAI/geom/CartesianGridGeometry.h"
+#include "SAMRAI/hier/PatchLevel.h"
 #include "boost/array.hpp"
 #include "ibtk/CartGridFunction.h"
 #include "ibtk/ibtk_utilities.h"
 #include "muParser.h"
-#include "tbox/Pointer.h"
+
 
 namespace SAMRAI {
 namespace hier {
-template <int DIM> class Patch;
-template <int DIM> class Variable;
+class Patch;
+class Variable;
 }  // namespace hier
 namespace tbox {
 class Database;
@@ -77,8 +77,8 @@ public:
      */
     muParserCartGridFunction(
         const std::string& object_name,
-        SAMRAI::tbox::Pointer<SAMRAI::tbox::Database> input_db,
-        SAMRAI::tbox::Pointer<SAMRAI::geom::CartesianGridGeometry<NDIM> > grid_geom);
+        boost::shared_ptr<SAMRAI::tbox::Database> input_db,
+        boost::shared_ptr<SAMRAI::geom::CartesianGridGeometry > grid_geom);
 
     /*!
      * \brief Empty destructor.
@@ -103,11 +103,11 @@ public:
     void
     setDataOnPatch(
         int data_idx,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::Variable<NDIM> > var,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::Patch<NDIM> > patch,
+        boost::shared_ptr<SAMRAI::hier::Variable > var,
+        boost::shared_ptr<SAMRAI::hier::Patch > patch,
         double data_time,
         bool initial_time=false,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::PatchLevel<NDIM> > level=SAMRAI::tbox::Pointer<SAMRAI::hier::PatchLevel<NDIM> >(NULL));
+        boost::shared_ptr<SAMRAI::hier::PatchLevel > level=boost::shared_ptr<SAMRAI::hier::PatchLevel >(NULL));
 
     //\}
 
@@ -147,7 +147,7 @@ private:
      * The Cartesian grid geometry object provides the extents of the
      * computational domain.
      */
-    SAMRAI::tbox::Pointer<SAMRAI::geom::CartesianGridGeometry<NDIM> > d_grid_geom;
+    boost::shared_ptr<SAMRAI::geom::CartesianGridGeometry > d_grid_geom;
 
     /*!
      * User-provided constants specified in the input file.

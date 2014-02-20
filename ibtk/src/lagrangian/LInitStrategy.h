@@ -39,15 +39,15 @@
 #include <string>
 #include <utility>
 
-#include "tbox/DescribedClass.h"
-#include "tbox/Pointer.h"
+
+
 
 namespace IBTK {
 class LData;
 }  // namespace IBTK
 namespace SAMRAI {
 namespace hier {
-template <int DIM> class PatchHierarchy;
+class PatchHierarchy;
 }  // namespace hier
 }  // namespace SAMRAI
 
@@ -95,7 +95,7 @@ public:
      */
     virtual unsigned int
     computeLocalNodeCountOnPatchLevel(
-        SAMRAI::tbox::Pointer<SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy,
+        boost::shared_ptr<SAMRAI::hier::PatchHierarchy > hierarchy,
         int level_number,
         double init_data_time,
         bool can_be_refined,
@@ -127,9 +127,9 @@ public:
         int lag_node_index_idx,
         unsigned int global_index_offset,
         unsigned int local_index_offset,
-        SAMRAI::tbox::Pointer<LData> X_data,
-        SAMRAI::tbox::Pointer<LData> U_data,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy,
+        boost::shared_ptr<LData> X_data,
+        boost::shared_ptr<LData> U_data,
+        boost::shared_ptr<SAMRAI::hier::PatchHierarchy > hierarchy,
         int level_number,
         double init_data_time,
         bool can_be_refined,
@@ -149,9 +149,9 @@ public:
     initializeMassDataOnPatchLevel(
         unsigned int global_index_offset,
         unsigned int local_index_offset,
-        SAMRAI::tbox::Pointer<LData> M_data,
-        SAMRAI::tbox::Pointer<LData> K_data,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy,
+        boost::shared_ptr<LData> M_data,
+        boost::shared_ptr<LData> K_data,
+        boost::shared_ptr<SAMRAI::hier::PatchHierarchy > hierarchy,
         int level_number,
         double init_data_time,
         bool can_be_refined,
@@ -171,8 +171,8 @@ public:
     initializeDirectorDataOnPatchLevel(
         unsigned int global_index_offset,
         unsigned int local_index_offset,
-        SAMRAI::tbox::Pointer<LData> D_data,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy,
+        boost::shared_ptr<LData> D_data,
+        boost::shared_ptr<SAMRAI::hier::PatchHierarchy > hierarchy,
         int level_number,
         double init_data_time,
         bool can_be_refined,
@@ -194,7 +194,7 @@ public:
      */
     virtual void
     tagCellsForInitialRefinement(
-        SAMRAI::tbox::Pointer<SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy,
+        boost::shared_ptr<SAMRAI::hier::PatchHierarchy > hierarchy,
         int level_number,
         double error_data_time,
         int tag_index);

@@ -38,18 +38,18 @@
 #include <string>
 #include <vector>
 
-#include "CellVariable.h"
-#include "RefineSchedule.h"
-#include "VariableContext.h"
+#include "SAMRAI/pdat/CellVariable.h"
+#include "SAMRAI/xfer/RefineSchedule.h"
+#include "SAMRAI/hier/VariableContext.h"
 #include "ibtk/PETScLevelSolver.h"
 #include "ibtk/PoissonSolver.h"
 #include "petscvec.h"
-#include "tbox/Database.h"
-#include "tbox/Pointer.h"
+#include "SAMRAI/tbox/Database.h"
+
 
 namespace SAMRAI {
 namespace hier {
-template <int DIM> class PatchLevel;
+class PatchLevel;
 }  // namespace hier
 namespace solv {
 template <int DIM, class TYPE> class SAMRAIVectorReal;
@@ -111,7 +111,7 @@ public:
      */
     CCPoissonPETScLevelSolver(
         const std::string& object_name,
-        SAMRAI::tbox::Pointer<SAMRAI::tbox::Database> input_db,
+        boost::shared_ptr<SAMRAI::tbox::Database> input_db,
         const std::string& default_options_prefix);
 
     /*!
@@ -122,10 +122,10 @@ public:
     /*!
      * \brief Static function to construct a CCPoissonPETScLevelSolver.
      */
-    static SAMRAI::tbox::Pointer<PoissonSolver>
+    static boost::shared_ptr<PoissonSolver>
     allocate_solver(
         const std::string& object_name,
-        SAMRAI::tbox::Pointer<SAMRAI::tbox::Database> input_db,
+        boost::shared_ptr<SAMRAI::tbox::Database> input_db,
         const std::string& default_options_prefix)
         {
             return new CCPoissonPETScLevelSolver(object_name, input_db, default_options_prefix);
@@ -137,8 +137,8 @@ protected:
      */
     void
     initializeSolverStateSpecialized(
-        const SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& x,
-        const SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& b);
+        const SAMRAI::solv::SAMRAIVectorReal<double>& x,
+        const SAMRAI::solv::SAMRAIVectorReal<double>& b);
 
     /*!
      * \brief Remove all hierarchy dependent data allocated by
@@ -153,8 +153,8 @@ protected:
     void
     copyToPETScVec(
         Vec& petsc_x,
-        SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& x,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::PatchLevel<NDIM> > patch_level);
+        SAMRAI::solv::SAMRAIVectorReal<double>& x,
+        boost::shared_ptr<SAMRAI::hier::PatchLevel > patch_level);
 
     /*!
      * \brief Copy a generic vector from the PETSc representation.
@@ -162,8 +162,8 @@ protected:
     void
     copyFromPETScVec(
         Vec& petsc_x,
-        SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& x,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::PatchLevel<NDIM> > patch_level);
+        SAMRAI::solv::SAMRAIVectorReal<double>& x,
+        boost::shared_ptr<SAMRAI::hier::PatchLevel > patch_level);
 
     /*!
      * \brief Copy solution and right-hand-side data to the PETSc
@@ -174,9 +174,9 @@ protected:
     setupKSPVecs(
         Vec& petsc_x,
         Vec& petsc_b,
-        SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& x,
-        SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& b,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::PatchLevel<NDIM> > patch_level);
+        SAMRAI::solv::SAMRAIVectorReal<double>& x,
+        SAMRAI::solv::SAMRAIVectorReal<double>& b,
+        boost::shared_ptr<SAMRAI::hier::PatchLevel > patch_level);
 
 private:
     /*!
@@ -213,11 +213,11 @@ private:
      * \name PETSc objects.
      */
     //\{
-    SAMRAI::tbox::Pointer<SAMRAI::hier::VariableContext> d_context;
+    boost::shared_ptr<SAMRAI::hier::VariableContext> d_context;
     std::vector<int> d_num_dofs_per_proc;
     int d_dof_index_idx;
-    SAMRAI::tbox::Pointer<SAMRAI::pdat::CellVariable<NDIM,int> > d_dof_index_var;
-    SAMRAI::tbox::Pointer<SAMRAI::xfer::RefineSchedule<NDIM> > d_data_synch_sched, d_ghost_fill_sched;
+    boost::shared_ptr<SAMRAI::pdat::CellVariable<int> > d_dof_index_var;
+    boost::shared_ptr<SAMRAI::xfer::RefineSchedule > d_data_synch_sched, d_ghost_fill_sched;
     //\}
 };
 }// namespace IBTK

@@ -37,11 +37,11 @@
 
 #include <string>
 
-#include "PatchHierarchy.h"
-#include "SAMRAIVectorReal.h"
+#include "SAMRAI/hier/PatchHierarchy.h"
+#include "SAMRAI/solv/SAMRAIVectorReal.h"
 #include "ibtk/LinearSolver.h"
 #include "ibtk/ibtk_enums.h"
-#include "tbox/Pointer.h"
+
 
 namespace SAMRAI {
 namespace tbox {
@@ -89,8 +89,8 @@ public:
      */
     FACPreconditioner(
         const std::string& object_name,
-        SAMRAI::tbox::Pointer<FACPreconditionerStrategy> fac_strategy,
-        SAMRAI::tbox::Pointer<SAMRAI::tbox::Database> input_db,
+        boost::shared_ptr<FACPreconditionerStrategy> fac_strategy,
+        boost::shared_ptr<SAMRAI::tbox::Database> input_db,
         const std::string& default_options_prefix);
 
     /*!
@@ -164,8 +164,8 @@ public:
      */
     bool
     solveSystem(
-        SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& x,
-        SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& b);
+        SAMRAI::solv::SAMRAIVectorReal<double>& x,
+        SAMRAI::solv::SAMRAIVectorReal<double>& b);
 
     /*!
      * \brief Compute hierarchy dependent data required for solving \f$Ax=b\f$.
@@ -210,8 +210,8 @@ public:
      */
     void
     initializeSolverState(
-        const SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& x,
-        const SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& b);
+        const SAMRAI::solv::SAMRAIVectorReal<double>& x,
+        const SAMRAI::solv::SAMRAIVectorReal<double>& b);
 
     /*!
      * \brief Remove all hierarchy dependent data allocated by
@@ -296,35 +296,35 @@ public:
 protected:
    void
    FACVCycleNoPreSmoothing(
-       SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& u,
-       SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& f,
+       SAMRAI::solv::SAMRAIVectorReal<double>& u,
+       SAMRAI::solv::SAMRAIVectorReal<double>& f,
        int level_num);
 
    void
    FACVCycle(
-       SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& u,
-       SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& f,
+       SAMRAI::solv::SAMRAIVectorReal<double>& u,
+       SAMRAI::solv::SAMRAIVectorReal<double>& f,
        int level_num);
 
    void
    FACWCycle(
-       SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& u,
-       SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& f,
+       SAMRAI::solv::SAMRAIVectorReal<double>& u,
+       SAMRAI::solv::SAMRAIVectorReal<double>& f,
        int level_num);
 
    void
    FACFCycle(
-       SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& u,
-       SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& f,
+       SAMRAI::solv::SAMRAIVectorReal<double>& u,
+       SAMRAI::solv::SAMRAIVectorReal<double>& f,
        int level_num);
 
-    SAMRAI::tbox::Pointer<FACPreconditionerStrategy> d_fac_strategy;
-    SAMRAI::tbox::Pointer<SAMRAI::hier::PatchHierarchy<NDIM> > d_hierarchy;
+    boost::shared_ptr<FACPreconditionerStrategy> d_fac_strategy;
+    boost::shared_ptr<SAMRAI::hier::PatchHierarchy > d_hierarchy;
     int d_coarsest_ln;
     int d_finest_ln;
     MGCycleType d_cycle_type;
     int d_num_pre_sweeps, d_num_post_sweeps;
-    SAMRAI::tbox::Pointer<SAMRAI::solv::SAMRAIVectorReal<NDIM,double> > d_f, d_r;
+    boost::shared_ptr<SAMRAI::solv::SAMRAIVectorReal<double> > d_f, d_r;
     bool d_recompute_residual;
 
 private:
@@ -360,7 +360,7 @@ private:
 
     void
     getFromInput(
-        SAMRAI::tbox::Pointer<SAMRAI::tbox::Database> db);
+        boost::shared_ptr<SAMRAI::tbox::Database> db);
 };
 }// namespace IBTK
 

@@ -37,8 +37,8 @@
 #include <ostream>
 
 #include "PETScMFFDJacobianOperator.h"
-#include "PatchHierarchy.h"
-#include "SAMRAI_config.h"
+#include "SAMRAI/hier/PatchHierarchy.h"
+#include "SAMRAI/SAMRAI_config.h"
 #include "ibtk/IBTK_CHKERRQ.h"
 #include "ibtk/PETScSAMRAIVectorReal.h"
 #include "ibtk/PETScSAMRAIVectorReal-inl.h"
@@ -47,7 +47,7 @@
 #include "petscerror.h"
 #include "petscmath.h"
 #include "petscsnes.h"
-#include "tbox/Utilities.h"
+#include "SAMRAI/tbox/Utilities.h"
 // IWYU pragma: no_include "petsc-private/petscimpl.h"
 
 /////////////////////////////// NAMESPACE ////////////////////////////////////
@@ -85,7 +85,7 @@ PETScMFFDJacobianOperator::~PETScMFFDJacobianOperator()
 
 void
 PETScMFFDJacobianOperator::setOperator(
-    Pointer<GeneralOperator> F)
+    boost::shared_ptr<GeneralOperator> F)
 {
     d_F = F;
     return;
@@ -93,7 +93,7 @@ PETScMFFDJacobianOperator::setOperator(
 
 void
 PETScMFFDJacobianOperator::setNewtonKrylovSolver(
-    Pointer<PETScNewtonKrylovSolver> nonlinear_solver)
+    boost::shared_ptr<PETScNewtonKrylovSolver> nonlinear_solver)
 {
     d_nonlinear_solver = nonlinear_solver;
     return;
@@ -101,7 +101,7 @@ PETScMFFDJacobianOperator::setNewtonKrylovSolver(
 
 void
 PETScMFFDJacobianOperator::formJacobian(
-    SAMRAIVectorReal<NDIM,double>& u)
+    SAMRAIVectorReal<double>& u)
 {
     int ierr;
     if (d_nonlinear_solver)
@@ -116,7 +116,7 @@ PETScMFFDJacobianOperator::formJacobian(
     }
     else
     {
-        d_op_u->copyVector(Pointer<SAMRAIVectorReal<NDIM,double> >(&u,false), false);
+        d_op_u->copyVector(boost::shared_ptr<SAMRAIVectorReal<double> >(&u,false), false);
         ierr = PetscObjectStateIncrease(reinterpret_cast<PetscObject>(d_petsc_u)); IBTK_CHKERRQ(ierr);
         ierr = MatMFFDSetBase(d_petsc_jac, d_petsc_u, NULL); IBTK_CHKERRQ(ierr);
         ierr = MatAssemblyBegin(d_petsc_jac, MAT_FINAL_ASSEMBLY); IBTK_CHKERRQ(ierr);
@@ -125,7 +125,7 @@ PETScMFFDJacobianOperator::formJacobian(
     return;
 }// formJacobian
 
-Pointer<SAMRAIVectorReal<NDIM,double> >
+boost::shared_ptr<SAMRAIVectorReal<double> >
 PETScMFFDJacobianOperator::getBaseVector() const
 {
     if (d_nonlinear_solver)
@@ -139,25 +139,25 @@ PETScMFFDJacobianOperator::getBaseVector() const
     {
         return d_op_u;
     }
-    return Pointer<SAMRAIVectorReal<NDIM,double> >(NULL);
+    return boost::shared_ptr<SAMRAIVectorReal<double> >(NULL);
 }// getBaseVector
 
 void
 PETScMFFDJacobianOperator::apply(
-    SAMRAIVectorReal<NDIM,double>& x,
-    SAMRAIVectorReal<NDIM,double>& y)
+    SAMRAIVectorReal<double>& x,
+    SAMRAIVectorReal<double>& y)
 {
     // Compute the action of the operator.
-    PETScSAMRAIVectorReal::replaceSAMRAIVector(d_petsc_x, Pointer<SAMRAIVectorReal<NDIM,PetscScalar> >(&x,false));
-    PETScSAMRAIVectorReal::replaceSAMRAIVector(d_petsc_y, Pointer<SAMRAIVectorReal<NDIM,PetscScalar> >(&y,false));
+    PETScSAMRAIVectorReal::replaceSAMRAIVector(d_petsc_x, boost::shared_ptr<SAMRAIVectorReal<PetscScalar> >(&x,false));
+    PETScSAMRAIVectorReal::replaceSAMRAIVector(d_petsc_y, boost::shared_ptr<SAMRAIVectorReal<PetscScalar> >(&y,false));
     int ierr = MatMult(d_petsc_jac, d_petsc_x, d_petsc_y); IBTK_CHKERRQ(ierr);
     return;
 }// apply
 
 void
 PETScMFFDJacobianOperator::initializeOperatorState(
-    const SAMRAIVectorReal<NDIM,double>& in,
-    const SAMRAIVectorReal<NDIM,double>& out)
+    const SAMRAIVectorReal<double>& in,
+    const SAMRAIVectorReal<double>& out)
 {
     if (d_is_initialized) deallocateOperatorState();
 

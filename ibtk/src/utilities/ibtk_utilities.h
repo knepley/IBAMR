@@ -39,8 +39,8 @@
 
 #include "Eigen/Core"  // IWYU pragma: export
 #include "boost/array.hpp"
-#include "tbox/PIO.h"
-#include "tbox/Utilities.h"
+#include "SAMRAI/tbox/PIO.h"
+#include "SAMRAI/tbox/Utilities.h"
 
 /////////////////////////////// MACRO DEFINITIONS ////////////////////////////
 

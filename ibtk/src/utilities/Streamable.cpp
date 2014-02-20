@@ -37,7 +37,7 @@
 
 namespace SAMRAI {
 namespace hier {
-template <int DIM> class IntVector;
+class IntVector;
 }  // namespace hier
 }  // namespace SAMRAI
 
@@ -63,7 +63,7 @@ Streamable::~Streamable()
 
 void
 Streamable::registerPeriodicShift(
-    const IntVector<NDIM>& /*offset*/,
+    const IntVector& /*offset*/,
     const Vector& /*displacement*/)
 {
     // intentionally blank

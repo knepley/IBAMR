@@ -39,8 +39,8 @@
 #include <string>
 
 #include "ibtk/NewtonKrylovSolver.h"
-#include "tbox/Database.h"
-#include "tbox/Pointer.h"
+#include "SAMRAI/tbox/Database.h"
+
 
 /////////////////////////////// CLASS DEFINITION /////////////////////////////
 
@@ -87,20 +87,20 @@ public:
     /*!
      * Allocate a new NewtonKrylovSolver object of the specified type.
      */
-    SAMRAI::tbox::Pointer<NewtonKrylovSolver>
+    boost::shared_ptr<NewtonKrylovSolver>
     allocateSolver(
         const std::string& solver_type,
         const std::string& solver_object_name,
-        SAMRAI::tbox::Pointer<SAMRAI::tbox::Database> solver_input_db,
+        boost::shared_ptr<SAMRAI::tbox::Database> solver_input_db,
         const std::string& solver_default_options_prefix) const;
 
     /*!
      * Typedef for functions to construct NewtonKrylovSolvers.
      */
-    typedef SAMRAI::tbox::Pointer<NewtonKrylovSolver>
+    typedef boost::shared_ptr<NewtonKrylovSolver>
     (*SolverMaker)(
         const std::string& solver_object_name,
-        SAMRAI::tbox::Pointer<SAMRAI::tbox::Database> solver_input_db,
+        boost::shared_ptr<SAMRAI::tbox::Database> solver_input_db,
         const std::string& solver_default_options_prefix);
 
     /*!

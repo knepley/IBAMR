@@ -36,22 +36,22 @@
 #include <vector>
 
 #include "CartCellDoubleQuadraticRefine.h"
-#include "CartesianPatchGeometry.h"
-#include "CellData.h"
-#include "CellIndex.h"
-#include "CellVariable.h"
+#include "SAMRAI/geom/CartesianPatchGeometry.h"
+#include "SAMRAI/pdat/CellData.h"
+#include "SAMRAI/pdat/CellIndex.h"
+#include "SAMRAI/pdat/CellVariable.h"
 #include "IBTK_config.h"
-#include "Index.h"
-#include "Patch.h"
-#include "SAMRAI_config.h"
+#include "SAMRAI/hier/Index.h"
+#include "SAMRAI/hier/Patch.h"
+#include "SAMRAI/SAMRAI_config.h"
 #include "boost/array.hpp"
 #include "ibtk/ibtk_utilities.h"
 #include "ibtk/namespaces.h" // IWYU pragma: keep
-#include "tbox/Utilities.h"
+#include "SAMRAI/tbox/Utilities.h"
 
 namespace SAMRAI {
 namespace hier {
-template <int DIM> class Variable;
+class Variable;
 }  // namespace hier
 }  // namespace SAMRAI
 
@@ -76,12 +76,12 @@ coarsen(
     return (index < 0 ? (index+1)/ratio-1 : index/ratio);
 }// coarsen
 
-inline Index<NDIM>
+inline Index
 coarsen(
-    const Index<NDIM>& index,
-    const IntVector<NDIM>& ratio)
+    const Index& index,
+    const IntVector& ratio)
 {
-    Index<NDIM> coarse_index;
+    Index coarse_index;
     for (unsigned int d = 0; d < NDIM; ++d)
     {
         coarse_index(d) = coarsen(index(d),ratio(d));
@@ -106,10 +106,10 @@ CartCellDoubleQuadraticRefine::~CartCellDoubleQuadraticRefine()
 
 bool
 CartCellDoubleQuadraticRefine::findRefineOperator(
-    const Pointer<Variable<NDIM> >& var,
+    const boost::shared_ptr<Variable >& var,
     const std::string& op_name) const
 {
-    const Pointer<CellVariable<NDIM,double> > cc_var = var;
+    const boost::shared_ptr<CellVariable<double> > cc_var = var;
     return (cc_var && op_name == s_op_name);
 }// findRefineOperator
 
@@ -125,7 +125,7 @@ CartCellDoubleQuadraticRefine::getOperatorPriority() const
     return REFINE_OP_PRIORITY;
 }// getOperatorPriority
 
-IntVector<NDIM>
+IntVector
 CartCellDoubleQuadraticRefine::getStencilWidth() const
 {
     return REFINE_OP_STENCIL_WIDTH;
@@ -133,16 +133,16 @@ CartCellDoubleQuadraticRefine::getStencilWidth() const
 
 void
 CartCellDoubleQuadraticRefine::refine(
-    Patch<NDIM>& fine,
-    const Patch<NDIM>& coarse,
+    Patch& fine,
+    const Patch& coarse,
     const int dst_component,
     const int src_component,
-    const Box<NDIM>& fine_box,
-    const IntVector<NDIM>& ratio) const
+    const Box& fine_box,
+    const IntVector& ratio) const
 {
     // Get the patch data.
-    Pointer<CellData<NDIM,double> > fdata = fine.getPatchData(dst_component);
-    Pointer<CellData<NDIM,double> > cdata = coarse.getPatchData(src_component);
+    boost::shared_ptr<CellData<double> > fdata = fine.getPatchData(dst_component);
+    boost::shared_ptr<CellData<double> > cdata = coarse.getPatchData(src_component);
 #if !defined(NDEBUG)
     TBOX_ASSERT(fdata);
     TBOX_ASSERT(cdata);
@@ -150,28 +150,28 @@ CartCellDoubleQuadraticRefine::refine(
 #endif
     const int data_depth = fdata->getDepth();
 
-    const Box<NDIM>& patch_box_fine = fine.getBox();
-    const Index<NDIM>& patch_lower_fine = patch_box_fine.lower();
-    Pointer<CartesianPatchGeometry<NDIM> > pgeom_fine = fine.getPatchGeometry();
+    const Box& patch_box_fine = fine.getBox();
+    const Index& patch_lower_fine = patch_box_fine.lower();
+    boost::shared_ptr<CartesianPatchGeometry > pgeom_fine = fine.getPatchGeometry();
     const double* const XLower_fine = pgeom_fine->getXLower();
     const double* const dx_fine = pgeom_fine->getDx();
 
-    const Box<NDIM>& patch_box_crse = coarse.getBox();
-    const Index<NDIM>& patch_lower_crse = patch_box_crse.lower();
-    Pointer<CartesianPatchGeometry<NDIM> > pgeom_crse = coarse.getPatchGeometry();
+    const Box& patch_box_crse = coarse.getBox();
+    const Index& patch_lower_crse = patch_box_crse.lower();
+    boost::shared_ptr<CartesianPatchGeometry > pgeom_crse = coarse.getPatchGeometry();
     const double* const XLower_crse = pgeom_crse->getXLower();
     const double* const dx_crse = pgeom_crse->getDx();
 
     // Set all values in the fine box via quadratic interpolation from the
     // overlying coarse grid data.
-    for (Box<NDIM>::Iterator b(fine_box); b; b++)
+    for (Box::Iterator b(fine_box); b; b++)
     {
-        const Index<NDIM>& i_fine = b();
-        const Index<NDIM>  i_crse = coarsen(i_fine, ratio);
+        const Index& i_fine = b();
+        const Index  i_crse = coarsen(i_fine, ratio);
 
         // Determine the interpolation stencil in the coarse index space.
-        Box<NDIM> stencil_box_crse(i_crse,i_crse);
-        stencil_box_crse.grow(IntVector<NDIM>(1));
+        Box stencil_box_crse(i_crse,i_crse);
+        stencil_box_crse.grow(IntVector(1));
 
         // Determine the interpolation weights.
         static const int degree = 2;
@@ -190,7 +190,7 @@ CartCellDoubleQuadraticRefine::refine(
         }
 
         // Interpolate from the coarse grid to the fine grid.
-        Index<NDIM> i_intrp;
+        Index i_intrp;
         for (int d = 0; d < data_depth; ++d)
         {
             (*fdata)(i_fine,d) = 0.0;

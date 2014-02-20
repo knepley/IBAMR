@@ -38,9 +38,9 @@
 #include <ostream>
 
 #include "PETScNewtonKrylovSolver.h"
-#include "PatchHierarchy.h"
-#include "SAMRAIVectorReal.h"
-#include "SAMRAI_config.h"
+#include "SAMRAI/hier/PatchHierarchy.h"
+#include "SAMRAI/solv/SAMRAIVectorReal.h"
+#include "SAMRAI/SAMRAI_config.h"
 #include "ibtk/GeneralOperator.h"
 #include "ibtk/GeneralSolver.h"
 #include "ibtk/IBTK_CHKERRQ.h"
@@ -56,10 +56,10 @@
 #include "ibtk/namespaces.h" // IWYU pragma: keep
 #include "petscerror.h"
 #include "petscksp.h"
-#include "tbox/PIO.h"
-#include "tbox/Timer.h"
-#include "tbox/TimerManager.h"
-#include "tbox/Utilities.h"
+#include "SAMRAI/tbox/PIO.h"
+#include "SAMRAI/tbox/Timer.h"
+#include "SAMRAI/tbox/TimerManager.h"
+#include "SAMRAI/tbox/Utilities.h"
 // IWYU pragma: no_include "petsc-private/petscimpl.h"
 
 /////////////////////////////// NAMESPACE ////////////////////////////////////
@@ -71,16 +71,16 @@ namespace IBTK
 namespace
 {
 // Timers.
-static Timer* t_solve_system;
-static Timer* t_initialize_solver_state;
-static Timer* t_deallocate_solver_state;
+static boost::shared_ptr<Timer> t_solve_system;
+static boost::shared_ptr<Timer> t_initialize_solver_state;
+static boost::shared_ptr<Timer> t_deallocate_solver_state;
 }
 
 /////////////////////////////// PUBLIC ///////////////////////////////////////
 
 PETScNewtonKrylovSolver::PETScNewtonKrylovSolver(
     const std::string& object_name,
-    Pointer<Database> input_db,
+    boost::shared_ptr<Database> input_db,
     const std::string& default_options_prefix,
     MPI_Comm petsc_comm)
     : d_reinitializing_solver(false),
@@ -176,7 +176,7 @@ PETScNewtonKrylovSolver::getPETScSNES() const
 
 void
 PETScNewtonKrylovSolver::setOperator(
-    Pointer<GeneralOperator> F)
+    boost::shared_ptr<GeneralOperator> F)
 {
     NewtonKrylovSolver::setOperator(F);
     d_user_provided_function = true;
@@ -184,7 +184,7 @@ PETScNewtonKrylovSolver::setOperator(
     return;
 }// setOperator
 
-Pointer<SAMRAIVectorReal<NDIM,double> >
+boost::shared_ptr<SAMRAIVectorReal<double> >
 PETScNewtonKrylovSolver::getSolutionVector() const
 {
     Vec petsc_x;
@@ -192,7 +192,7 @@ PETScNewtonKrylovSolver::getSolutionVector() const
     return PETScSAMRAIVectorReal::getSAMRAIVector(petsc_x);
 }// getSolutionVector
 
-Pointer<SAMRAIVectorReal<NDIM,double> >
+boost::shared_ptr<SAMRAIVectorReal<double> >
 PETScNewtonKrylovSolver::getFunctionVector() const
 {
     Vec petsc_f;
@@ -202,7 +202,7 @@ PETScNewtonKrylovSolver::getFunctionVector() const
 
 void
 PETScNewtonKrylovSolver::setJacobian(
-    Pointer<JacobianOperator> J)
+    boost::shared_ptr<JacobianOperator> J)
 {
     NewtonKrylovSolver::setJacobian(J);
     d_user_provided_jacobian = true;
@@ -212,8 +212,8 @@ PETScNewtonKrylovSolver::setJacobian(
 
 bool
 PETScNewtonKrylovSolver::solveSystem(
-    SAMRAIVectorReal<NDIM,double>& x,
-    SAMRAIVectorReal<NDIM,double>& b)
+    SAMRAIVectorReal<double>& x,
+    SAMRAIVectorReal<double>& b)
 {
     IBTK_TIMER_START(t_solve_system);
 
@@ -226,22 +226,22 @@ PETScNewtonKrylovSolver::solveSystem(
     TBOX_ASSERT(d_petsc_snes);
 #endif
     resetSNESOptions();
-    Pointer<PETScKrylovLinearSolver> p_krylov_solver = d_krylov_solver;
+    boost::shared_ptr<PETScKrylovLinearSolver> p_krylov_solver = d_krylov_solver;
     if (p_krylov_solver) p_krylov_solver->resetKSPOptions();
 
     // Solve the system using a PETSc SNES object.
-    PETScSAMRAIVectorReal::replaceSAMRAIVector(d_petsc_x, Pointer<SAMRAIVectorReal<NDIM,double> >(&x,false));
-    Pointer<LinearOperator> A = d_F;
+    PETScSAMRAIVectorReal::replaceSAMRAIVector(d_petsc_x, boost::shared_ptr<SAMRAIVectorReal<double> >(&x,false));
+    boost::shared_ptr<LinearOperator> A = d_F;
     if (A)
     {
-        d_b->copyVector(Pointer<SAMRAIVectorReal<NDIM,double> >(&b,false));
+        d_b->copyVector(boost::shared_ptr<SAMRAIVectorReal<double> >(&b,false));
         A->modifyRhsForInhomogeneousBc(*d_b);
         ierr = PetscObjectStateIncrease(reinterpret_cast<PetscObject>(d_petsc_b)); IBTK_CHKERRQ(ierr);
         PETScSAMRAIVectorReal::replaceSAMRAIVector(d_petsc_b, d_b);
     }
     else
     {
-        PETScSAMRAIVectorReal::replaceSAMRAIVector(d_petsc_b, Pointer<SAMRAIVectorReal<NDIM,double> >(&b,false));
+        PETScSAMRAIVectorReal::replaceSAMRAIVector(d_petsc_b, boost::shared_ptr<SAMRAIVectorReal<double> >(&b,false));
     }
 
     ierr = SNESSolve(d_petsc_snes, d_petsc_b, d_petsc_x); IBTK_CHKERRQ(ierr);
@@ -264,8 +264,8 @@ PETScNewtonKrylovSolver::solveSystem(
 
 void
 PETScNewtonKrylovSolver::initializeSolverState(
-    const SAMRAIVectorReal<NDIM,double>& x,
-    const SAMRAIVectorReal<NDIM,double>& b)
+    const SAMRAIVectorReal<double>& x,
+    const SAMRAIVectorReal<double>& b)
 {
     IBTK_TIMER_START(t_initialize_solver_state);
 
@@ -279,7 +279,7 @@ PETScNewtonKrylovSolver::initializeSolverState(
                    << "  vectors must have the same number of components" << std::endl);
     }
 
-    const Pointer<PatchHierarchy<NDIM> >& patch_hierarchy = x.getPatchHierarchy();
+    const boost::shared_ptr<PatchHierarchy >& patch_hierarchy = x.getPatchHierarchy();
     if (patch_hierarchy != b.getPatchHierarchy())
     {
         TBOX_ERROR(d_object_name << "::initializeSolverState()\n"
@@ -373,7 +373,7 @@ PETScNewtonKrylovSolver::initializeSolverState(
     // the SNES solver.
     KSP petsc_ksp;
     ierr = SNESGetKSP(d_petsc_snes, &petsc_ksp); IBTK_CHKERRQ(ierr);
-    Pointer<PETScKrylovLinearSolver> p_krylov_solver = d_krylov_solver;
+    boost::shared_ptr<PETScKrylovLinearSolver> p_krylov_solver = d_krylov_solver;
     if (p_krylov_solver) p_krylov_solver->resetWrappedKSP(petsc_ksp);
 
     // Setup the Krylov solver.
@@ -565,7 +565,7 @@ PETScNewtonKrylovSolver::resetWrappedSNES(
     // wrapped SNES object.
     KSP petsc_ksp;
     ierr = SNESGetKSP(d_petsc_snes, &petsc_ksp); IBTK_CHKERRQ(ierr);
-    Pointer<PETScKrylovLinearSolver> p_krylov_solver = d_krylov_solver;
+    boost::shared_ptr<PETScKrylovLinearSolver> p_krylov_solver = d_krylov_solver;
     if (p_krylov_solver) p_krylov_solver->resetWrappedKSP(petsc_ksp);
 
     // Reset the member state variables to correspond to the values used by the

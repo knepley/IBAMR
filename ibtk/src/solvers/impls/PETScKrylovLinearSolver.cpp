@@ -39,8 +39,8 @@
 #include <ostream>
 
 #include "PETScKrylovLinearSolver.h"
-#include "PatchHierarchy.h"
-#include "SAMRAI_config.h"
+#include "SAMRAI/hier/PatchHierarchy.h"
+#include "SAMRAI/SAMRAI_config.h"
 #include "ibtk/GeneralSolver.h"
 #include "ibtk/IBTK_CHKERRQ.h"
 #include "ibtk/LinearOperator.h"
@@ -52,10 +52,10 @@
 #include "ibtk/namespaces.h" // IWYU pragma: keep
 #include "petscerror.h"
 #include "petscoptions.h"
-#include "tbox/PIO.h"
-#include "tbox/Timer.h"
-#include "tbox/TimerManager.h"
-#include "tbox/Utilities.h"
+#include "SAMRAI/tbox/PIO.h"
+#include "SAMRAI/tbox/Timer.h"
+#include "SAMRAI/tbox/TimerManager.h"
+#include "SAMRAI/tbox/Utilities.h"
 // IWYU pragma: no_include "petsc-private/petscimpl.h"
 
 /////////////////////////////// NAMESPACE ////////////////////////////////////
@@ -67,16 +67,16 @@ namespace IBTK
 namespace
 {
 // Timers.
-static Timer* t_solve_system;
-static Timer* t_initialize_solver_state;
-static Timer* t_deallocate_solver_state;
+static boost::shared_ptr<Timer> t_solve_system;
+static boost::shared_ptr<Timer> t_initialize_solver_state;
+static boost::shared_ptr<Timer> t_deallocate_solver_state;
 }
 
 /////////////////////////////// PUBLIC ///////////////////////////////////////
 
 PETScKrylovLinearSolver::PETScKrylovLinearSolver(
     const std::string& object_name,
-    Pointer<Database> input_db,
+    boost::shared_ptr<Database> input_db,
     const std::string& default_options_prefix,
     MPI_Comm petsc_comm)
     : d_ksp_type(KSPGMRES),
@@ -192,7 +192,7 @@ PETScKrylovLinearSolver::getPETScKSP() const
 
 void
 PETScKrylovLinearSolver::setOperator(
-    Pointer<LinearOperator> A)
+    boost::shared_ptr<LinearOperator> A)
 {
     KrylovLinearSolver::setOperator(A);
     d_user_provided_mat = true;
@@ -202,7 +202,7 @@ PETScKrylovLinearSolver::setOperator(
 
 void
 PETScKrylovLinearSolver::setPreconditioner(
-    Pointer<LinearSolver> pc_solver)
+    boost::shared_ptr<LinearSolver> pc_solver)
 {
     KrylovLinearSolver::setPreconditioner(pc_solver);
     d_user_provided_pc = true;
@@ -213,7 +213,7 @@ PETScKrylovLinearSolver::setPreconditioner(
 void
 PETScKrylovLinearSolver::setNullspace(
     const bool contains_constant_vec,
-    const std::vector<Pointer<SAMRAIVectorReal<NDIM,double> > >& nullspace_basis_vecs)
+    const std::vector<boost::shared_ptr<SAMRAIVectorReal<double> > >& nullspace_basis_vecs)
 {
     deallocateNullspaceData();
     KrylovLinearSolver::setNullspace(contains_constant_vec, nullspace_basis_vecs);
@@ -223,8 +223,8 @@ PETScKrylovLinearSolver::setNullspace(
 
 bool
 PETScKrylovLinearSolver::solveSystem(
-    SAMRAIVectorReal<NDIM,double>& x,
-    SAMRAIVectorReal<NDIM,double>& b)
+    SAMRAIVectorReal<double>& x,
+    SAMRAIVectorReal<double>& b)
 {
     IBTK_TIMER_START(t_solve_system);
 
@@ -242,15 +242,15 @@ PETScKrylovLinearSolver::solveSystem(
     resetKSPOptions();
 
     // Solve the system using a PETSc KSP object.
-    PETScSAMRAIVectorReal::replaceSAMRAIVector(d_petsc_x, Pointer<SAMRAIVectorReal<NDIM,double> >(&x,false));
+    PETScSAMRAIVectorReal::replaceSAMRAIVector(d_petsc_x, boost::shared_ptr<SAMRAIVectorReal<double> >(&x,false));
     d_A->setHomogeneousBc(d_homogeneous_bc);
     if (d_homogeneous_bc)
     {
-        PETScSAMRAIVectorReal::replaceSAMRAIVector(d_petsc_b, Pointer<SAMRAIVectorReal<NDIM,double> >(&b,false));
+        PETScSAMRAIVectorReal::replaceSAMRAIVector(d_petsc_b, boost::shared_ptr<SAMRAIVectorReal<double> >(&b,false));
     }
     else
     {
-        d_b->copyVector(Pointer<SAMRAIVectorReal<NDIM,double> >(&b,false));
+        d_b->copyVector(boost::shared_ptr<SAMRAIVectorReal<double> >(&b,false));
         d_A->modifyRhsForInhomogeneousBc(*d_b);
         PETScSAMRAIVectorReal::replaceSAMRAIVector(d_petsc_b, d_b);
         d_A->setHomogeneousBc(true);
@@ -277,8 +277,8 @@ PETScKrylovLinearSolver::solveSystem(
 
 void
 PETScKrylovLinearSolver::initializeSolverState(
-    const SAMRAIVectorReal<NDIM,double>& x,
-    const SAMRAIVectorReal<NDIM,double>& b)
+    const SAMRAIVectorReal<double>& x,
+    const SAMRAIVectorReal<double>& b)
 {
     IBTK_TIMER_START(t_initialize_solver_state);
 
@@ -292,7 +292,7 @@ PETScKrylovLinearSolver::initializeSolverState(
                    << "  vectors must have the same number of components" << std::endl);
     }
 
-    const Pointer<PatchHierarchy<NDIM> >& patch_hierarchy = x.getPatchHierarchy();
+    const boost::shared_ptr<PatchHierarchy >& patch_hierarchy = x.getPatchHierarchy();
     if (patch_hierarchy != b.getPatchHierarchy())
     {
         TBOX_ERROR(d_object_name << "::initializeSolverState()\n"

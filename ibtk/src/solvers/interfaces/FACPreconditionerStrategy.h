@@ -40,9 +40,9 @@
 #include <utility>
 
 #include "ibtk/FACPreconditioner.h"
-#include "tbox/ConstPointer.h"
-#include "tbox/DescribedClass.h"
-#include "tbox/Pointer.h"
+#include "SAMRAI/tbox/Constboost::shared_ptr.h"
+
+
 
 namespace SAMRAI {
 namespace solv {
@@ -104,7 +104,7 @@ public:
      */
     virtual void
     setFACPreconditioner(
-        SAMRAI::tbox::ConstPointer<FACPreconditioner> preconditioner);
+        SAMRAI::tbox::Constboost::shared_ptr<FACPreconditioner> preconditioner);
 
     /*!
      * \brief Set whether the solver should use homogeneous boundary conditions.
@@ -162,8 +162,8 @@ public:
      */
     virtual void
     restrictResidual(
-        const SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& source,
-        SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& dest,
+        const SAMRAI::solv::SAMRAIVectorReal<double>& source,
+        SAMRAI::solv::SAMRAIVectorReal<double>& dest,
         int dest_level_num) = 0;
 
     /*!
@@ -175,8 +175,8 @@ public:
      */
     virtual void
     prolongError(
-        const SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& source,
-        SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& dest,
+        const SAMRAI::solv::SAMRAIVectorReal<double>& source,
+        SAMRAI::solv::SAMRAIVectorReal<double>& dest,
         int dest_level_num) = 0;
 
     /*!
@@ -189,8 +189,8 @@ public:
      */
     virtual void
     prolongErrorAndCorrect(
-        const SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& source,
-        SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& dest,
+        const SAMRAI::solv::SAMRAIVectorReal<double>& source,
+        SAMRAI::solv::SAMRAIVectorReal<double>& dest,
         int dest_level_num) = 0;
 
     /*!
@@ -199,8 +199,8 @@ public:
      */
     virtual void
     smoothError(
-        SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& error,
-        const SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& residual,
+        SAMRAI::solv::SAMRAIVectorReal<double>& error,
+        const SAMRAI::solv::SAMRAIVectorReal<double>& residual,
         int level_num,
         int num_sweeps,
         bool performing_pre_sweeps,
@@ -214,8 +214,8 @@ public:
      */
     virtual bool
     solveCoarsestLevel(
-        SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& error,
-        const SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& residual,
+        SAMRAI::solv::SAMRAIVectorReal<double>& error,
+        const SAMRAI::solv::SAMRAIVectorReal<double>& residual,
         int coarsest_level_num) = 0;
 
     /*!
@@ -224,9 +224,9 @@ public:
      */
     virtual void
     computeResidual(
-        SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& residual,
-        const SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& solution,
-        const SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& rhs,
+        SAMRAI::solv::SAMRAIVectorReal<double>& residual,
+        const SAMRAI::solv::SAMRAIVectorReal<double>& solution,
+        const SAMRAI::solv::SAMRAIVectorReal<double>& rhs,
         int coarsest_level_num,
         int finest_level_num) = 0;
 
@@ -235,8 +235,8 @@ public:
      */
     virtual void
     initializeOperatorState(
-        const SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& solution,
-        const SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& rhs);
+        const SAMRAI::solv::SAMRAIVectorReal<double>& solution,
+        const SAMRAI::solv::SAMRAIVectorReal<double>& rhs);
 
     /*!
      * \brief Deallocate any hierarchy-dependent data initialized by
@@ -264,13 +264,13 @@ protected:
      * \brief Return a SAMRAIVectorReal object that corresponds to the given
      * object but restricted to a single level of the patch hierarchy.
      */
-    virtual SAMRAI::tbox::Pointer<SAMRAI::solv::SAMRAIVectorReal<NDIM,double> >
+    virtual boost::shared_ptr<SAMRAI::solv::SAMRAIVectorReal<double> >
     getLevelSAMRAIVectorReal(
-        const SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& vec,
+        const SAMRAI::solv::SAMRAIVectorReal<double>& vec,
         int level_num) const;
 
-    // Pointer to the FACPreconditioner that is using this operator.
-    SAMRAI::tbox::ConstPointer<IBTK::FACPreconditioner> d_preconditioner;
+    // boost::shared_ptr to the FACPreconditioner that is using this operator.
+    SAMRAI::tbox::Constboost::shared_ptr<IBTK::FACPreconditioner> d_preconditioner;
 
     // Object name.
     const std::string d_object_name;

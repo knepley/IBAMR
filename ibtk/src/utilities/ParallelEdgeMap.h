@@ -38,7 +38,7 @@
 #include <map>
 #include <utility>
 
-#include "tbox/DescribedClass.h"
+
 
 /////////////////////////////// CLASS DEFINITION /////////////////////////////
 
@@ -49,7 +49,7 @@ namespace IBTK
  * maps from vertices to links between vertices) in parallel.
  */
 class ParallelEdgeMap
-    : public SAMRAI::tbox::DescribedClass
+    
 {
 public:
     /*!

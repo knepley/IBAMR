@@ -95,7 +95,7 @@ public:
      */
     virtual void
     modifyRhsForInhomogeneousBc(
-        SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& y);
+        SAMRAI::solv::SAMRAIVectorReal<double>& y);
 
     //\}
 

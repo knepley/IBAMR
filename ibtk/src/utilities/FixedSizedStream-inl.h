@@ -38,7 +38,7 @@
 #include <cstring>
 
 #include "ibtk/FixedSizedStream.h"
-#include "tbox/Utilities.h"
+#include "SAMRAI/tbox/Utilities.h"
 
 /////////////////////////////// NAMESPACE ////////////////////////////////////
 
@@ -117,7 +117,7 @@ FixedSizedStream::pack(
     const int n)
 {
     const int bytes = SAMRAI::tbox::AbstractStream::sizeofBool(n);
-    void* ptr = getPointerAndAdvanceCursor(bytes);
+    void* ptr = getboost::shared_ptrAndAdvanceCursor(bytes);
     char* c_ptr = static_cast<char*>(ptr);
     for (int i = 0; i < n; i++)
     {
@@ -132,7 +132,7 @@ FixedSizedStream::unpack(
     const int n)
 {
     const int bytes = SAMRAI::tbox::AbstractStream::sizeofBool(n);
-    void* ptr = getPointerAndAdvanceCursor(bytes);
+    void* ptr = getboost::shared_ptrAndAdvanceCursor(bytes);
     const char* c_ptr = static_cast<const char*>(ptr);
     for (int i = 0; i < n; i++)
     {
@@ -367,7 +367,7 @@ FixedSizedStream::unpack(
 *************************************************************************
 *                                                                       *
 * Packing/unpacking helper functions.  The member function              *
-* getPointerAndAdvanceCursor() returns a pointer to buffer space and    *
+* getboost::shared_ptrAndAdvanceCursor() returns a pointer to buffer space and    *
 * advances internal pointers to reflect the allocated buffers space.    *
 * The two functions given below simplify packing and unpacking for      *
 * the * numerous member functions below.                                *
@@ -376,7 +376,7 @@ FixedSizedStream::unpack(
 */
 
 inline void*
-FixedSizedStream::getPointerAndAdvanceCursor(
+FixedSizedStream::getboost::shared_ptrAndAdvanceCursor(
     const int bytes)
 {
     void* ptr = &d_buffer[d_buffer_index];
@@ -386,12 +386,12 @@ FixedSizedStream::getPointerAndAdvanceCursor(
         d_current_size = d_buffer_index;
         if (d_buffer_index > d_buffer_size)
         {
-            TBOX_ERROR("FixedSizedStream::getPointerAndAdvanceCursor():\n"
+            TBOX_ERROR("FixedSizedStream::getboost::shared_ptrAndAdvanceCursor():\n"
                        << "  buffer overrun." << std::endl);
         }
     }
     return ptr;
-}// getPointerAndAdvanceCursor
+}// getboost::shared_ptrAndAdvanceCursor
 
 template<typename T>
 inline void
@@ -399,7 +399,7 @@ FixedSizedStream::__pack(
     const T* const m_data,
     unsigned int m_bytes)
 {
-    void* const ptr = getPointerAndAdvanceCursor(m_bytes);
+    void* const ptr = getboost::shared_ptrAndAdvanceCursor(m_bytes);
     memcpy(ptr, static_cast<const void*>(m_data), m_bytes);
     return;
 }// _pack
@@ -410,7 +410,7 @@ FixedSizedStream::__unpack(
     T* const m_data,
     unsigned int m_bytes)
 {
-    const void* const ptr = getPointerAndAdvanceCursor(m_bytes);
+    const void* const ptr = getboost::shared_ptrAndAdvanceCursor(m_bytes);
     memcpy(static_cast<void*>(m_data), ptr, m_bytes);
     return;
 }// _unpack

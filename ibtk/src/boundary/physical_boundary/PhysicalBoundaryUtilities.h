@@ -35,13 +35,12 @@
 
 /////////////////////////////// INCLUDES /////////////////////////////////////
 
-#include "BoundaryBox.h"
-#include "Box.h"
-#include "tbox/Array.h"
+#include "SAMRAI/hier/BoundaryBox.h"
+#include "SAMRAI/hier/Box.h"
 
 namespace SAMRAI {
 namespace hier {
-template <int DIM> class Patch;
+class Patch;
 }  // namespace hier
 }  // namespace SAMRAI
 
@@ -82,25 +81,25 @@ public:
      * \brief Return the co-dimension 1 boundary boxes corresponding to the
      * physical boundaries of the supplied patch.
      */
-    static SAMRAI::tbox::Array<SAMRAI::hier::BoundaryBox<NDIM> >
+    static std::vector<SAMRAI::hier::BoundaryBox >
     getPhysicalBoundaryCodim1Boxes(
-        const SAMRAI::hier::Patch<NDIM>& patch);
+        const SAMRAI::hier::Patch& patch);
 
     /*!
      * \brief Return the co-dimension 2 boundary boxes corresponding to the
      * physical boundaries of the supplied patch.
      */
-    static SAMRAI::tbox::Array<SAMRAI::hier::BoundaryBox<NDIM> >
+    static std::vector<SAMRAI::hier::BoundaryBox >
     getPhysicalBoundaryCodim2Boxes(
-        const SAMRAI::hier::Patch<NDIM>& patch);
+        const SAMRAI::hier::Patch& patch);
 
     /*!
      * \brief Return the co-dimension 3 boundary boxes corresponding to the
      * physical boundaries of the supplied patch.
      */
-    static SAMRAI::tbox::Array<SAMRAI::hier::BoundaryBox<NDIM> >
+    static std::vector<SAMRAI::hier::BoundaryBox >
     getPhysicalBoundaryCodim3Boxes(
-        const SAMRAI::hier::Patch<NDIM>& patch);
+        const SAMRAI::hier::Patch& patch);
 
     /*!
      * \brief Trim a co-dimension 1 boundary box so that it does not stick out
@@ -110,10 +109,10 @@ public:
      *
      * \see SAMRAI::hier::BoundaryBox::getBoundaryType
      */
-    static SAMRAI::hier::BoundaryBox<NDIM>
+    static SAMRAI::hier::BoundaryBox
     trimBoundaryCodim1Box(
-        const SAMRAI::hier::BoundaryBox<NDIM>& bdry_box,
-        const SAMRAI::hier::Patch<NDIM>& patch);
+        const SAMRAI::hier::BoundaryBox& bdry_box,
+        const SAMRAI::hier::Patch& patch);
 
     /*!
      * \brief Return box describing the side index space of surfaces defined by
@@ -123,9 +122,9 @@ public:
      *
      * \see SAMRAI::hier::BoundaryBox::getBoundaryType
      */
-    static SAMRAI::hier::Box<NDIM>
+    static SAMRAI::hier::Box
     makeSideBoundaryCodim1Box(
-        const SAMRAI::hier::BoundaryBox<NDIM>& boundary_box);
+        const SAMRAI::hier::BoundaryBox& boundary_box);
 
 protected:
 

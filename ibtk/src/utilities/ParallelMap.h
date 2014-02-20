@@ -38,8 +38,8 @@
 #include <map>
 #include <vector>
 
-#include "tbox/DescribedClass.h"
-#include "tbox/Pointer.h"
+
+
 
 namespace IBTK {
 class Streamable;
@@ -54,7 +54,7 @@ namespace IBTK
  * arbitrary data items in parallel.
  */
 class ParallelMap
-    : public SAMRAI::tbox::DescribedClass
+    
 {
 public:
     /*!
@@ -100,7 +100,7 @@ public:
     void
     addItem(
         int key,
-        SAMRAI::tbox::Pointer<Streamable> item);
+        boost::shared_ptr<Streamable> item);
 
     /*!
      * \brief Remove an item from the map.
@@ -126,13 +126,13 @@ public:
     /*!
      * \brief Return a const reference to the map.
      */
-    const std::map<int,SAMRAI::tbox::Pointer<Streamable> >&
+    const std::map<int,boost::shared_ptr<Streamable> >&
     getMap() const;
 
 private:
     // Member data.
-    std::map<int,SAMRAI::tbox::Pointer<Streamable> > d_map;
-    std::map<int,SAMRAI::tbox::Pointer<Streamable> > d_pending_additions;
+    std::map<int,boost::shared_ptr<Streamable> > d_map;
+    std::map<int,boost::shared_ptr<Streamable> > d_pending_additions;
     std::vector<int> d_pending_removals;
 };
 }// namespace IBTK

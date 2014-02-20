@@ -39,15 +39,15 @@
 #include <string>
 #include <vector>
 
-#include "PatchLevel.h"
+#include "SAMRAI/hier/PatchLevel.h"
 #include "ibtk/CartGridFunction.h"
-#include "tbox/Pointer.h"
+
 
 namespace SAMRAI {
 namespace hier {
-template <int DIM> class Patch;
-template <int DIM> class PatchHierarchy;
-template <int DIM> class Variable;
+class Patch;
+class PatchHierarchy;
+class Variable;
 }  // namespace hier
 }  // namespace SAMRAI
 
@@ -82,7 +82,7 @@ public:
      */
     void
     addFunction(
-        SAMRAI::tbox::Pointer<CartGridFunction> fcn);
+        boost::shared_ptr<CartGridFunction> fcn);
 
     /*!
      * \name Methods to set patch interior data.
@@ -104,8 +104,8 @@ public:
     void
     setDataOnPatchHierarchy(
         int data_idx,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::Variable<NDIM> > var,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy,
+        boost::shared_ptr<SAMRAI::hier::Variable > var,
+        boost::shared_ptr<SAMRAI::hier::PatchHierarchy > hierarchy,
         double data_time,
         bool initial_time=false,
         int coarsest_ln=-1,
@@ -119,8 +119,8 @@ public:
     void
     setDataOnPatchLevel(
         int data_idx,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::Variable<NDIM> > var,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::PatchLevel<NDIM> > patch_level,
+        boost::shared_ptr<SAMRAI::hier::Variable > var,
+        boost::shared_ptr<SAMRAI::hier::PatchLevel > patch_level,
         double data_time,
         bool initial_time=false);
 
@@ -132,11 +132,11 @@ public:
     void
     setDataOnPatch(
         int data_idx,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::Variable<NDIM> > var,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::Patch<NDIM> > patch,
+        boost::shared_ptr<SAMRAI::hier::Variable > var,
+        boost::shared_ptr<SAMRAI::hier::Patch > patch,
         double data_time,
         bool initial_time=false,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::PatchLevel<NDIM> > patch_level=SAMRAI::tbox::Pointer<SAMRAI::hier::PatchLevel<NDIM> >(NULL));
+        boost::shared_ptr<SAMRAI::hier::PatchLevel > patch_level=boost::shared_ptr<SAMRAI::hier::PatchLevel >(NULL));
 
     //\}
 
@@ -144,7 +144,7 @@ protected:
     /*
      * The collection of function objects.
      */
-    std::vector<SAMRAI::tbox::Pointer<CartGridFunction> > d_fcns;
+    std::vector<boost::shared_ptr<CartGridFunction> > d_fcns;
 
 private:
     /*!

@@ -38,7 +38,7 @@
 #include <set>
 #include <vector>
 
-#include "tbox/DescribedClass.h"
+
 
 /////////////////////////////// CLASS DEFINITION /////////////////////////////
 
@@ -49,7 +49,7 @@ namespace IBTK
  * integer keys in parallel.
  */
 class ParallelSet
-    : public SAMRAI::tbox::DescribedClass
+    
 {
 public:
     /*!

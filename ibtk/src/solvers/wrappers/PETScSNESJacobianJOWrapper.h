@@ -37,13 +37,13 @@
 
 #include <string>
 
-#include "SAMRAIVectorReal.h"
+#include "SAMRAI/solv/SAMRAIVectorReal.h"
 #include "ibtk/JacobianOperator.h"
 #include "petscmat.h"
 #include "petscsnes.h"
 #include "petscsys.h"
 #include "petscvec.h"
-#include "tbox/Pointer.h"
+
 
 /////////////////////////////// CLASS DEFINITION /////////////////////////////
 
@@ -113,12 +113,12 @@ public:
      */
     void
     formJacobian(
-        SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& x);
+        SAMRAI::solv::SAMRAIVectorReal<double>& x);
 
     /*!
      * \brief Return the vector where the Jacobian is evaluated.
      */
-    SAMRAI::tbox::Pointer<SAMRAI::solv::SAMRAIVectorReal<NDIM,double> >
+    boost::shared_ptr<SAMRAI::solv::SAMRAIVectorReal<double> >
     getBaseVector() const;
 
     //\}
@@ -152,8 +152,8 @@ public:
      */
     void
     apply(
-        SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& x,
-        SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& y);
+        SAMRAI::solv::SAMRAIVectorReal<double>& x,
+        SAMRAI::solv::SAMRAIVectorReal<double>& y);
 
     /*!
      * \brief Compute z=Ax+y.
@@ -180,9 +180,9 @@ public:
      */
     void
     applyAdd(
-        SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& x,
-        SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& y,
-        SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& z);
+        SAMRAI::solv::SAMRAIVectorReal<double>& x,
+        SAMRAI::solv::SAMRAIVectorReal<double>& y,
+        SAMRAI::solv::SAMRAIVectorReal<double>& z);
 
     /*!
      * \brief Compute hierarchy dependent data required for computing y=Ax and
@@ -216,8 +216,8 @@ public:
      */
     void
     initializeOperatorState(
-        const SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& in,
-        const SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& out);
+        const SAMRAI::solv::SAMRAIVectorReal<double>& in,
+        const SAMRAI::solv::SAMRAIVectorReal<double>& out);
 
     /*!
      * \brief Remove all hierarchy dependent data allocated by
@@ -269,7 +269,7 @@ private:
     Mat d_petsc_snes_jac;
     PetscErrorCode (* const d_petsc_snes_form_jac)(SNES,Vec,Mat*,Mat*,MatStructure*,void*);
     void* const d_petsc_snes_jac_ctx;
-    SAMRAI::tbox::Pointer<SAMRAI::solv::SAMRAIVectorReal<NDIM,double> > d_x, d_y, d_z;
+    boost::shared_ptr<SAMRAI::solv::SAMRAIVectorReal<double> > d_x, d_y, d_z;
     Vec d_petsc_x, d_petsc_y, d_petsc_z;
 };
 }// namespace IBTK

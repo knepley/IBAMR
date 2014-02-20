@@ -35,11 +35,11 @@
 
 /////////////////////////////// INCLUDES /////////////////////////////////////
 
-#include "SAMRAIVectorReal.h"
+#include "SAMRAI/solv/SAMRAIVectorReal.h"
 #include "mpi.h"
 #include "petscsys.h"
 #include "petscvec.h"
-#include "tbox/Pointer.h"
+
 // IWYU pragma: no_include "petscmath.h"
 
 /////////////////////////////// CLASS DEFINITION /////////////////////////////
@@ -87,7 +87,7 @@ public:
      */
     static Vec
     createPETScVector(
-        SAMRAI::tbox::Pointer<SAMRAI::solv::SAMRAIVectorReal<NDIM,PetscScalar> > samrai_vec,
+        boost::shared_ptr<SAMRAI::solv::SAMRAIVectorReal<PetscScalar> > samrai_vec,
         MPI_Comm comm=PETSC_COMM_WORLD);
 
     /*!
@@ -106,7 +106,7 @@ public:
      * Return pointer to the SAMRAI vector object associated with the given
      * PETSc vector object.
      */
-    static SAMRAI::tbox::Pointer<SAMRAI::solv::SAMRAIVectorReal<NDIM,PetscScalar> >
+    static boost::shared_ptr<SAMRAI::solv::SAMRAIVectorReal<PetscScalar> >
     getSAMRAIVector(
         Vec petsc_vec);
 
@@ -117,7 +117,7 @@ public:
     static void
     replaceSAMRAIVector(
         Vec petsc_vec,
-        SAMRAI::tbox::Pointer<SAMRAI::solv::SAMRAIVectorReal<NDIM,PetscScalar> > samrai_vec);
+        boost::shared_ptr<SAMRAI::solv::SAMRAIVectorReal<PetscScalar> > samrai_vec);
 
 protected:
     /*
@@ -133,7 +133,7 @@ protected:
      * clone) operation, but not otherwise.
      */
     PETScSAMRAIVectorReal(
-        SAMRAI::tbox::Pointer<SAMRAI::solv::SAMRAIVectorReal<NDIM,PetscScalar> > samrai_vector,
+        boost::shared_ptr<SAMRAI::solv::SAMRAIVectorReal<PetscScalar> > samrai_vector,
         bool vector_created_via_duplicate,
         MPI_Comm comm);
 
@@ -188,7 +188,7 @@ private:
     /*
      * Vector data is maintained in the SAMRAI vector structure.
      */
-    SAMRAI::tbox::Pointer<SAMRAI::solv::SAMRAIVectorReal<NDIM,PetscScalar> > d_samrai_vector;
+    boost::shared_ptr<SAMRAI::solv::SAMRAIVectorReal<PetscScalar> > d_samrai_vector;
 
     /*
      * PETSc vector object corresponding to this PETScAbstractVectorReal object.

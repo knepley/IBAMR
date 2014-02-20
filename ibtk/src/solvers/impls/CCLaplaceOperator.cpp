@@ -37,18 +37,18 @@
 #include <ostream>
 
 #include "CCLaplaceOperator.h"
-#include "CellDataFactory.h"
-#include "CellVariable.h"
+#include "SAMRAI/pdat/CellDataFactory.h"
+#include "SAMRAI/pdat/CellVariable.h"
 #include "IBTK_config.h"
-#include "PoissonSpecifications.h"
-#include "SAMRAI_config.h"
+#include "SAMRAI/solv/PoissonSpecifications.h"
+#include "SAMRAI/SAMRAI_config.h"
 #include "ibtk/CellNoCornersFillPattern.h"
 #include "ibtk/HierarchyMathOps.h"
 #include "ibtk/ibtk_utilities.h"
 #include "ibtk/namespaces.h" // IWYU pragma: keep
-#include "tbox/Timer.h"
-#include "tbox/TimerManager.h"
-#include "tbox/Utilities.h"
+#include "SAMRAI/tbox/Timer.h"
+#include "SAMRAI/tbox/TimerManager.h"
+#include "SAMRAI/tbox/Utilities.h"
 
 /////////////////////////////// NAMESPACE ////////////////////////////////////
 
@@ -75,9 +75,9 @@ static const std::string BDRY_EXTRAP_TYPE = "LINEAR";
 static const bool CONSISTENT_TYPE_2_BDRY = false;
 
 // Timers.
-static Timer* t_apply;
-static Timer* t_initialize_operator_state;
-static Timer* t_deallocate_operator_state;
+static boost::shared_ptr<Timer> t_apply;
+static boost::shared_ptr<Timer> t_initialize_operator_state;
+static boost::shared_ptr<Timer> t_deallocate_operator_state;
 }
 
 /////////////////////////////// PUBLIC ///////////////////////////////////////
@@ -117,8 +117,8 @@ CCLaplaceOperator::~CCLaplaceOperator()
 
 void
 CCLaplaceOperator::apply(
-    SAMRAIVectorReal<NDIM,double>& x,
-    SAMRAIVectorReal<NDIM,double>& y)
+    SAMRAIVectorReal<double>& x,
+    SAMRAIVectorReal<double>& y)
 {
     IBTK_TIMER_START(t_apply);
 
@@ -126,15 +126,15 @@ CCLaplaceOperator::apply(
     TBOX_ASSERT(d_is_initialized);
     for (int comp = 0; comp < d_ncomp; ++comp)
     {
-        Pointer<CellVariable<NDIM,double> > x_cc_var = x.getComponentVariable(comp);
-        Pointer<CellVariable<NDIM,double> > y_cc_var = y.getComponentVariable(comp);
+        boost::shared_ptr<CellVariable<double> > x_cc_var = x.getComponentVariable(comp);
+        boost::shared_ptr<CellVariable<double> > y_cc_var = y.getComponentVariable(comp);
         if (!x_cc_var || !y_cc_var)
         {
             TBOX_ERROR(d_object_name << "::apply()\n"
                        << "  encountered non-cell centered vector components" << std::endl);
         }
-        Pointer<CellDataFactory<NDIM,double> > x_factory = x_cc_var->getPatchDataFactory();
-        Pointer<CellDataFactory<NDIM,double> > y_factory = y_cc_var->getPatchDataFactory();
+        boost::shared_ptr<CellDataFactory<double> > x_factory = x_cc_var->getPatchDataFactory();
+        boost::shared_ptr<CellDataFactory<double> > y_factory = y_cc_var->getPatchDataFactory();
         TBOX_ASSERT(x_factory);
         TBOX_ASSERT(y_factory);
         const unsigned int x_depth = x_factory->getDefaultDepth();
@@ -165,13 +165,13 @@ CCLaplaceOperator::apply(
     // Compute the action of the operator.
     for (int comp = 0; comp < d_ncomp; ++comp)
     {
-        Pointer<CellVariable<NDIM,double> > x_cc_var = x.getComponentVariable(comp);
-        Pointer<CellVariable<NDIM,double> > y_cc_var = y.getComponentVariable(comp);
+        boost::shared_ptr<CellVariable<double> > x_cc_var = x.getComponentVariable(comp);
+        boost::shared_ptr<CellVariable<double> > y_cc_var = y.getComponentVariable(comp);
         const int x_idx = x.getComponentDescriptorIndex(comp);
         const int y_idx = y.getComponentDescriptorIndex(comp);
         for (unsigned int l = 0; l < d_bc_coefs.size(); ++l)
         {
-            d_hier_math_ops->laplace(y_idx, y_cc_var, d_poisson_spec, x_idx, x_cc_var, d_no_fill, 0.0, 0.0, -1, Pointer<CellVariable<NDIM,double> >(NULL), l, l);
+            d_hier_math_ops->laplace(y_idx, y_cc_var, d_poisson_spec, x_idx, x_cc_var, d_no_fill, 0.0, 0.0, -1, boost::shared_ptr<CellVariable<double> >(NULL), l, l);
         }
     }
 
@@ -181,8 +181,8 @@ CCLaplaceOperator::apply(
 
 void
 CCLaplaceOperator::initializeOperatorState(
-    const SAMRAIVectorReal<NDIM,double>& in,
-    const SAMRAIVectorReal<NDIM,double>& out)
+    const SAMRAIVectorReal<double>& in,
+    const SAMRAIVectorReal<double>& out)
 {
     IBTK_TIMER_START(t_initialize_operator_state);
 

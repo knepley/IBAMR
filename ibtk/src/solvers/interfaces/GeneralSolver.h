@@ -40,8 +40,8 @@
 #include <utility>
 
 #include "ibtk/HierarchyMathOps.h"
-#include "tbox/DescribedClass.h"
-#include "tbox/Pointer.h"
+
+
 
 namespace SAMRAI {
 namespace solv {
@@ -142,12 +142,12 @@ public:
      */
     virtual void
     setHierarchyMathOps(
-        SAMRAI::tbox::Pointer<HierarchyMathOps> hier_math_ops);
+        boost::shared_ptr<HierarchyMathOps> hier_math_ops);
 
     /*!
      * \brief Get the HierarchyMathOps object used by the solver.
      */
-    virtual SAMRAI::tbox::Pointer<HierarchyMathOps>
+    virtual boost::shared_ptr<HierarchyMathOps>
     getHierarchyMathOps() const;
 
     /*!
@@ -190,8 +190,8 @@ public:
      */
     virtual bool
     solveSystem(
-        SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& x,
-        SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& b) = 0;
+        SAMRAI::solv::SAMRAIVectorReal<double>& x,
+        SAMRAI::solv::SAMRAIVectorReal<double>& b) = 0;
 
     /*!
      * \brief Compute hierarchy dependent data required for solving
@@ -239,8 +239,8 @@ public:
      */
     virtual void
     initializeSolverState(
-        const SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& x,
-        const SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& b);
+        const SAMRAI::solv::SAMRAIVectorReal<double>& x,
+        const SAMRAI::solv::SAMRAIVectorReal<double>& b);
 
     /*!
      * \brief Remove all hierarchy dependent data allocated by
@@ -377,7 +377,7 @@ protected:
     double d_current_residual_norm;
 
     // Mathematical operators.
-    SAMRAI::tbox::Pointer<HierarchyMathOps> d_hier_math_ops;
+    boost::shared_ptr<HierarchyMathOps> d_hier_math_ops;
     bool d_hier_math_ops_external;
 
     // Logging configuration.

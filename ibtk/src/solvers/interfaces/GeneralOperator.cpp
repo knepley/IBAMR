@@ -37,7 +37,7 @@
 #include <ostream>
 
 #include "GeneralOperator.h"
-#include "SAMRAIVectorReal.h"
+#include "SAMRAI/solv/SAMRAIVectorReal.h"
 #include "ibtk/namespaces.h" // IWYU pragma: keep
 
 /////////////////////////////// NAMESPACE ////////////////////////////////////
@@ -135,14 +135,14 @@ GeneralOperator::getDt() const
 
 void
 GeneralOperator::setHierarchyMathOps(
-    Pointer<HierarchyMathOps> hier_math_ops)
+    boost::shared_ptr<HierarchyMathOps> hier_math_ops)
 {
     d_hier_math_ops = hier_math_ops;
     d_hier_math_ops_external = d_hier_math_ops;
     return;
 }// setHierarchyMathOps
 
-Pointer<HierarchyMathOps>
+boost::shared_ptr<HierarchyMathOps>
 GeneralOperator::getHierarchyMathOps() const
 {
     return d_hier_math_ops;
@@ -150,16 +150,16 @@ GeneralOperator::getHierarchyMathOps() const
 
 void
 GeneralOperator::applyAdd(
-    SAMRAIVectorReal<NDIM,double>& x,
-    SAMRAIVectorReal<NDIM,double>& y,
-    SAMRAIVectorReal<NDIM,double>& z)
+    SAMRAIVectorReal<double>& x,
+    SAMRAIVectorReal<double>& y,
+    SAMRAIVectorReal<double>& z)
 {
     // Guard against the case that y == z.
-    Pointer<SAMRAIVectorReal<NDIM,double> > zz = z.cloneVector(z.getName());
+    boost::shared_ptr<SAMRAIVectorReal<double> > zz = z.cloneVector(z.getName());
     zz->allocateVectorData();
-    zz->copyVector(Pointer<SAMRAIVectorReal<NDIM,double> >(&z,false));
+    zz->copyVector(boost::shared_ptr<SAMRAIVectorReal<double> >(&z,false));
     apply(x,*zz);
-    z.add(Pointer<SAMRAIVectorReal<NDIM,double> >(&y,false),zz);
+    z.add(boost::shared_ptr<SAMRAIVectorReal<double> >(&y,false),zz);
     zz->freeVectorComponents();
     zz.setNull();
     return;
@@ -167,8 +167,8 @@ GeneralOperator::applyAdd(
 
 void
 GeneralOperator::initializeOperatorState(
-    const SAMRAIVectorReal<NDIM,double>& /*in*/,
-    const SAMRAIVectorReal<NDIM,double>& /*out*/)
+    const SAMRAIVectorReal<double>& /*in*/,
+    const SAMRAIVectorReal<double>& /*out*/)
 {
     d_is_initialized = true;
     return;
@@ -206,7 +206,7 @@ GeneralOperator::printClassData(
            << "solution_time = " << d_solution_time << "\n"
            << "current_time = " << d_current_time << "\n"
            << "new_time = " << d_new_time << "\n"
-           << "hier_math_ops = " << d_hier_math_ops.getPointer() << "\n"
+           << "hier_math_ops = " << d_hier_math_ops.getboost::shared_ptr() << "\n"
            << "hier_math_ops_external = " << d_hier_math_ops_external << "\n"
            << "enable_logging = " << d_enable_logging << "\n";
     return;

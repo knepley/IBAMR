@@ -32,11 +32,11 @@
 
 /////////////////////////////// INCLUDES /////////////////////////////////////
 
-#include "IntVector.h"
+#include "SAMRAI/hier/IntVector.h"
 #include "LIndexSetVariable.h"
 #include "ibtk/LIndexSetDataFactory.h"
 #include "ibtk/namespaces.h" // IWYU pragma: keep
-#include "tbox/Pointer.h"
+
 
 namespace IBTK {
 class LNode;
@@ -54,7 +54,7 @@ namespace IBTK
 template<class T>
 LIndexSetVariable<T>::LIndexSetVariable(
     const std::string& name)
-    : Variable<NDIM>(name, new LIndexSetDataFactory<T>(IntVector<NDIM>(0)))
+    : Variable(name, new LIndexSetDataFactory<T>(IntVector(0)))
 {
     // intentionally blank
     return;
@@ -93,9 +93,9 @@ LIndexSetVariable<T>::fineBoundaryRepresentsVariable() const
 
 
 template class IBTK::LIndexSetVariable<IBTK::LNode>;
-template class Pointer<IBTK::LIndexSetVariable<IBTK::LNode> >;
+template class boost::shared_ptr<IBTK::LIndexSetVariable<IBTK::LNode> >;
 
 template class IBTK::LIndexSetVariable<IBTK::LNodeIndex>;
-template class Pointer<IBTK::LIndexSetVariable<IBTK::LNodeIndex> >;
+template class boost::shared_ptr<IBTK::LIndexSetVariable<IBTK::LNodeIndex> >;
 
 //////////////////////////////////////////////////////////////////////////////

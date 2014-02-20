@@ -38,17 +38,17 @@
 #include <set>
 #include <vector>
 
-#include "Box.h"
-#include "ComponentSelector.h"
-#include "IntVector.h"
-#include "RefinePatchStrategy.h"
+#include "SAMRAI/hier/Box.h"
+#include "SAMRAI/hier/ComponentSelector.h"
+#include "SAMRAI/hier/IntVector.h"
+#include "SAMRAI/xfer/RefinePatchStrategy.h"
 
 namespace SAMRAI {
 namespace hier {
-template <int DIM> class Patch;
+class Patch;
 }  // namespace hier
 namespace solv {
-template <int DIM> class RobinBcCoefStrategy;
+class RobinBcCoefStrategy;
 }  // namespace solv
 }  // namespace SAMRAI
 
@@ -65,7 +65,7 @@ namespace IBTK
  * ghost cell values at physical boundaries.
  */
 class RobinPhysBdryPatchStrategy
-    : public SAMRAI::xfer::RefinePatchStrategy<NDIM>
+    : public SAMRAI::xfer::RefinePatchStrategy
 {
 public:
     /*!
@@ -107,7 +107,7 @@ public:
      */
     void
     setPhysicalBcCoef(
-        SAMRAI::solv::RobinBcCoefStrategy<NDIM>* bc_coef);
+        boost::shared_ptr<SAMRAI::solv::RobinBcCoefStrategy> bc_coef);
 
     /*!
      * \brief Reset the Robin boundary condition specification object employed
@@ -117,7 +117,7 @@ public:
      */
     void
     setPhysicalBcCoefs(
-        const std::vector<SAMRAI::solv::RobinBcCoefStrategy<NDIM>*>& bc_coefs);
+        const std::vector<boost::shared_ptr<SAMRAI::solv::RobinBcCoefStrategy> >& bc_coefs);
 
     /*!
      * \brief Set whether boundary filling should employ homogeneous boundary
@@ -144,7 +144,7 @@ public:
     /*!
      * Function to perform user-defined preprocess data refine operations.  This
      * member function is called before standard refine operations (expressed
-     * using concrete subclasses of the SAMRAI::xfer::RefineOperator base
+     * using concrete subclasses of the SAMRAI::hier::RefineOperator base
      * class).  The preprocess function must refine data from the scratch
      * components of the coarse patch into the scratch components of the fine
      * patch on the specified fine box region.  Recall that the scratch
@@ -161,15 +161,15 @@ public:
      */
     void
     preprocessRefine(
-        SAMRAI::hier::Patch<NDIM>& fine,
-        const SAMRAI::hier::Patch<NDIM>& coarse,
-        const SAMRAI::hier::Box<NDIM>& fine_box,
-        const SAMRAI::hier::IntVector<NDIM>& ratio);
+        SAMRAI::hier::Patch& fine,
+        const SAMRAI::hier::Patch& coarse,
+        const SAMRAI::hier::Box& fine_box,
+        const SAMRAI::hier::IntVector& ratio);
 
     /*!
      * Function to perform user-defined postprocess data refine operations.
      * This member function is called after standard refine operations
-     * (expressed using concrete subclasses of the SAMRAI::xfer::RefineOperator
+     * (expressed using concrete subclasses of the SAMRAI::hier::RefineOperator
      * base class).  The postprocess function must refine data from the scratch
      * components of the coarse patch into the scratch components of the fine
      * patch on the specified fine box region.  Recall that the scratch
@@ -186,10 +186,10 @@ public:
      */
     void
     postprocessRefine(
-        SAMRAI::hier::Patch<NDIM>& fine,
-        const SAMRAI::hier::Patch<NDIM>& coarse,
-        const SAMRAI::hier::Box<NDIM>& fine_box,
-        const SAMRAI::hier::IntVector<NDIM>& ratio);
+        SAMRAI::hier::Patch& fine,
+        const SAMRAI::hier::Patch& coarse,
+        const SAMRAI::hier::Box& fine_box,
+        const SAMRAI::hier::IntVector& ratio);
 
     //\}
 
@@ -207,9 +207,9 @@ public:
      */
     virtual void
     accumulateFromPhysicalBoundaryData(
-        SAMRAI::hier::Patch<NDIM>& patch,
+        SAMRAI::hier::Patch& patch,
         double fill_time,
-        const SAMRAI::hier::IntVector<NDIM>& ghost_width_to_fill);
+        const SAMRAI::hier::IntVector& ghost_width_to_fill);
 
 protected:
     /*
@@ -225,7 +225,7 @@ protected:
      * The boolean value indicates whether homogeneous boundary conditions
      * should be used.
      */
-    std::vector<SAMRAI::solv::RobinBcCoefStrategy<NDIM>*> d_bc_coefs;
+    std::vector<boost::shared_ptr<SAMRAI::solv::RobinBcCoefStrategy> > d_bc_coefs;
     bool d_homogeneous_bc;
 
 private:

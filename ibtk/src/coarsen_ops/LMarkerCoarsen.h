@@ -37,15 +37,15 @@
 
 #include <string>
 
-#include "Box.h"
-#include "CoarsenOperator.h"
-#include "IntVector.h"
-#include "tbox/Pointer.h"
+#include "SAMRAI/hier/Box.h"
+#include "SAMRAI/hier/CoarsenOperator.h"
+#include "SAMRAI/hier/IntVector.h"
+
 
 namespace SAMRAI {
 namespace hier {
-template <int DIM> class Patch;
-template <int DIM> class Variable;
+class Patch;
+class Variable;
 }  // namespace hier
 }  // namespace SAMRAI
 
@@ -54,12 +54,12 @@ template <int DIM> class Variable;
 namespace IBTK
 {
 /*!
- * \brief Class LMarkerCoarsen is a concrete SAMRAI::xfer::CoarsenOperator for
+ * \brief Class LMarkerCoarsen is a concrete SAMRAI::hier::CoarsenOperator for
  * restricting IB marker data from finer levels to coarser levels in the patch
  * hierarchy.
  */
 class LMarkerCoarsen
-    : public SAMRAI::xfer::CoarsenOperator<NDIM>
+    : public SAMRAI::hier::CoarsenOperator
 {
 public:
     /*!
@@ -73,7 +73,7 @@ public:
     ~LMarkerCoarsen();
 
     /*!
-     * \name Implementation of SAMRAI::xfer::CoarsenOperator interface.
+     * \name Implementation of SAMRAI::hier::CoarsenOperator interface.
      */
     //\{
 
@@ -83,7 +83,7 @@ public:
      */
     bool
     findCoarsenOperator(
-        const SAMRAI::tbox::Pointer<SAMRAI::hier::Variable<NDIM> >& var,
+        const boost::shared_ptr<SAMRAI::hier::Variable >& var,
         const std::string& op_name) const;
 
     /*!
@@ -107,7 +107,7 @@ public:
      * sufficient ghost cell data surrounding the interior to satisfy the
      * stencil width requirements for each coarsening operator.
      */
-    SAMRAI::hier::IntVector<NDIM>
+    SAMRAI::hier::IntVector
     getStencilWidth() const;
 
     /*!
@@ -119,12 +119,12 @@ public:
      */
     void
     coarsen(
-        SAMRAI::hier::Patch<NDIM>& coarse,
-        const SAMRAI::hier::Patch<NDIM>& fine,
+        SAMRAI::hier::Patch& coarse,
+        const SAMRAI::hier::Patch& fine,
         int dst_component,
         int src_component,
-        const SAMRAI::hier::Box<NDIM>& coarse_box,
-        const SAMRAI::hier::IntVector<NDIM>& ratio) const;
+        const SAMRAI::hier::Box& coarse_box,
+        const SAMRAI::hier::IntVector& ratio) const;
 
     //\}
 

@@ -37,8 +37,8 @@
 #include <sstream>
 
 #include "FACPreconditionerStrategy.h"
-#include "PatchHierarchy.h"
-#include "SAMRAIVectorReal.h"
+#include "SAMRAI/hier/PatchHierarchy.h"
+#include "SAMRAI/solv/SAMRAIVectorReal.h"
 #include "ibtk/namespaces.h" // IWYU pragma: keep
 
 /////////////////////////////// NAMESPACE ////////////////////////////////////
@@ -83,7 +83,7 @@ FACPreconditionerStrategy::getIsInitialized() const
 
 void
 FACPreconditionerStrategy::setFACPreconditioner(
-    ConstPointer<FACPreconditioner> preconditioner)
+    Constboost::shared_ptr<FACPreconditioner> preconditioner)
 {
     d_preconditioner = preconditioner;
     return;
@@ -141,8 +141,8 @@ FACPreconditionerStrategy::getDt() const
 
 void
 FACPreconditionerStrategy::initializeOperatorState(
-    const SAMRAIVectorReal<NDIM,double>& /*solution*/,
-    const SAMRAIVectorReal<NDIM,double>& /*rhs*/)
+    const SAMRAIVectorReal<double>& /*solution*/,
+    const SAMRAIVectorReal<double>& /*rhs*/)
 {
     d_is_initialized = true;
     return;
@@ -157,14 +157,14 @@ FACPreconditionerStrategy::deallocateOperatorState()
 
 /////////////////////////////// PROTECTED ////////////////////////////////////
 
-Pointer<SAMRAIVectorReal<NDIM,double> >
+boost::shared_ptr<SAMRAIVectorReal<double> >
 FACPreconditionerStrategy::getLevelSAMRAIVectorReal(
-    const SAMRAIVectorReal<NDIM,double>& vec,
+    const SAMRAIVectorReal<double>& vec,
     int level_num) const
 {
     std::ostringstream name_str;
     name_str << vec.getName() << "::level_" << level_num;
-    Pointer<SAMRAIVectorReal<NDIM,double> > level_vec = new SAMRAIVectorReal<NDIM,double>(name_str.str(), vec.getPatchHierarchy(), level_num, level_num);
+    boost::shared_ptr<SAMRAIVectorReal<double> > level_vec = new SAMRAIVectorReal<NDIM,double>(name_str.str(), vec.getPatchHierarchy(), level_num, level_num);
     for (int comp = 0; comp < vec.getNumberOfComponents(); ++comp)
     {
         level_vec->addComponent(vec.getComponentVariable(comp), vec.getComponentDescriptorIndex(comp), vec.getControlVolumeIndex(comp));

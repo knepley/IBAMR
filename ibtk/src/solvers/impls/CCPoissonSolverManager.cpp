@@ -47,9 +47,9 @@
 #include "ibtk/LinearSolver.h"
 #include "ibtk/PETScKrylovPoissonSolver.h"
 #include "ibtk/namespaces.h" // IWYU pragma: keep
-#include "tbox/PIO.h"
-#include "tbox/ShutdownRegistry.h"
-#include "tbox/Utilities.h"
+#include "SAMRAI/tbox/PIO.h"
+#include "SAMRAI/tbox/ShutdownRegistry.h"
+#include "SAMRAI/tbox/Utilities.h"
 
 /////////////////////////////// NAMESPACE ////////////////////////////////////
 
@@ -95,13 +95,13 @@ CCPoissonSolverManager::freeManager()
 
 namespace
 {
-Pointer<PoissonSolver>
+boost::shared_ptr<PoissonSolver>
 allocate_petsc_krylov_solver(
     const std::string& object_name,
-    Pointer<Database> input_db,
+    boost::shared_ptr<Database> input_db,
     const std::string& default_options_prefix)
 {
-    Pointer<PETScKrylovPoissonSolver> krylov_solver = new PETScKrylovPoissonSolver(object_name, input_db, default_options_prefix);
+    boost::shared_ptr<PETScKrylovPoissonSolver> krylov_solver = new PETScKrylovPoissonSolver(object_name, input_db, default_options_prefix);
     krylov_solver->setOperator(new CCLaplaceOperator(object_name+"::CCLaplaceOperator"));
     return krylov_solver;
 }// allocate_petsc_krylov_solver
@@ -109,11 +109,11 @@ allocate_petsc_krylov_solver(
 
 /////////////////////////////// PUBLIC ///////////////////////////////////////
 
-Pointer<PoissonSolver>
+boost::shared_ptr<PoissonSolver>
 CCPoissonSolverManager::allocateSolver(
     const std::string& solver_type,
     const std::string& solver_object_name,
-    Pointer<Database> solver_input_db,
+    boost::shared_ptr<Database> solver_input_db,
     const std::string& solver_default_options_prefix) const
 {
     std::map<std::string,SolverMaker>::const_iterator it = d_solver_maker_map.find(solver_type);
@@ -125,19 +125,19 @@ CCPoissonSolverManager::allocateSolver(
     return (it->second)(solver_object_name, solver_input_db, solver_default_options_prefix);
 }// allocateSolver
 
-Pointer<PoissonSolver>
+boost::shared_ptr<PoissonSolver>
 CCPoissonSolverManager::allocateSolver(
     const std::string& solver_type,
     const std::string& solver_object_name,
-    Pointer<Database> solver_input_db,
+    boost::shared_ptr<Database> solver_input_db,
     const std::string& solver_default_options_prefix,
     const std::string& precond_type,
     const std::string& precond_object_name,
-    Pointer<Database> precond_input_db,
+    boost::shared_ptr<Database> precond_input_db,
     const std::string& precond_default_options_prefix) const
 {
-    Pointer<PoissonSolver> solver = allocateSolver(solver_type, solver_object_name, solver_input_db, solver_default_options_prefix);
-    Pointer<KrylovLinearSolver> p_solver = solver;
+    boost::shared_ptr<PoissonSolver> solver = allocateSolver(solver_type, solver_object_name, solver_input_db, solver_default_options_prefix);
+    boost::shared_ptr<KrylovLinearSolver> p_solver = solver;
     if (p_solver)
     {
         p_solver->setPreconditioner(allocateSolver(precond_type, precond_object_name, precond_input_db, precond_default_options_prefix));

@@ -62,7 +62,7 @@ KrylovLinearSolver::~KrylovLinearSolver()
 
 void
 KrylovLinearSolver::setHierarchyMathOps(
-    Pointer<HierarchyMathOps> hier_math_ops)
+    boost::shared_ptr<HierarchyMathOps> hier_math_ops)
 {
     LinearSolver::setHierarchyMathOps(hier_math_ops);
     if (d_A) d_A->setHierarchyMathOps(d_hier_math_ops);
@@ -102,9 +102,9 @@ KrylovLinearSolver::setTimeInterval(
 
 void
 KrylovLinearSolver::setOperator(
-    Pointer<LinearOperator> A)
+    boost::shared_ptr<LinearOperator> A)
 {
-    Pointer<LinearOperator> A_old = d_A;
+    boost::shared_ptr<LinearOperator> A_old = d_A;
     d_A = A;
     if (d_A)
     {
@@ -119,7 +119,7 @@ KrylovLinearSolver::setOperator(
     return;
 }// setOperator
 
-Pointer<LinearOperator>
+boost::shared_ptr<LinearOperator>
 KrylovLinearSolver::getOperator() const
 {
     return d_A;
@@ -127,9 +127,9 @@ KrylovLinearSolver::getOperator() const
 
 void
 KrylovLinearSolver::setPreconditioner(
-    Pointer<LinearSolver> pc_solver)
+    boost::shared_ptr<LinearSolver> pc_solver)
 {
-    Pointer<LinearSolver> pc_solver_old = d_pc_solver;
+    boost::shared_ptr<LinearSolver> pc_solver_old = d_pc_solver;
     d_pc_solver = pc_solver;
     if (d_pc_solver)
     {
@@ -144,7 +144,7 @@ KrylovLinearSolver::setPreconditioner(
     return;
 }// setPreconditioner
 
-Pointer<LinearSolver>
+boost::shared_ptr<LinearSolver>
 KrylovLinearSolver::getPreconditioner() const
 {
     return d_pc_solver;

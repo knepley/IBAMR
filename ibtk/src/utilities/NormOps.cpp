@@ -39,26 +39,26 @@
 #include <numeric>
 #include <vector>
 
-#include "CellData.h"
-#include "CellVariable.h"
+#include "SAMRAI/pdat/CellData.h"
+#include "SAMRAI/pdat/CellVariable.h"
 #include "NormOps.h"
-#include "Patch.h"
-#include "PatchCellDataNormOpsReal.h"
-#include "PatchData.h"
-#include "PatchHierarchy.h"
-#include "PatchLevel.h"
-#include "PatchSideDataNormOpsReal.h"
-#include "SAMRAIVectorReal.h"
-#include "SideData.h"
-#include "SideVariable.h"
+#include "SAMRAI/hier/Patch.h"
+#include "SAMRAI/math/PatchCellDataNormOpsReal.h"
+#include "SAMRAI/hier/PatchData.h"
+#include "SAMRAI/hier/PatchHierarchy.h"
+#include "SAMRAI/hier/PatchLevel.h"
+#include "SAMRAI/math/PatchSideDataNormOpsReal.h"
+#include "SAMRAI/solv/SAMRAIVectorReal.h"
+#include "SAMRAI/pdat/SideData.h"
+#include "SAMRAI/pdat/SideVariable.h"
 #include "ibtk/namespaces.h" // IWYU pragma: keep
-#include "tbox/Pointer.h"
-#include "tbox/SAMRAI_MPI.h"
+
+#include "SAMRAI/tbox/SAMRAI_MPI.h"
 
 namespace SAMRAI {
 namespace hier {
-template <int DIM> class Box;
-template <int DIM> class Variable;
+class Box;
+class Variable;
 }  // namespace hier
 }  // namespace SAMRAI
 
@@ -95,7 +95,7 @@ accurate_sum_of_squares(
 
 double
 NormOps::L1Norm(
-    const SAMRAIVectorReal<NDIM,double>* const samrai_vector,
+    const SAMRAIVectorReal<double>* const samrai_vector,
     const bool local_only)
 {
     const double L1_norm_local = L1Norm_local(samrai_vector);
@@ -110,7 +110,7 @@ NormOps::L1Norm(
 
 double
 NormOps::L2Norm(
-    const SAMRAIVectorReal<NDIM,double>* const samrai_vector,
+    const SAMRAIVectorReal<double>* const samrai_vector,
     const bool local_only)
 {
     const double L2_norm_local = L2Norm_local(samrai_vector);
@@ -125,7 +125,7 @@ NormOps::L2Norm(
 
 double
 NormOps::maxNorm(
-    const SAMRAIVectorReal<NDIM,double>* const samrai_vector,
+    const SAMRAIVectorReal<double>* const samrai_vector,
     const bool local_only)
 {
     return samrai_vector->maxNorm(local_only);
@@ -137,51 +137,51 @@ NormOps::maxNorm(
 
 double
 NormOps::L1Norm_local(
-    const SAMRAIVectorReal<NDIM,double>* const samrai_vector)
+    const SAMRAIVectorReal<double>* const samrai_vector)
 {
     std::vector<double> L1_norm_local_patch;
-    Pointer<PatchHierarchy<NDIM> > hierarchy = samrai_vector->getPatchHierarchy();
+    boost::shared_ptr<PatchHierarchy > hierarchy = samrai_vector->getPatchHierarchy();
     const int coarsest_ln = samrai_vector->getCoarsestLevelNumber();
     const int finest_ln = samrai_vector->getFinestLevelNumber();
     const int ncomp = samrai_vector->getNumberOfComponents();
     for (int comp = 0; comp < ncomp; ++comp)
     {
-        const Pointer<Variable<NDIM> >& comp_var = samrai_vector->getComponentVariable(comp);
+        const boost::shared_ptr<Variable >& comp_var = samrai_vector->getComponentVariable(comp);
         const int comp_idx = samrai_vector->getComponentDescriptorIndex(comp);
         const int cvol_idx = samrai_vector->getControlVolumeIndex(comp);
         const bool has_cvol = cvol_idx >= 0;
 
-        Pointer<CellVariable<NDIM,double> > comp_cc_var = comp_var;
+        boost::shared_ptr<CellVariable<double> > comp_cc_var = comp_var;
         if (comp_cc_var)
         {
-            PatchCellDataNormOpsReal<NDIM,double> patch_ops;
+            PatchCellDataNormOpsReal<double> patch_ops;
             for (int ln = coarsest_ln; ln <= finest_ln; ++ln)
             {
-                Pointer<PatchLevel<NDIM> > level = hierarchy->getPatchLevel(ln);
-                for (PatchLevel<NDIM>::Iterator p(level); p; p++)
+                boost::shared_ptr<PatchLevel > level = hierarchy->getPatchLevel(ln);
+                for (PatchLevel::Iterator p(level); p; p++)
                 {
-                    Pointer<Patch<NDIM> > patch = level->getPatch(p());
-                    const Box<NDIM>& patch_box = patch->getBox();
-                    Pointer<CellData<NDIM,double> > comp_data = patch->getPatchData(comp_idx);
-                    Pointer<CellData<NDIM,double> > cvol_data = (has_cvol ? patch->getPatchData(cvol_idx) : Pointer<PatchData<NDIM> >(NULL));
+                    boost::shared_ptr<Patch > patch = level->getPatch(p());
+                    const Box& patch_box = patch->getBox();
+                    boost::shared_ptr<CellData<double> > comp_data = patch->getPatchData(comp_idx);
+                    boost::shared_ptr<CellData<double> > cvol_data = (has_cvol ? patch->getPatchData(cvol_idx) : boost::shared_ptr<PatchData >(NULL));
                     L1_norm_local_patch.push_back(patch_ops.L1Norm(comp_data, patch_box, cvol_data));
                 }
             }
         }
 
-        Pointer<SideVariable<NDIM,double> > comp_sc_var = comp_var;
+        boost::shared_ptr<SideVariable<double> > comp_sc_var = comp_var;
         if (comp_sc_var)
         {
-            PatchSideDataNormOpsReal<NDIM,double> patch_ops;
+            PatchSideDataNormOpsReal<double> patch_ops;
             for (int ln = coarsest_ln; ln <= finest_ln; ++ln)
             {
-                Pointer<PatchLevel<NDIM> > level = hierarchy->getPatchLevel(ln);
-                for (PatchLevel<NDIM>::Iterator p(level); p; p++)
+                boost::shared_ptr<PatchLevel > level = hierarchy->getPatchLevel(ln);
+                for (PatchLevel::Iterator p(level); p; p++)
                 {
-                    Pointer<Patch<NDIM> > patch = level->getPatch(p());
-                    const Box<NDIM>& patch_box = patch->getBox();
-                    Pointer<SideData<NDIM,double> > comp_data = patch->getPatchData(comp_idx);
-                    Pointer<SideData<NDIM,double> > cvol_data = (has_cvol ? patch->getPatchData(cvol_idx) : Pointer<PatchData<NDIM> >(NULL));
+                    boost::shared_ptr<Patch > patch = level->getPatch(p());
+                    const Box& patch_box = patch->getBox();
+                    boost::shared_ptr<SideData<double> > comp_data = patch->getPatchData(comp_idx);
+                    boost::shared_ptr<SideData<double> > cvol_data = (has_cvol ? patch->getPatchData(cvol_idx) : boost::shared_ptr<PatchData >(NULL));
                     L1_norm_local_patch.push_back(patch_ops.L1Norm(comp_data, patch_box, cvol_data));
                 }
             }
@@ -192,51 +192,51 @@ NormOps::L1Norm_local(
 
 double
 NormOps::L2Norm_local(
-    const SAMRAIVectorReal<NDIM,double>* const samrai_vector)
+    const SAMRAIVectorReal<double>* const samrai_vector)
 {
     std::vector<double> L2_norm_local_patch;
-    Pointer<PatchHierarchy<NDIM> > hierarchy = samrai_vector->getPatchHierarchy();
+    boost::shared_ptr<PatchHierarchy > hierarchy = samrai_vector->getPatchHierarchy();
     const int coarsest_ln = samrai_vector->getCoarsestLevelNumber();
     const int finest_ln = samrai_vector->getFinestLevelNumber();
     const int ncomp = samrai_vector->getNumberOfComponents();
     for (int comp = 0; comp < ncomp; ++comp)
     {
-        const Pointer<Variable<NDIM> >& comp_var = samrai_vector->getComponentVariable(comp);
+        const boost::shared_ptr<Variable >& comp_var = samrai_vector->getComponentVariable(comp);
         const int comp_idx = samrai_vector->getComponentDescriptorIndex(comp);
         const int cvol_idx = samrai_vector->getControlVolumeIndex(comp);
         const bool has_cvol = cvol_idx >= 0;
 
-        Pointer<CellVariable<NDIM,double> > comp_cc_var = comp_var;
+        boost::shared_ptr<CellVariable<double> > comp_cc_var = comp_var;
         if (comp_cc_var)
         {
-            PatchCellDataNormOpsReal<NDIM,double> patch_ops;
+            PatchCellDataNormOpsReal<double> patch_ops;
             for (int ln = coarsest_ln; ln <= finest_ln; ++ln)
             {
-                Pointer<PatchLevel<NDIM> > level = hierarchy->getPatchLevel(ln);
-                for (PatchLevel<NDIM>::Iterator p(level); p; p++)
+                boost::shared_ptr<PatchLevel > level = hierarchy->getPatchLevel(ln);
+                for (PatchLevel::Iterator p(level); p; p++)
                 {
-                    Pointer<Patch<NDIM> > patch = level->getPatch(p());
-                    const Box<NDIM>& patch_box = patch->getBox();
-                    Pointer<CellData<NDIM,double> > comp_data = patch->getPatchData(comp_idx);
-                    Pointer<CellData<NDIM,double> > cvol_data = (has_cvol ? patch->getPatchData(cvol_idx) : Pointer<PatchData<NDIM> >(NULL));
+                    boost::shared_ptr<Patch > patch = level->getPatch(p());
+                    const Box& patch_box = patch->getBox();
+                    boost::shared_ptr<CellData<double> > comp_data = patch->getPatchData(comp_idx);
+                    boost::shared_ptr<CellData<double> > cvol_data = (has_cvol ? patch->getPatchData(cvol_idx) : boost::shared_ptr<PatchData >(NULL));
                     L2_norm_local_patch.push_back(patch_ops.L2Norm(comp_data, patch_box, cvol_data));
                 }
             }
         }
 
-        Pointer<SideVariable<NDIM,double> > comp_sc_var = comp_var;
+        boost::shared_ptr<SideVariable<double> > comp_sc_var = comp_var;
         if (comp_sc_var)
         {
-            PatchSideDataNormOpsReal<NDIM,double> patch_ops;
+            PatchSideDataNormOpsReal<double> patch_ops;
             for (int ln = coarsest_ln; ln <= finest_ln; ++ln)
             {
-                Pointer<PatchLevel<NDIM> > level = hierarchy->getPatchLevel(ln);
-                for (PatchLevel<NDIM>::Iterator p(level); p; p++)
+                boost::shared_ptr<PatchLevel > level = hierarchy->getPatchLevel(ln);
+                for (PatchLevel::Iterator p(level); p; p++)
                 {
-                    Pointer<Patch<NDIM> > patch = level->getPatch(p());
-                    const Box<NDIM>& patch_box = patch->getBox();
-                    Pointer<SideData<NDIM,double> > comp_data = patch->getPatchData(comp_idx);
-                    Pointer<SideData<NDIM,double> > cvol_data = (has_cvol ? patch->getPatchData(cvol_idx) : Pointer<PatchData<NDIM> >(NULL));
+                    boost::shared_ptr<Patch > patch = level->getPatch(p());
+                    const Box& patch_box = patch->getBox();
+                    boost::shared_ptr<SideData<double> > comp_data = patch->getPatchData(comp_idx);
+                    boost::shared_ptr<SideData<double> > cvol_data = (has_cvol ? patch->getPatchData(cvol_idx) : boost::shared_ptr<PatchData >(NULL));
                     L2_norm_local_patch.push_back(patch_ops.L2Norm(comp_data, patch_box, cvol_data));
                 }
             }

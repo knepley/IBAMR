@@ -37,10 +37,10 @@
 
 #include <stddef.h>
 
-#include "SAMRAIVectorReal.h"
+#include "SAMRAI/solv/SAMRAIVectorReal.h"
 #include "ibtk/LinearOperator.h"
 #include "ibtk/LinearSolver.h"
-#include "tbox/Pointer.h"
+
 
 namespace IBTK {
 class HierarchyMathOps;
@@ -74,7 +74,7 @@ public:
      */
     void
     setHierarchyMathOps(
-        SAMRAI::tbox::Pointer<HierarchyMathOps> hier_math_ops);
+        boost::shared_ptr<HierarchyMathOps> hier_math_ops);
 
     /*!
      * \name General-purpose solver functionality.
@@ -115,12 +115,12 @@ public:
      */
     virtual void
     setOperator(
-        SAMRAI::tbox::Pointer<LinearOperator> A);
+        boost::shared_ptr<LinearOperator> A);
 
     /*!
      * \brief Retrieve the linear operator used when solving \f$Ax=b\f$.
      */
-    virtual SAMRAI::tbox::Pointer<LinearOperator>
+    virtual boost::shared_ptr<LinearOperator>
     getOperator() const;
 
     /*!
@@ -131,22 +131,22 @@ public:
      */
     virtual void
     setPreconditioner(
-        SAMRAI::tbox::Pointer<LinearSolver> pc_solver=NULL);
+        boost::shared_ptr<LinearSolver> pc_solver=NULL);
 
     /*!
      * \brief Retrieve the preconditioner used by the Krylov subspace method
      * when solving \f$Ax=b\f$.
      */
-    virtual SAMRAI::tbox::Pointer<LinearSolver>
+    virtual boost::shared_ptr<LinearSolver>
     getPreconditioner() const;
 
     //\}
 
 protected:
     // Solver components.
-    SAMRAI::tbox::Pointer<LinearOperator> d_A;
-    SAMRAI::tbox::Pointer<LinearSolver> d_pc_solver;
-    SAMRAI::tbox::Pointer<SAMRAI::solv::SAMRAIVectorReal<NDIM,double> > d_x, d_b;
+    boost::shared_ptr<LinearOperator> d_A;
+    boost::shared_ptr<LinearSolver> d_pc_solver;
+    boost::shared_ptr<SAMRAI::solv::SAMRAIVectorReal<double> > d_x, d_b;
 
 private:
     /*!

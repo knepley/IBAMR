@@ -39,21 +39,21 @@
 #include <string>
 #include <vector>
 
-#include "IntVector.h"
-#include "PoissonSpecifications.h"
+#include "SAMRAI/hier/IntVector.h"
+#include "SAMRAI/solv/PoissonSpecifications.h"
 #include "ibtk/PoissonFACPreconditioner.h"
 #include "ibtk/PoissonFACPreconditionerStrategy.h"
 #include "ibtk/PoissonSolver.h"
 #include "petscmat.h"
 #include "petscvec.h"
-#include "tbox/Database.h"
-#include "tbox/Pointer.h"
+#include "SAMRAI/tbox/Database.h"
+
 
 namespace SAMRAI {
 namespace hier {
-template <int DIM> class Box;
-template <int DIM> class BoxList;
-template <int DIM> class Patch;
+class Box;
+class BoxList;
+class Patch;
 }  // namespace hier
 namespace pdat {
 template <int DIM, class TYPE> class CellData;
@@ -117,7 +117,7 @@ public:
      */
     CCPoissonPointRelaxationFACOperator(
         const std::string& object_name,
-        SAMRAI::tbox::Pointer<SAMRAI::tbox::Database> input_db,
+        boost::shared_ptr<SAMRAI::tbox::Database> input_db,
         const std::string& default_options_prefix);
 
     /*!
@@ -129,13 +129,13 @@ public:
      * \brief Static function to construct a PoissonFACPreconditioner with a
      * CCPoissonPointRelaxationFACOperator FAC strategy.
      */
-    static SAMRAI::tbox::Pointer<PoissonSolver>
+    static boost::shared_ptr<PoissonSolver>
     allocate_solver(
         const std::string& object_name,
-        SAMRAI::tbox::Pointer<SAMRAI::tbox::Database> input_db,
+        boost::shared_ptr<SAMRAI::tbox::Database> input_db,
         const std::string& default_options_prefix)
         {
-            SAMRAI::tbox::Pointer<PoissonFACPreconditionerStrategy> fac_operator =
+            boost::shared_ptr<PoissonFACPreconditionerStrategy> fac_operator =
                 new CCPoissonPointRelaxationFACOperator(object_name+"::CCPoissonPointRelaxationFACOperator", input_db, default_options_prefix);
             return new PoissonFACPreconditioner(object_name, fac_operator, input_db, default_options_prefix);
         }// allocate
@@ -183,8 +183,8 @@ public:
      */
     void
     smoothError(
-        SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& error,
-        const SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& residual,
+        SAMRAI::solv::SAMRAIVectorReal<double>& error,
+        const SAMRAI::solv::SAMRAIVectorReal<double>& residual,
         int level_num,
         int num_sweeps,
         bool performing_pre_sweeps,
@@ -200,8 +200,8 @@ public:
      */
     bool
     solveCoarsestLevel(
-        SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& error,
-        const SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& residual,
+        SAMRAI::solv::SAMRAIVectorReal<double>& error,
+        const SAMRAI::solv::SAMRAIVectorReal<double>& residual,
         int coarsest_ln);
 
     /*!
@@ -215,9 +215,9 @@ public:
      */
     void
     computeResidual(
-        SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& residual,
-        const SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& solution,
-        const SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& rhs,
+        SAMRAI::solv::SAMRAIVectorReal<double>& residual,
+        const SAMRAI::solv::SAMRAIVectorReal<double>& solution,
+        const SAMRAI::solv::SAMRAIVectorReal<double>& rhs,
         int coarsest_level_num,
         int finest_level_num);
 
@@ -229,8 +229,8 @@ protected:
      */
     void
     initializeOperatorStateSpecialized(
-        const SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& solution,
-        const SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& rhs,
+        const SAMRAI::solv::SAMRAIVectorReal<double>& solution,
+        const SAMRAI::solv::SAMRAIVectorReal<double>& rhs,
         int coarsest_reset_ln,
         int finest_reset_ln);
 
@@ -280,8 +280,8 @@ private:
     buildPatchLaplaceOperator(
         Mat& A,
         const SAMRAI::solv::PoissonSpecifications& poisson_spec,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::Patch<NDIM> > patch,
-        const SAMRAI::hier::IntVector<NDIM>& ghost_cell_width);
+        boost::shared_ptr<SAMRAI::hier::Patch > patch,
+        const SAMRAI::hier::IntVector& ghost_cell_width);
 
     /*!
      * \brief Construct a matrix corresponding to a Laplace operator restricted
@@ -290,10 +290,10 @@ private:
     static void
     buildPatchLaplaceOperator_aligned(
         Mat& A,
-        SAMRAI::tbox::Pointer<SAMRAI::pdat::CellData<NDIM,double> > C_data,
-        SAMRAI::tbox::Pointer<SAMRAI::pdat::SideData<NDIM,double> > D_data,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::Patch<NDIM> > patch,
-        const SAMRAI::hier::IntVector<NDIM>& ghost_cell_width);
+        boost::shared_ptr<SAMRAI::pdat::CellData<double> > C_data,
+        boost::shared_ptr<SAMRAI::pdat::SideData<double> > D_data,
+        boost::shared_ptr<SAMRAI::hier::Patch > patch,
+        const SAMRAI::hier::IntVector& ghost_cell_width);
 
     /*!
      * \brief Construct a matrix corresponding to a Laplace operator restricted
@@ -302,16 +302,16 @@ private:
     static void
     buildPatchLaplaceOperator_nonaligned(
         Mat& A,
-        SAMRAI::tbox::Pointer<SAMRAI::pdat::CellData<NDIM,double> > C_data,
-        SAMRAI::tbox::Pointer<SAMRAI::pdat::SideData<NDIM,double> > D_data,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::Patch<NDIM> > patch,
-        const SAMRAI::hier::IntVector<NDIM>& ghost_cell_width);
+        boost::shared_ptr<SAMRAI::pdat::CellData<double> > C_data,
+        boost::shared_ptr<SAMRAI::pdat::SideData<double> > D_data,
+        boost::shared_ptr<SAMRAI::hier::Patch > patch,
+        const SAMRAI::hier::IntVector& ghost_cell_width);
 
     /*
      * Coarse level solvers and solver parameters.
      */
-    SAMRAI::tbox::Pointer<PoissonSolver> d_coarse_solver;
-    SAMRAI::tbox::Pointer<SAMRAI::tbox::Database> d_coarse_solver_db;
+    boost::shared_ptr<PoissonSolver> d_coarse_solver;
+    boost::shared_ptr<SAMRAI::tbox::Database> d_coarse_solver_db;
 
     /*
      * Mappings from patch indices to patch operators.
@@ -323,8 +323,8 @@ private:
     /*
      * Patch overlap data.
      */
-    std::vector<std::vector<SAMRAI::hier::BoxList<NDIM> > > d_patch_bc_box_overlap;
-    std::vector<std::vector<std::map<int,SAMRAI::hier::Box<NDIM> > > > d_patch_neighbor_overlap;
+    std::vector<std::vector<SAMRAI::hier::BoxList > > d_patch_bc_box_overlap;
+    std::vector<std::vector<std::map<int,SAMRAI::hier::Box > > > d_patch_neighbor_overlap;
 };
 }// namespace IBTK
 

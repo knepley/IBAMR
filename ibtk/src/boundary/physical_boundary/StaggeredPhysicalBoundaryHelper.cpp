@@ -37,26 +37,25 @@
 #include <ostream>
 #include <utility>
 
-#include "ArrayData.h"
-#include "BoundaryBox.h"
-#include "Box.h"
-#include "CartesianPatchGeometry.h"
-#include "Index.h"
-#include "IntVector.h"
-#include "Patch.h"
-#include "PatchGeometry.h"
-#include "PatchLevel.h"
-#include "RobinBcCoefStrategy.h"
-#include "SAMRAI_config.h"
-#include "SideData.h"
-#include "SideIndex.h"
+#include "SAMRAI/pdat/ArrayData.h"
+#include "SAMRAI/hier/BoundaryBox.h"
+#include "SAMRAI/hier/Box.h"
+#include "SAMRAI/geom/CartesianPatchGeometry.h"
+#include "SAMRAI/hier/Index.h"
+#include "SAMRAI/hier/IntVector.h"
+#include "SAMRAI/hier/Patch.h"
+#include "SAMRAI/hier/PatchGeometry.h"
+#include "SAMRAI/hier/PatchLevel.h"
+#include "SAMRAI/solv/RobinBcCoefStrategy.h"
+#include "SAMRAI/SAMRAI_config.h"
+#include "SAMRAI/pdat/SideData.h"
+#include "SAMRAI/pdat/SideIndex.h"
 #include "StaggeredPhysicalBoundaryHelper.h"
-#include "Variable.h"
+#include "SAMRAI/hier/Variable.h"
 #include "ibtk/PhysicalBoundaryUtilities.h"
 #include "ibtk/namespaces.h" // IWYU pragma: keep
-#include "tbox/Array.h"
-#include "tbox/MathUtilities.h"
-#include "tbox/Utilities.h"
+#include "SAMRAI/tbox/MathUtilities.h"
+#include "SAMRAI/tbox/Utilities.h"
 
 /////////////////////////////// NAMESPACE ////////////////////////////////////
 
@@ -93,14 +92,13 @@ StaggeredPhysicalBoundaryHelper::copyDataAtDirichletBoundaries(
     const int finest_hier_level = d_hierarchy->getFinestLevelNumber();
     for (int ln = (coarsest_ln == -1 ? 0 : coarsest_ln); ln <= (finest_ln == -1 ? finest_hier_level : finest_ln); ++ln)
     {
-        Pointer<PatchLevel<NDIM> > level = d_hierarchy->getPatchLevel(ln);
-        for (PatchLevel<NDIM>::Iterator p(level); p; p++)
+        boost::shared_ptr<PatchLevel > level = d_hierarchy->getPatchLevel(ln);
+        for (const auto& patch : *level)
         {
-            Pointer<Patch<NDIM> > patch = level->getPatch(p());
             if (patch->getPatchGeometry()->getTouchesRegularBoundary())
             {
-                Pointer<SideData<NDIM,double> > u_out_data = patch->getPatchData(u_out_data_idx);
-                Pointer<SideData<NDIM,double> >  u_in_data = patch->getPatchData( u_in_data_idx);
+                auto u_out_data = BOOST_CAST<SideData<double> >(patch->getPatchData(u_out_data_idx));
+                auto  u_in_data = BOOST_CAST<SideData<double> >(patch->getPatchData( u_in_data_idx));
                 copyDataAtDirichletBoundaries(u_out_data, u_in_data, patch);
             }
         }
@@ -110,26 +108,25 @@ StaggeredPhysicalBoundaryHelper::copyDataAtDirichletBoundaries(
 
 void
 StaggeredPhysicalBoundaryHelper::copyDataAtDirichletBoundaries(
-    Pointer<SideData<NDIM,double> > u_out_data,
-    Pointer<SideData<NDIM,double> > u_in_data,
-    Pointer<Patch<NDIM> > patch) const
+    boost::shared_ptr<SideData<double> > u_out_data,
+    boost::shared_ptr<SideData<double> > u_in_data,
+    boost::shared_ptr<Patch > patch) const
 {
     if (!patch->getPatchGeometry()->getTouchesRegularBoundary()) return;
     const int ln = patch->getPatchLevelNumber();
-    const int patch_num = patch->getPatchNumber();
-    const Array<BoundaryBox<NDIM> >& physical_codim1_boxes = d_physical_codim1_boxes[ln].find(patch_num)->second;
+    const GlobalId& patch_id = patch->getGlobalId();
+    const std::vector<BoundaryBox >& physical_codim1_boxes = d_physical_codim1_boxes[ln].find(patch_id)->second;
     const int n_physical_codim1_boxes = physical_codim1_boxes.size();
-    const std::vector<Pointer<ArrayData<NDIM,bool> > >& dirichlet_bdry_locs = d_dirichlet_bdry_locs[ln].find(patch_num)->second;
+    const std::vector<boost::shared_ptr<ArrayData<unsigned char> > >& dirichlet_bdry_locs = d_dirichlet_bdry_locs[ln].find(patch_id)->second;
     for (int n = 0; n < n_physical_codim1_boxes; ++n)
     {
         const int bdry_normal_axis = physical_codim1_boxes[n].getLocationIndex() / 2;
-        const ArrayData<NDIM,bool>& bdry_locs_data = *dirichlet_bdry_locs[n];
-        for (Box<NDIM>::Iterator it(bdry_locs_data.getBox()); it; it++)
+        const ArrayData<unsigned char>& bdry_locs_data = *dirichlet_bdry_locs[n];
+        for (const auto& i : bdry_locs_data.getBox())
         {
-            const Index<NDIM>& i = it();
             if (bdry_locs_data(i,0))
             {
-                (*u_out_data)(SideIndex<NDIM>(i, bdry_normal_axis, SideIndex<NDIM>::Lower)) = (*u_in_data)(SideIndex<NDIM>(i, bdry_normal_axis, SideIndex<NDIM>::Lower));
+                (*u_out_data)(SideIndex(i, bdry_normal_axis, SideIndex::Lower)) = (*u_in_data)(SideIndex(i, bdry_normal_axis, SideIndex::Lower));
             }
         }
     }
@@ -148,11 +145,10 @@ StaggeredPhysicalBoundaryHelper::setupMaskingFunction(
     const int finest_hier_level = d_hierarchy->getFinestLevelNumber();
     for (int ln = (coarsest_ln == -1 ? 0 : coarsest_ln); ln <= (finest_ln == -1 ? finest_hier_level : finest_ln); ++ln)
     {
-        Pointer<PatchLevel<NDIM> > level = d_hierarchy->getPatchLevel(ln);
-        for (PatchLevel<NDIM>::Iterator p(level); p; p++)
+        boost::shared_ptr<PatchLevel > level = d_hierarchy->getPatchLevel(ln);
+        for (const auto& patch : *level)
         {
-            Pointer<Patch<NDIM> > patch = level->getPatch(p());
-            Pointer<SideData<NDIM,int> > mask_data = patch->getPatchData(mask_data_idx);
+            auto mask_data = BOOST_CAST<SideData<int> >(patch->getPatchData(mask_data_idx));
             if (patch->getPatchGeometry()->getTouchesRegularBoundary())
             {
                 setupMaskingFunction(mask_data, patch);
@@ -168,24 +164,23 @@ StaggeredPhysicalBoundaryHelper::setupMaskingFunction(
 
 void
 StaggeredPhysicalBoundaryHelper::setupMaskingFunction(
-    Pointer<SideData<NDIM,int> > mask_data,
-    Pointer<Patch<NDIM> > patch) const
+    boost::shared_ptr<SideData<int> > mask_data,
+    boost::shared_ptr<Patch > patch) const
 {
     mask_data->fillAll(0);
     if (patch->getPatchGeometry()->getTouchesRegularBoundary()) return;
     const int ln = patch->getPatchLevelNumber();
-    const int patch_num = patch->getPatchNumber();
-    const Array<BoundaryBox<NDIM> >& physical_codim1_boxes = d_physical_codim1_boxes[ln].find(patch_num)->second;
+    const GlobalId& patch_id = patch->getGlobalId();
+    const std::vector<BoundaryBox >& physical_codim1_boxes = d_physical_codim1_boxes[ln].find(patch_id)->second;
     const int n_physical_codim1_boxes = physical_codim1_boxes.size();
-    const std::vector<Pointer<ArrayData<NDIM,bool> > >& dirichlet_bdry_locs = d_dirichlet_bdry_locs[ln].find(patch_num)->second;
+    const std::vector<boost::shared_ptr<ArrayData<unsigned char> > >& dirichlet_bdry_locs = d_dirichlet_bdry_locs[ln].find(patch_id)->second;
     for (int n = 0; n < n_physical_codim1_boxes; ++n)
     {
         const int bdry_normal_axis = physical_codim1_boxes[n].getLocationIndex() / 2;
-        const ArrayData<NDIM,bool>& bdry_locs_data = *dirichlet_bdry_locs[n];
-        for (Box<NDIM>::Iterator it(bdry_locs_data.getBox()); it; it++)
+        const ArrayData<unsigned char>& bdry_locs_data = *dirichlet_bdry_locs[n];
+        for (const auto& i : bdry_locs_data.getBox())
         {
-            const Index<NDIM>& i = it();
-            if (bdry_locs_data(i,0)) (*mask_data)(SideIndex<NDIM>(i, bdry_normal_axis, SideIndex<NDIM>::Lower)) = 1;
+            if (bdry_locs_data(i,0)) (*mask_data)(SideIndex(i, bdry_normal_axis, SideIndex::Lower)) = 1;
         }
     }
     return;
@@ -193,7 +188,7 @@ StaggeredPhysicalBoundaryHelper::setupMaskingFunction(
 
 bool
 StaggeredPhysicalBoundaryHelper::patchTouchesDirichletBoundary(
-    Pointer<Patch<NDIM> > patch) const
+    boost::shared_ptr<Patch > patch) const
 {
     if (!patch->getPatchGeometry()->getTouchesRegularBoundary()) return false;
     for (unsigned int axis = 0; axis < NDIM; ++axis)
@@ -205,24 +200,24 @@ StaggeredPhysicalBoundaryHelper::patchTouchesDirichletBoundary(
 
 bool
 StaggeredPhysicalBoundaryHelper::patchTouchesDirichletBoundaryAxis(
-    Pointer<Patch<NDIM> > patch,
+    boost::shared_ptr<Patch > patch,
     const unsigned int axis) const
 {
     if (!patch->getPatchGeometry()->getTouchesRegularBoundary()) return false;
     const int ln = patch->getPatchLevelNumber();
-    const int patch_num = patch->getPatchNumber();
-    const Array<BoundaryBox<NDIM> >& physical_codim1_boxes = d_physical_codim1_boxes[ln].find(patch_num)->second;
+    const GlobalId& patch_id = patch->getGlobalId();
+    const std::vector<BoundaryBox >& physical_codim1_boxes = d_physical_codim1_boxes[ln].find(patch_id)->second;
     const int n_physical_codim1_boxes = physical_codim1_boxes.size();
-    const std::vector<Pointer<ArrayData<NDIM,bool> > >& dirichlet_bdry_locs = d_dirichlet_bdry_locs[ln].find(patch_num)->second;
+    const std::vector<boost::shared_ptr<ArrayData<unsigned char> > >& dirichlet_bdry_locs = d_dirichlet_bdry_locs[ln].find(patch_id)->second;
     for (int n = 0; n < n_physical_codim1_boxes; ++n)
     {
         const unsigned int bdry_normal_axis = physical_codim1_boxes[n].getLocationIndex() / 2;
         if (bdry_normal_axis == axis)
         {
-            const ArrayData<NDIM,bool>& bdry_locs_data = *dirichlet_bdry_locs[n];
-            for (Box<NDIM>::Iterator it(bdry_locs_data.getBox()); it; it++)
+            const ArrayData<unsigned char>& bdry_locs_data = *dirichlet_bdry_locs[n];
+            for (const auto& i : bdry_locs_data.getBox())
             {
-                if (bdry_locs_data(it(),0)) return true;
+                if (bdry_locs_data(i,0)) return true;
             }
         }
     }
@@ -231,9 +226,9 @@ StaggeredPhysicalBoundaryHelper::patchTouchesDirichletBoundaryAxis(
 
 void
 StaggeredPhysicalBoundaryHelper::cacheBcCoefData(
-    const std::vector<RobinBcCoefStrategy<NDIM>*>& u_bc_coefs,
+    const std::vector<RobinBcCoefStrategy*>& u_bc_coefs,
     const double fill_time,
-    const Pointer<PatchHierarchy<NDIM> > hierarchy)
+    const boost::shared_ptr<PatchHierarchy > hierarchy)
 {
 #if !defined(NDEBUG)
     TBOX_ASSERT(u_bc_coefs.size() == NDIM);
@@ -248,35 +243,33 @@ StaggeredPhysicalBoundaryHelper::cacheBcCoefData(
     d_dirichlet_bdry_locs  .resize(finest_hier_level+1);
     for (int ln = 0; ln <= finest_hier_level; ++ln)
     {
-        Pointer<PatchLevel<NDIM> > level = d_hierarchy->getPatchLevel(ln);
-        for (PatchLevel<NDIM>::Iterator p(level); p; p++)
+        boost::shared_ptr<PatchLevel > level = d_hierarchy->getPatchLevel(ln);
+        for (const auto& patch : *level)
         {
-            const int patch_num = p();
-            Pointer<Patch<NDIM> > patch = level->getPatch(patch_num);
-            Pointer<CartesianPatchGeometry<NDIM> > pgeom = patch->getPatchGeometry();
+            const Dimension& dim = patch->getDim();
+            const GlobalId& patch_id = patch->getGlobalId();
+            auto pgeom = BOOST_CAST<CartesianPatchGeometry >(patch->getPatchGeometry());
             if (pgeom->getTouchesRegularBoundary())
             {
-                Array<BoundaryBox<NDIM> >& physical_codim1_boxes = d_physical_codim1_boxes[ln][patch_num];
+                std::vector<BoundaryBox >& physical_codim1_boxes = d_physical_codim1_boxes[ln][patch_id];
                 physical_codim1_boxes = PhysicalBoundaryUtilities::getPhysicalBoundaryCodim1Boxes(*patch);
                 const int n_physical_codim1_boxes = physical_codim1_boxes.size();
-                std::vector<Pointer<ArrayData<NDIM,bool> > >& dirichlet_bdry_locs = d_dirichlet_bdry_locs[ln][patch_num];
+                std::vector<boost::shared_ptr<ArrayData<unsigned char> > >& dirichlet_bdry_locs = d_dirichlet_bdry_locs[ln][patch_id];
                 dirichlet_bdry_locs.resize(n_physical_codim1_boxes);
-                Box<NDIM> bc_coef_box;
-                BoundaryBox<NDIM> trimmed_bdry_box;
+                Box bc_coef_box(dim);
+                BoundaryBox trimmed_bdry_box(dim);
                 for (int n = 0; n < n_physical_codim1_boxes; ++n)
                 {
-                    const BoundaryBox<NDIM>& bdry_box = physical_codim1_boxes[n];
+                    const BoundaryBox& bdry_box = physical_codim1_boxes[n];
                     StaggeredPhysicalBoundaryHelper::setupBcCoefBoxes(bc_coef_box, trimmed_bdry_box, bdry_box, patch);
                     const unsigned int bdry_normal_axis = bdry_box.getLocationIndex() / 2;
-                    Pointer<ArrayData<NDIM,double> > acoef_data = new ArrayData<NDIM,double>(bc_coef_box, 1);
-                    Pointer<ArrayData<NDIM,double> > bcoef_data = new ArrayData<NDIM,double>(bc_coef_box, 1);
-                    Pointer<ArrayData<NDIM,double> > gcoef_data;
-                    u_bc_coefs[bdry_normal_axis]->setBcCoefs(acoef_data, bcoef_data, gcoef_data, Pointer<Variable<NDIM> >(), *patch, trimmed_bdry_box, fill_time);
-                    dirichlet_bdry_locs[n] = new ArrayData<NDIM,bool>(bc_coef_box, 1);
-                    ArrayData<NDIM,bool>& bdry_locs_data = *dirichlet_bdry_locs[n];
-                    for (Box<NDIM>::Iterator it(bc_coef_box); it; it++)
+                    auto acoef_data = boost::make_shared<ArrayData<double> >(bc_coef_box, 1);
+                    auto bcoef_data = boost::make_shared<ArrayData<double> >(bc_coef_box, 1);                    
+                    u_bc_coefs[bdry_normal_axis]->setBcCoefs(acoef_data, bcoef_data, /*gcoef_data*/ NULL, NULL, *patch, trimmed_bdry_box, fill_time);
+                    dirichlet_bdry_locs[n] = boost::make_shared<ArrayData<unsigned char> >(bc_coef_box, 1);
+                    ArrayData<unsigned char>& bdry_locs_data = *dirichlet_bdry_locs[n];
+                    for (const auto& i : bc_coef_box)
                     {
-                        const Index<NDIM>& i = it();
                         const double& alpha = (*acoef_data)(i,0);
                         const double& beta  = (*bcoef_data)(i,0);
 #if !defined(NDEBUG)
@@ -289,8 +282,8 @@ StaggeredPhysicalBoundaryHelper::cacheBcCoefData(
             }
             else
             {
-                d_physical_codim1_boxes[ln][patch_num].resizeArray(0);
-                d_dirichlet_bdry_locs  [ln][patch_num].clear();
+                d_physical_codim1_boxes[ln][patch_id].clear();
+                d_dirichlet_bdry_locs  [ln][patch_id].clear();
             }
         }
     }
@@ -300,7 +293,7 @@ StaggeredPhysicalBoundaryHelper::cacheBcCoefData(
 void
 StaggeredPhysicalBoundaryHelper::clearBcCoefData()
 {
-    d_hierarchy.setNull();
+    d_hierarchy.reset();
     d_physical_codim1_boxes.clear();
     d_dirichlet_bdry_locs  .clear();
     return;
@@ -310,16 +303,17 @@ StaggeredPhysicalBoundaryHelper::clearBcCoefData()
 
 void
 StaggeredPhysicalBoundaryHelper::setupBcCoefBoxes(
-    Box<NDIM>& bc_coef_box,
-    BoundaryBox<NDIM>& trimmed_bdry_box,
-    const BoundaryBox<NDIM>& bdry_box,
-    Pointer<Patch<NDIM> > patch)
+    Box& bc_coef_box,
+    BoundaryBox& trimmed_bdry_box,
+    const BoundaryBox& bdry_box,
+    boost::shared_ptr<Patch > patch)
 {
-    Pointer<PatchGeometry<NDIM> > pgeom = patch->getPatchGeometry();
-    const Box<NDIM>& patch_box = patch->getBox();
+    const Dimension& dim = patch->getDim();
+    boost::shared_ptr<PatchGeometry > pgeom = patch->getPatchGeometry();
+    const Box& patch_box = patch->getBox();
     const unsigned int location_index   = bdry_box.getLocationIndex();
     const unsigned int bdry_normal_axis = location_index / 2;
-    Box<NDIM> bc_fill_box = pgeom->getBoundaryFillBox(bdry_box, patch_box, /* gcw_to_fill */ IntVector<NDIM>(1));
+    Box bc_fill_box = pgeom->getBoundaryFillBox(bdry_box, patch_box, /* gcw_to_fill */ IntVector::getOne(dim));
     for (unsigned int d = 0; d < NDIM; ++d)
     {
         if (d != bdry_normal_axis)
@@ -328,7 +322,7 @@ StaggeredPhysicalBoundaryHelper::setupBcCoefBoxes(
             bc_fill_box.upper(d) = std::min(bc_fill_box.upper(d), patch_box.upper(d));
         }
     }
-    trimmed_bdry_box = BoundaryBox<NDIM>(bdry_box.getBox()*bc_fill_box, /* codimension */ 1, location_index);
+    trimmed_bdry_box = BoundaryBox(bdry_box.getBox()*bc_fill_box, /* codimension */ 1, location_index);
     bc_coef_box = PhysicalBoundaryUtilities::makeSideBoundaryCodim1Box(trimmed_bdry_box);
     return;
 }// setupBcCoefBoxes

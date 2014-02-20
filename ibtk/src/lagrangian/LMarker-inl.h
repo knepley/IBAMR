@@ -36,7 +36,7 @@
 /////////////////////////////// INCLUDES /////////////////////////////////////
 
 #include "ibtk/LMarker.h"
-#include "tbox/AbstractStream.h"
+#include "SAMRAI/tbox/AbstractStream.h"
 
 /////////////////////////////// NAMESPACE ////////////////////////////////////
 
@@ -49,7 +49,7 @@ LMarker::LMarker(
     const int idx,
     const Point& X,
     const Vector& U,
-    const SAMRAI::hier::IntVector<NDIM>& periodic_offset)
+    const SAMRAI::hier::IntVector& periodic_offset)
     : d_idx(idx),
       d_X(X),
       d_U(U),
@@ -74,7 +74,7 @@ LMarker::LMarker(
 inline
 LMarker::LMarker(
     SAMRAI::tbox::AbstractStream& stream,
-    const SAMRAI::hier::IntVector<NDIM>& offset)
+    const SAMRAI::hier::IntVector& offset)
     : d_idx(-1),
       d_X(Point::Zero()),
       d_U(Vector::Zero()),
@@ -163,7 +163,7 @@ LMarker::setVelocity(
     return;
 }// setVelocity
 
-inline const SAMRAI::hier::IntVector<NDIM>&
+inline const SAMRAI::hier::IntVector&
 LMarker::getPeriodicOffset() const
 {
     return d_offset;
@@ -171,7 +171,7 @@ LMarker::getPeriodicOffset() const
 
 inline void
 LMarker::setPeriodicOffset(
-    const SAMRAI::hier::IntVector<NDIM>& offset)
+    const SAMRAI::hier::IntVector& offset)
 {
     d_offset = offset;
     return;
@@ -179,8 +179,8 @@ LMarker::setPeriodicOffset(
 
 inline void
 LMarker::copySourceItem(
-    const SAMRAI::hier::Index<NDIM>& /*src_index*/,
-    const SAMRAI::hier::IntVector<NDIM>& src_offset,
+    const SAMRAI::hier::Index& /*src_index*/,
+    const SAMRAI::hier::IntVector& src_offset,
     const LMarker& src_item)
 {
     d_idx    = src_item.d_idx;
@@ -210,7 +210,7 @@ LMarker::packStream(
 inline void
 LMarker::unpackStream(
     SAMRAI::tbox::AbstractStream& stream,
-    const SAMRAI::hier::IntVector<NDIM>& /*offset*/)
+    const SAMRAI::hier::IntVector& /*offset*/)
 {
     stream.unpack(&d_idx,1);
     stream.unpack(d_X.data(),NDIM);

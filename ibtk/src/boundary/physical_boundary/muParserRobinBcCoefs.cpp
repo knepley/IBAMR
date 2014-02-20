@@ -37,22 +37,21 @@
 #include <sstream>
 #include <utility>
 
-#include "ArrayData.h"
-#include "BoundaryBox.h"
-#include "Box.h"
-#include "CartesianPatchGeometry.h"
-#include "Index.h"
-#include "Patch.h"
-#include "SAMRAI_config.h"
+#include "SAMRAI/pdat/ArrayData.h"
+#include "SAMRAI/hier/BoundaryBox.h"
+#include "SAMRAI/hier/Box.h"
+#include "SAMRAI/geom/CartesianPatchGeometry.h"
+#include "SAMRAI/hier/Index.h"
+#include "SAMRAI/hier/Patch.h"
+#include "SAMRAI/SAMRAI_config.h"
 #include "ibtk/namespaces.h" // IWYU pragma: keep
 #include "muParserRobinBcCoefs.h"
-#include "tbox/Array.h"
-#include "tbox/Database.h"
-#include "tbox/Utilities.h"
+#include "SAMRAI/tbox/Database.h"
+#include "SAMRAI/tbox/Utilities.h"
 
 namespace SAMRAI {
 namespace hier {
-template <int DIM> class Variable;
+class Variable;
 }  // namespace hier
 }  // namespace SAMRAI
 
@@ -71,8 +70,8 @@ static const int EXTENSIONS_FILLABLE = 128;
 
 muParserRobinBcCoefs::muParserRobinBcCoefs(
     const std::string& object_name,
-    Pointer<Database> input_db,
-    Pointer<CartesianGridGeometry<NDIM> > grid_geom)
+    boost::shared_ptr<Database> input_db,
+    boost::shared_ptr<CartesianGridGeometry > grid_geom)
     : d_grid_geom(grid_geom),
       d_constants(),
       d_acoef_function_strings(),
@@ -91,10 +90,9 @@ muParserRobinBcCoefs::muParserRobinBcCoefs(
     NULL_USE(object_name);
 #endif
     // Read in user-provided constants.
-    Array<std::string> db_key_names = input_db->getAllKeys();
-    for (int k = 0; k < db_key_names.size(); ++k)
+    std::vector<std::string> db_key_names = input_db->getAllKeys();
+    for (const auto& name : db_key_names)
     {
-        const std::string& name = db_key_names[k];
         if (input_db->isDouble(name))
         {
             d_constants[name] = input_db->getDouble(name);
@@ -210,12 +208,12 @@ muParserRobinBcCoefs::muParserRobinBcCoefs(
     const double pi = 3.1415926535897932384626433832795;
     const double* const xLower = grid_geom->getXLower();
     const double* const xUpper = grid_geom->getXUpper();
-    for (std::vector<mu::Parser*>::const_iterator cit = all_parsers.begin(); cit != all_parsers.end(); ++cit)
+    for (auto it = begin(all_parsers); it != end(all_parsers); ++it)
     {
         // Various names for pi.
-        (*cit)->DefineConst("pi", pi);
-        (*cit)->DefineConst("Pi", pi);
-        (*cit)->DefineConst("PI", pi);
+        (*it)->DefineConst("pi", pi);
+        (*it)->DefineConst("Pi", pi);
+        (*it)->DefineConst("PI", pi);
 
         // The extents of the domain.
         for (unsigned int d = 0; d < NDIM; ++d)
@@ -224,77 +222,77 @@ muParserRobinBcCoefs::muParserRobinBcCoefs(
             stream << d;
             const std::string postfix = stream.str();
 
-            (*cit)->DefineConst("X_LOWER" + postfix, xLower[d]);
-            (*cit)->DefineConst("X_lower" + postfix, xLower[d]);
-            (*cit)->DefineConst("x_lower" + postfix, xLower[d]);
-            (*cit)->DefineConst("x_LOWER" + postfix, xLower[d]);
-            (*cit)->DefineConst("X_Lower" + postfix, xLower[d]);
-            (*cit)->DefineConst("X_lower" + postfix, xLower[d]);
-            (*cit)->DefineConst("XLower"  + postfix, xLower[d]);
-            (*cit)->DefineConst("Xlower"  + postfix, xLower[d]);
-            (*cit)->DefineConst("x_Lower" + postfix, xLower[d]);
-            (*cit)->DefineConst("x_lower" + postfix, xLower[d]);
-            (*cit)->DefineConst("xLower"  + postfix, xLower[d]);
-            (*cit)->DefineConst("xlower"  + postfix, xLower[d]);
+            (*it)->DefineConst("X_LOWER" + postfix, xLower[d]);
+            (*it)->DefineConst("X_lower" + postfix, xLower[d]);
+            (*it)->DefineConst("x_lower" + postfix, xLower[d]);
+            (*it)->DefineConst("x_LOWER" + postfix, xLower[d]);
+            (*it)->DefineConst("X_Lower" + postfix, xLower[d]);
+            (*it)->DefineConst("X_lower" + postfix, xLower[d]);
+            (*it)->DefineConst("XLower"  + postfix, xLower[d]);
+            (*it)->DefineConst("Xlower"  + postfix, xLower[d]);
+            (*it)->DefineConst("x_Lower" + postfix, xLower[d]);
+            (*it)->DefineConst("x_lower" + postfix, xLower[d]);
+            (*it)->DefineConst("xLower"  + postfix, xLower[d]);
+            (*it)->DefineConst("xlower"  + postfix, xLower[d]);
 
-            (*cit)->DefineConst("X_LOWER_" + postfix, xLower[d]);
-            (*cit)->DefineConst("X_lower_" + postfix, xLower[d]);
-            (*cit)->DefineConst("x_lower_" + postfix, xLower[d]);
-            (*cit)->DefineConst("x_LOWER_" + postfix, xLower[d]);
-            (*cit)->DefineConst("X_Lower_" + postfix, xLower[d]);
-            (*cit)->DefineConst("X_lower_" + postfix, xLower[d]);
-            (*cit)->DefineConst("XLower_"  + postfix, xLower[d]);
-            (*cit)->DefineConst("Xlower_"  + postfix, xLower[d]);
-            (*cit)->DefineConst("x_Lower_" + postfix, xLower[d]);
-            (*cit)->DefineConst("x_lower_" + postfix, xLower[d]);
-            (*cit)->DefineConst("xLower_"  + postfix, xLower[d]);
-            (*cit)->DefineConst("xlower_"  + postfix, xLower[d]);
+            (*it)->DefineConst("X_LOWER_" + postfix, xLower[d]);
+            (*it)->DefineConst("X_lower_" + postfix, xLower[d]);
+            (*it)->DefineConst("x_lower_" + postfix, xLower[d]);
+            (*it)->DefineConst("x_LOWER_" + postfix, xLower[d]);
+            (*it)->DefineConst("X_Lower_" + postfix, xLower[d]);
+            (*it)->DefineConst("X_lower_" + postfix, xLower[d]);
+            (*it)->DefineConst("XLower_"  + postfix, xLower[d]);
+            (*it)->DefineConst("Xlower_"  + postfix, xLower[d]);
+            (*it)->DefineConst("x_Lower_" + postfix, xLower[d]);
+            (*it)->DefineConst("x_lower_" + postfix, xLower[d]);
+            (*it)->DefineConst("xLower_"  + postfix, xLower[d]);
+            (*it)->DefineConst("xlower_"  + postfix, xLower[d]);
 
-            (*cit)->DefineConst("X_UPPER" + postfix, xUpper[d]);
-            (*cit)->DefineConst("X_upper" + postfix, xUpper[d]);
-            (*cit)->DefineConst("x_upper" + postfix, xUpper[d]);
-            (*cit)->DefineConst("x_UPPER" + postfix, xUpper[d]);
-            (*cit)->DefineConst("X_Upper" + postfix, xUpper[d]);
-            (*cit)->DefineConst("X_upper" + postfix, xUpper[d]);
-            (*cit)->DefineConst("XUpper"  + postfix, xUpper[d]);
-            (*cit)->DefineConst("Xupper"  + postfix, xUpper[d]);
-            (*cit)->DefineConst("x_Upper" + postfix, xUpper[d]);
-            (*cit)->DefineConst("x_upper" + postfix, xUpper[d]);
-            (*cit)->DefineConst("xUpper"  + postfix, xUpper[d]);
-            (*cit)->DefineConst("xupper"  + postfix, xUpper[d]);
+            (*it)->DefineConst("X_UPPER" + postfix, xUpper[d]);
+            (*it)->DefineConst("X_upper" + postfix, xUpper[d]);
+            (*it)->DefineConst("x_upper" + postfix, xUpper[d]);
+            (*it)->DefineConst("x_UPPER" + postfix, xUpper[d]);
+            (*it)->DefineConst("X_Upper" + postfix, xUpper[d]);
+            (*it)->DefineConst("X_upper" + postfix, xUpper[d]);
+            (*it)->DefineConst("XUpper"  + postfix, xUpper[d]);
+            (*it)->DefineConst("Xupper"  + postfix, xUpper[d]);
+            (*it)->DefineConst("x_Upper" + postfix, xUpper[d]);
+            (*it)->DefineConst("x_upper" + postfix, xUpper[d]);
+            (*it)->DefineConst("xUpper"  + postfix, xUpper[d]);
+            (*it)->DefineConst("xupper"  + postfix, xUpper[d]);
 
-            (*cit)->DefineConst("X_UPPER_" + postfix, xUpper[d]);
-            (*cit)->DefineConst("X_upper_" + postfix, xUpper[d]);
-            (*cit)->DefineConst("x_upper_" + postfix, xUpper[d]);
-            (*cit)->DefineConst("x_UPPER_" + postfix, xUpper[d]);
-            (*cit)->DefineConst("X_Upper_" + postfix, xUpper[d]);
-            (*cit)->DefineConst("X_upper_" + postfix, xUpper[d]);
-            (*cit)->DefineConst("XUpper_"  + postfix, xUpper[d]);
-            (*cit)->DefineConst("Xupper_"  + postfix, xUpper[d]);
-            (*cit)->DefineConst("x_Upper_" + postfix, xUpper[d]);
-            (*cit)->DefineConst("x_upper_" + postfix, xUpper[d]);
-            (*cit)->DefineConst("xUpper_"  + postfix, xUpper[d]);
-            (*cit)->DefineConst("xupper_"  + postfix, xUpper[d]);
+            (*it)->DefineConst("X_UPPER_" + postfix, xUpper[d]);
+            (*it)->DefineConst("X_upper_" + postfix, xUpper[d]);
+            (*it)->DefineConst("x_upper_" + postfix, xUpper[d]);
+            (*it)->DefineConst("x_UPPER_" + postfix, xUpper[d]);
+            (*it)->DefineConst("X_Upper_" + postfix, xUpper[d]);
+            (*it)->DefineConst("X_upper_" + postfix, xUpper[d]);
+            (*it)->DefineConst("XUpper_"  + postfix, xUpper[d]);
+            (*it)->DefineConst("Xupper_"  + postfix, xUpper[d]);
+            (*it)->DefineConst("x_Upper_" + postfix, xUpper[d]);
+            (*it)->DefineConst("x_upper_" + postfix, xUpper[d]);
+            (*it)->DefineConst("xUpper_"  + postfix, xUpper[d]);
+            (*it)->DefineConst("xupper_"  + postfix, xUpper[d]);
         }
 
         // User-provided constants.
-        for (std::map<std::string,double>::const_iterator map_cit = d_constants.begin(); map_cit != d_constants.end(); ++map_cit)
+        for (auto map_it = begin(d_constants); map_it != end(d_constants); ++map_it)
         {
-            (*cit)->DefineConst(map_cit->first, map_cit->second);
+            (*it)->DefineConst(map_it->first, map_it->second);
         }
 
         // Variables.
-        (*cit)->DefineVar("T", d_parser_time);
-        (*cit)->DefineVar("t", d_parser_time);
+        (*it)->DefineVar("T", d_parser_time);
+        (*it)->DefineVar("t", d_parser_time);
         for (unsigned int d = 0; d < NDIM; ++d)
         {
             std::ostringstream stream;
             stream << d;
             const std::string postfix = stream.str();
-            (*cit)->DefineVar("X" + postfix, &d_parser_posn->data()[d]);
-            (*cit)->DefineVar("x" + postfix, &d_parser_posn->data()[d]);
-            (*cit)->DefineVar("X_" + postfix, &d_parser_posn->data()[d]);
-            (*cit)->DefineVar("x_" + postfix, &d_parser_posn->data()[d]);
+            (*it)->DefineVar("X" + postfix, &d_parser_posn->data()[d]);
+            (*it)->DefineVar("x" + postfix, &d_parser_posn->data()[d]);
+            (*it)->DefineVar("X_" + postfix, &d_parser_posn->data()[d]);
+            (*it)->DefineVar("x_" + postfix, &d_parser_posn->data()[d]);
         }
     }
     return;
@@ -309,17 +307,18 @@ muParserRobinBcCoefs::~muParserRobinBcCoefs()
 
 void
 muParserRobinBcCoefs::setBcCoefs(
-    Pointer<ArrayData<NDIM,double> >& acoef_data,
-    Pointer<ArrayData<NDIM,double> >& bcoef_data,
-    Pointer<ArrayData<NDIM,double> >& gcoef_data,
-    const Pointer<Variable<NDIM> >& /*variable*/,
-    const Patch<NDIM>& patch,
-    const BoundaryBox<NDIM>& bdry_box,
+    const boost::shared_ptr<ArrayData<double> >& acoef_data,
+    const boost::shared_ptr<ArrayData<double> >& bcoef_data,
+    const boost::shared_ptr<ArrayData<double> >& gcoef_data,
+    const boost::shared_ptr<Variable >& /*variable*/,
+    const Patch& patch,
+    const BoundaryBox& bdry_box,
     double fill_time) const
 {
-    const Box<NDIM>& patch_box = patch.getBox();
-    const Index<NDIM>& patch_lower = patch_box.lower();
-    Pointer<CartesianPatchGeometry<NDIM> > pgeom = patch.getPatchGeometry();
+    const Dimension& dim = patch.getDim();
+    const Box& patch_box = patch.getBox();
+    const Index& patch_lower = patch_box.lower();
+    auto pgeom = BOOST_CAST<CartesianPatchGeometry>(patch.getPatchGeometry());
 
     const double* const x_lower = pgeom->getXLower();
     const double* const dx = pgeom->getDx();
@@ -327,23 +326,17 @@ muParserRobinBcCoefs::setBcCoefs(
     // Loop over the boundary box and set the coefficients.
     const unsigned int location_index = bdry_box.getLocationIndex();
     const unsigned int bdry_normal_axis =  location_index / 2;
-    const Box<NDIM>& bc_coef_box = (acoef_data ? acoef_data->getBox() :
-                                    bcoef_data ? bcoef_data->getBox() :
-                                    gcoef_data ? gcoef_data->getBox() :
-                                    Box<NDIM>());
-#if !defined(NDEBUG)
-    TBOX_ASSERT(!acoef_data || bc_coef_box == acoef_data->getBox());
-    TBOX_ASSERT(!bcoef_data || bc_coef_box == bcoef_data->getBox());
-    TBOX_ASSERT(!gcoef_data || bc_coef_box == gcoef_data->getBox());
-#endif
+    const Box& bc_coef_box = (acoef_data ? acoef_data->getBox() :
+                              bcoef_data ? bcoef_data->getBox() :
+                              gcoef_data ? gcoef_data->getBox() :
+                              Box(dim));
 
     const mu::Parser& acoef_parser = d_acoef_parsers[location_index];
     const mu::Parser& bcoef_parser = d_bcoef_parsers[location_index];
     const mu::Parser& gcoef_parser = d_gcoef_parsers[location_index];
     *d_parser_time = fill_time;
-    for (Box<NDIM>::Iterator b(bc_coef_box); b; b++)
+    for (const auto& i : bc_coef_box)
     {
-        const Index<NDIM>& i = b();
         for (unsigned int d = 0; d < NDIM; ++d)
         {
             if (d != bdry_normal_axis)
@@ -376,10 +369,10 @@ muParserRobinBcCoefs::setBcCoefs(
     return;
 }// setBcCoefs
 
-IntVector<NDIM>
+IntVector
 muParserRobinBcCoefs::numberOfExtensionsFillable() const
 {
-    return EXTENSIONS_FILLABLE;
+    return IntVector(Dimension(NDIM), EXTENSIONS_FILLABLE);
 }// numberOfExtensionsFillable
 
 /////////////////////////////// PROTECTED ////////////////////////////////////

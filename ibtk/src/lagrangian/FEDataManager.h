@@ -42,13 +42,13 @@
 #include <vector>
 
 #include "BasePatchLevel.h"
-#include "CellVariable.h"
-#include "IntVector.h"
+#include "SAMRAI/pdat/CellVariable.h"
+#include "SAMRAI/hier/IntVector.h"
 #include "LoadBalancer.h"
-#include "PatchHierarchy.h"
-#include "RefineSchedule.h"
-#include "StandardTagAndInitStrategy.h"
-#include "VariableContext.h"
+#include "SAMRAI/hier/PatchHierarchy.h"
+#include "SAMRAI/xfer/RefineSchedule.h"
+#include "SAMRAI/mesh/StandardTagAndInitStrategy.h"
+#include "SAMRAI/hier/VariableContext.h"
 #include "ibtk/RobinPhysBdryPatchStrategy.h"
 #include "libmesh/auto_ptr.h"
 #include "libmesh/enum_order.h"
@@ -57,12 +57,12 @@
 #include "boost/array.hpp"
 #include "boost/multi_array.hpp"
 #include "ibtk/ibtk_utilities.h"
-#include "tbox/Pointer.h"
-#include "tbox/Serializable.h"
+
+#include "SAMRAI/tbox/Serializable.h"
 
 namespace SAMRAI {
 namespace hier {
-template <int DIM> class BasePatchHierarchy;
+class BasePatchHierarchy;
 }  // namespace hier
 namespace tbox {
 class Database;
@@ -90,7 +90,7 @@ namespace IBTK
  */
 class FEDataManager
     : public SAMRAI::tbox::Serializable,
-      public SAMRAI::mesh::StandardTagAndInitStrategy<NDIM>
+      public SAMRAI::mesh::StandardTagAndInitStrategy
 {
 public:
     /*!
@@ -190,7 +190,7 @@ public:
         const std::string& name,
         const InterpSpec& default_interp_spec,
         const SpreadSpec& default_spread_spec,
-        const SAMRAI::hier::IntVector<NDIM>& min_ghost_cell_width=SAMRAI::hier::IntVector<NDIM>(0),
+        const SAMRAI::hier::IntVector& min_ghost_cell_width=SAMRAI::hier::IntVector(0),
         bool register_for_restart=true);
 
     /*!
@@ -207,7 +207,7 @@ public:
      */
     void
     registerLoadBalancer(
-        SAMRAI::tbox::Pointer<SAMRAI::mesh::LoadBalancer<NDIM> > load_balancer,
+        boost::shared_ptr<SAMRAI::mesh::LoadBalancer > load_balancer,
         int workload_data_idx);
 
     /*!
@@ -221,12 +221,12 @@ public:
      */
     void
     setPatchHierarchy(
-        SAMRAI::tbox::Pointer<SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy);
+        boost::shared_ptr<SAMRAI::hier::PatchHierarchy > hierarchy);
 
     /*!
      * \brief Get the patch hierarchy used by this object.
      */
-    SAMRAI::tbox::Pointer<SAMRAI::hier::PatchHierarchy<NDIM> >
+    boost::shared_ptr<SAMRAI::hier::PatchHierarchy >
     getPatchHierarchy() const;
 
     /*!
@@ -278,7 +278,7 @@ public:
      * \return The ghost cell width used for quantities that are to be
      * interpolated from the Cartesian grid to the FE mesh.
      */
-    const SAMRAI::hier::IntVector<NDIM>&
+    const SAMRAI::hier::IntVector&
     getGhostCellWidth() const;
 
     /*!
@@ -388,7 +388,7 @@ public:
         libMesh::NumericVector<double>& F,
         libMesh::NumericVector<double>& X,
         const std::string& system_name,
-        const std::vector<SAMRAI::tbox::Pointer<SAMRAI::xfer::RefineSchedule<NDIM> > >& f_refine_scheds=std::vector<SAMRAI::tbox::Pointer<SAMRAI::xfer::RefineSchedule<NDIM> > >(),
+        const std::vector<boost::shared_ptr<SAMRAI::xfer::RefineSchedule > >& f_refine_scheds=std::vector<boost::shared_ptr<SAMRAI::xfer::RefineSchedule > >(),
         double fill_data_time=0.0);
 
     /*!
@@ -402,7 +402,7 @@ public:
         libMesh::NumericVector<double>& X,
         const std::string& system_name,
         const InterpSpec& interp_spec,
-        const std::vector<SAMRAI::tbox::Pointer<SAMRAI::xfer::RefineSchedule<NDIM> > >& f_refine_scheds=std::vector<SAMRAI::tbox::Pointer<SAMRAI::xfer::RefineSchedule<NDIM> > >(),
+        const std::vector<boost::shared_ptr<SAMRAI::xfer::RefineSchedule > >& f_refine_scheds=std::vector<boost::shared_ptr<SAMRAI::xfer::RefineSchedule > >(),
         double fill_data_time=0.0);
 
     /*!
@@ -417,7 +417,7 @@ public:
         bool use_consistent_mass_matrix=true);
 
     /*!
-     * \return Pointers to a linear solver and sparse matrix corresponding to a
+     * \return boost::shared_ptrs to a linear solver and sparse matrix corresponding to a
      * L2 projection operator.
      */
     std::pair<libMesh::LinearSolver<double>*,libMesh::SparseMatrix<double>*>
@@ -427,7 +427,7 @@ public:
         libMeshEnums::Order quad_order=FIFTH);
 
     /*!
-     * \return Pointer to vector representation of diagonal L2 mass matrix.
+     * \return boost::shared_ptr to vector representation of diagonal L2 mass matrix.
      */
     libMesh::NumericVector<double>*
     buildDiagonalL2MassMatrix(
@@ -516,12 +516,12 @@ public:
      */
     void
     initializeLevelData(
-        SAMRAI::tbox::Pointer<SAMRAI::hier::BasePatchHierarchy<NDIM> > hierarchy,
+        boost::shared_ptr<SAMRAI::hier::BasePatchHierarchy > hierarchy,
         int level_number,
         double init_data_time,
         bool can_be_refined,
         bool initial_time,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::BasePatchLevel<NDIM> > old_level=SAMRAI::tbox::Pointer<SAMRAI::hier::BasePatchLevel<NDIM> >(NULL),
+        boost::shared_ptr<SAMRAI::hier::BasePatchLevel > old_level=boost::shared_ptr<SAMRAI::hier::BasePatchLevel >(NULL),
         bool allocate_data=true);
 
     /*!
@@ -541,7 +541,7 @@ public:
      */
     void
     resetHierarchyConfiguration(
-        SAMRAI::tbox::Pointer<SAMRAI::hier::BasePatchHierarchy<NDIM> > hierarchy,
+        boost::shared_ptr<SAMRAI::hier::BasePatchHierarchy > hierarchy,
         int coarsest_ln,
         int finest_ln);
 
@@ -565,7 +565,7 @@ public:
      */
     void
     applyGradientDetector(
-        SAMRAI::tbox::Pointer<SAMRAI::hier::BasePatchHierarchy<NDIM> > hierarchy,
+        boost::shared_ptr<SAMRAI::hier::BasePatchHierarchy > hierarchy,
         int level_number,
         double error_data_time,
         int tag_index,
@@ -579,7 +579,7 @@ public:
      */
     void
     putToDatabase(
-        SAMRAI::tbox::Pointer<SAMRAI::tbox::Database> db);
+        boost::shared_ptr<SAMRAI::tbox::Database> db);
 
 protected:
     /*!
@@ -589,7 +589,7 @@ protected:
         const std::string& object_name,
         const InterpSpec& default_interp_spec,
         const SpreadSpec& default_spread_spec,
-        const SAMRAI::hier::IntVector<NDIM>& ghost_width,
+        const SAMRAI::hier::IntVector& ghost_width,
         bool register_for_restart=true);
 
     /*!
@@ -658,7 +658,7 @@ private:
     collectActivePatchElements(
         std::vector<std::vector<libMesh::Elem*> >& active_patch_elems,
         int level_number,
-        const SAMRAI::hier::IntVector<NDIM>& ghost_width);
+        const SAMRAI::hier::IntVector& ghost_width);
 
     /*!
      * Collect all ghost DOF indices for the specified collection of elements.
@@ -704,25 +704,25 @@ private:
     /*
      * We cache a pointer to the load balancer.
      */
-    SAMRAI::tbox::Pointer<SAMRAI::mesh::LoadBalancer<NDIM> > d_load_balancer;
+    boost::shared_ptr<SAMRAI::mesh::LoadBalancer > d_load_balancer;
 
     /*
      * Grid hierarchy information.
      */
-    SAMRAI::tbox::Pointer<SAMRAI::hier::PatchHierarchy<NDIM> > d_hierarchy;
+    boost::shared_ptr<SAMRAI::hier::PatchHierarchy > d_hierarchy;
     int d_coarsest_ln, d_finest_ln;
 
     /*
      * SAMRAI::hier::VariableContext object used for data management.
      */
-    SAMRAI::tbox::Pointer<SAMRAI::hier::VariableContext> d_context;
+    boost::shared_ptr<SAMRAI::hier::VariableContext> d_context;
 
     /*
      * SAMRAI::hier::Variable pointer and patch data descriptor indices for the
      * cell variable used to keep track of the count of the quadrature points in
      * each cell.
      */
-    SAMRAI::tbox::Pointer<SAMRAI::pdat::CellVariable<NDIM,double> > d_qp_count_var;
+    boost::shared_ptr<SAMRAI::pdat::CellVariable<double> > d_qp_count_var;
     int d_qp_count_idx;
 
     /*
@@ -730,7 +730,7 @@ private:
      * cell variable used to determine the workload for nonuniform load
      * balancing.
      */
-    SAMRAI::tbox::Pointer<SAMRAI::pdat::CellVariable<NDIM,double> > d_workload_var;
+    boost::shared_ptr<SAMRAI::pdat::CellVariable<double> > d_workload_var;
     int d_workload_idx;
 
     /*
@@ -744,7 +744,7 @@ private:
      * SAMRAI::hier::IntVector object which determines the ghost cell width used
      * to determine elements that are associated with each Cartesian grid patch.
      */
-    const SAMRAI::hier::IntVector<NDIM> d_ghost_width;
+    const SAMRAI::hier::IntVector d_ghost_width;
 
     /*
      * FE equation system associated with this data manager object.

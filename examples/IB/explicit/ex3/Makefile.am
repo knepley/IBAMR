@@ -9,7 +9,7 @@ EXTRA_DIST +=  fila_512.vertex  fila_512.spring  fila_512.beam  fila_512.target
 EXTRA_DIST += fila_1024.vertex fila_1024.spring fila_1024.beam fila_1024.target
 
 EXTRA_PROGRAMS =
-if SAMRAI2D_ENABLED
+if IBAMR2D_ENABLED
 EXTRA_PROGRAMS += main2d
 endif
 

@@ -39,14 +39,14 @@
 #include <vector>
 
 #include "BasePatchLevel.h"
-#include "StandardTagAndInitStrategy.h"
-#include "tbox/Pointer.h"
+#include "SAMRAI/mesh/StandardTagAndInitStrategy.h"
+
 
 namespace SAMRAI {
 namespace hier {
-template <int DIM> class BasePatchHierarchy;
-template <int DIM> class PatchHierarchy;
-template <int DIM> class PatchLevel;
+class BasePatchHierarchy;
+class PatchHierarchy;
+class PatchLevel;
 }  // namespace hier
 }  // namespace SAMRAI
 
@@ -74,7 +74,7 @@ namespace IBTK
  * StandardTagAndInitStrategySet.
  */
 class StandardTagAndInitStrategySet
-    : public SAMRAI::mesh::StandardTagAndInitStrategy<NDIM>
+    : public SAMRAI::mesh::StandardTagAndInitStrategy
 {
 public:
     /*!
@@ -102,7 +102,7 @@ public:
      */
     double
     getLevelDt(
-        SAMRAI::tbox::Pointer<SAMRAI::hier::BasePatchLevel<NDIM> > level,
+        boost::shared_ptr<SAMRAI::hier::BasePatchLevel > level,
         double dt_time,
         bool initial_time);
 
@@ -163,8 +163,8 @@ public:
      */
     double
     advanceLevel(
-        SAMRAI::tbox::Pointer<SAMRAI::hier::BasePatchLevel<NDIM> > level,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::BasePatchHierarchy<NDIM> > hierarchy,
+        boost::shared_ptr<SAMRAI::hier::BasePatchLevel > level,
+        boost::shared_ptr<SAMRAI::hier::BasePatchHierarchy > hierarchy,
         double current_time,
         double new_time,
         bool first_step,
@@ -176,7 +176,7 @@ public:
      */
     void
     resetTimeDependentData(
-        SAMRAI::tbox::Pointer<SAMRAI::hier::BasePatchLevel<NDIM> > level,
+        boost::shared_ptr<SAMRAI::hier::BasePatchLevel > level,
         double new_time,
         bool can_be_refined);
 
@@ -188,7 +188,7 @@ public:
      */
     void
     resetDataToPreadvanceState(
-        SAMRAI::tbox::Pointer<SAMRAI::hier::BasePatchLevel<NDIM> > level);
+        boost::shared_ptr<SAMRAI::hier::BasePatchLevel > level);
 
     /*!
      * Initialize data on a new level after it is inserted into an AMR patch
@@ -214,12 +214,12 @@ public:
      */
     void
     initializeLevelData(
-        SAMRAI::tbox::Pointer<SAMRAI::hier::BasePatchHierarchy<NDIM> > hierarchy,
+        boost::shared_ptr<SAMRAI::hier::BasePatchHierarchy > hierarchy,
         int level_number,
         double init_data_time,
         bool can_be_refined,
         bool initial_time,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::BasePatchLevel<NDIM> > old_level=SAMRAI::tbox::Pointer<SAMRAI::hier::BasePatchLevel<NDIM> >(NULL),
+        boost::shared_ptr<SAMRAI::hier::BasePatchLevel > old_level=boost::shared_ptr<SAMRAI::hier::BasePatchLevel >(NULL),
         bool allocate_data=true);
 
     /*!
@@ -241,7 +241,7 @@ public:
      */
     void
     resetHierarchyConfiguration(
-        SAMRAI::tbox::Pointer<SAMRAI::hier::BasePatchHierarchy<NDIM> > hierarchy,
+        boost::shared_ptr<SAMRAI::hier::BasePatchHierarchy > hierarchy,
         int coarsest_level,
         int finest_level);
 
@@ -265,7 +265,7 @@ public:
      */
     void
     applyGradientDetector(
-        SAMRAI::tbox::Pointer<SAMRAI::hier::BasePatchHierarchy<NDIM> > hierarchy,
+        boost::shared_ptr<SAMRAI::hier::BasePatchHierarchy > hierarchy,
         int level_number,
         double error_data_time,
         int tag_index,
@@ -299,7 +299,7 @@ public:
      */
     void
     applyRichardsonExtrapolation(
-        SAMRAI::tbox::Pointer<SAMRAI::hier::PatchLevel<NDIM> > level,
+        boost::shared_ptr<SAMRAI::hier::PatchLevel > level,
         double error_data_time,
         int tag_index,
         double deltat,
@@ -319,9 +319,9 @@ public:
      */
     void
     coarsenDataForRichardsonExtrapolation(
-        SAMRAI::tbox::Pointer<SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy,
+        boost::shared_ptr<SAMRAI::hier::PatchHierarchy > hierarchy,
         int level_number,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::PatchLevel<NDIM> > coarser_level,
+        boost::shared_ptr<SAMRAI::hier::PatchLevel > coarser_level,
         double coarsen_data_time,
         bool before_advance);
 
@@ -361,7 +361,7 @@ private:
     /*!
      * \brief The set of SAMRAI::xfer:StandardTagAndInitStrategy objects.
      */
-    std::vector<SAMRAI::mesh::StandardTagAndInitStrategy<NDIM>*> d_strategy_set;
+    std::vector<SAMRAI::mesh::StandardTagAndInitStrategy*> d_strategy_set;
 
     /*!
      * \brief Boolean value that indicates whether this class should provide

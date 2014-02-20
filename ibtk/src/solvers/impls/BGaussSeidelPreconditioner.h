@@ -40,8 +40,8 @@
 #include <vector>
 
 #include "ibtk/LinearSolver.h"
-#include "tbox/ConstPointer.h"
-#include "tbox/Pointer.h"
+#include "SAMRAI/tbox/Constboost::shared_ptr.h"
+
 
 namespace IBTK {
 class LinearOperator;
@@ -103,7 +103,7 @@ public:
      */
     BGaussSeidelPreconditioner(
         const std::string& object_name,
-        SAMRAI::tbox::Pointer<SAMRAI::tbox::Database> input_db,
+        boost::shared_ptr<SAMRAI::tbox::Database> input_db,
         const std::string& default_options_prefix);
 
     /*!
@@ -117,7 +117,7 @@ public:
      */
     void
     setComponentPreconditioner(
-        SAMRAI::tbox::Pointer<LinearSolver> preconditioner,
+        boost::shared_ptr<LinearSolver> preconditioner,
         unsigned int component);
 
     /*!
@@ -126,7 +126,7 @@ public:
      */
     void
     setComponentOperators(
-        const std::vector<SAMRAI::tbox::Pointer<LinearOperator> >& linear_ops,
+        const std::vector<boost::shared_ptr<LinearOperator> >& linear_ops,
         unsigned int component);
 
     /*!
@@ -190,8 +190,8 @@ public:
      */
     bool
     solveSystem(
-        SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& x,
-        SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& b);
+        SAMRAI::solv::SAMRAIVectorReal<double>& x,
+        SAMRAI::solv::SAMRAIVectorReal<double>& b);
 
     /*!
      * \brief Compute hierarchy dependent data required for solving \f$Ax=b\f$.
@@ -232,8 +232,8 @@ public:
      */
     void
     initializeSolverState(
-        const SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& x,
-        const SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& b);
+        const SAMRAI::solv::SAMRAIVectorReal<double>& x,
+        const SAMRAI::solv::SAMRAIVectorReal<double>& b);
 
     /*!
      * \brief Remove all hierarchy dependent data allocated by
@@ -324,19 +324,19 @@ private:
      * SAMRAI::solv::SAMRAIVectorReal objects to correspond to each of the
      * components.
      */
-    static std::vector<SAMRAI::tbox::Pointer<SAMRAI::solv::SAMRAIVectorReal<NDIM,double> > >
+    static std::vector<boost::shared_ptr<SAMRAI::solv::SAMRAIVectorReal<double> > >
     getComponentVectors(
-        SAMRAI::tbox::ConstPointer<SAMRAI::solv::SAMRAIVectorReal<NDIM,double> > x);
+        SAMRAI::tbox::Constboost::shared_ptr<SAMRAI::solv::SAMRAIVectorReal<double> > x);
 
     /*!
      * The component preconditioners.
      */
-    std::map<unsigned int,SAMRAI::tbox::Pointer<LinearSolver> > d_pc_map;
+    std::map<unsigned int,boost::shared_ptr<LinearSolver> > d_pc_map;
 
     /*!
      * The component operators.
      */
-    std::map<unsigned int,std::vector<SAMRAI::tbox::Pointer<LinearOperator> > > d_linear_ops_map;
+    std::map<unsigned int,std::vector<boost::shared_ptr<LinearOperator> > > d_linear_ops_map;
 
     /*!
      * Parameters to specify the ordering of the application of the component

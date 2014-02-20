@@ -39,8 +39,8 @@
 #include <string>
 
 #include "ibtk/KrylovLinearSolver.h"
-#include "tbox/Database.h"
-#include "tbox/Pointer.h"
+#include "SAMRAI/tbox/Database.h"
+
 
 /////////////////////////////// CLASS DEFINITION /////////////////////////////
 
@@ -86,20 +86,20 @@ public:
     /*!
      * Allocate a new KrylovLinearSolver object of the specified type.
      */
-    SAMRAI::tbox::Pointer<KrylovLinearSolver>
+    boost::shared_ptr<KrylovLinearSolver>
     allocateSolver(
         const std::string& solver_type,
         const std::string& solver_object_name,
-        SAMRAI::tbox::Pointer<SAMRAI::tbox::Database> solver_input_db,
+        boost::shared_ptr<SAMRAI::tbox::Database> solver_input_db,
         const std::string& solver_default_options_prefix) const;
 
     /*!
      * Typedef for functions to construct KrylovLinearSolvers.
      */
-    typedef SAMRAI::tbox::Pointer<KrylovLinearSolver>
+    typedef boost::shared_ptr<KrylovLinearSolver>
     (*SolverMaker)(
         const std::string& solver_object_name,
-        SAMRAI::tbox::Pointer<SAMRAI::tbox::Database> solver_input_db,
+        boost::shared_ptr<SAMRAI::tbox::Database> solver_input_db,
         const std::string& solver_default_options_prefix);
 
     /*!

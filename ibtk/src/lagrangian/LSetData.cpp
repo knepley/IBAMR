@@ -32,11 +32,11 @@
 
 /////////////////////////////// INCLUDES /////////////////////////////////////
 
-#include "IndexDataFactory.h"
-#include "IndexVariable.h"
+#include "SAMRAI/pdat/IndexDataFactory.h"
+#include "SAMRAI/pdat/IndexVariable.h"
 #include "LSetData.h"
 #include "ibtk/namespaces.h" // IWYU pragma: keep
-#include "tbox/Pointer.h"
+
 
 /////////////////////////////// NAMESPACE ////////////////////////////////////
 
@@ -48,9 +48,9 @@ namespace IBTK
 
 template<class T>
 LSetData<T>::LSetData(
-    const Box<NDIM>& box,
-    const IntVector<NDIM>& ghosts)
-    : IndexData<NDIM,LSet<T>,CellGeometry<NDIM> >(box,ghosts)
+    const Box& box,
+    const IntVector& ghosts)
+    : IndexData<LSet<T>,CellGeometry >(box,ghosts)
 {
     // intentionally blank
     return;
@@ -75,44 +75,44 @@ LSetData<T>::~LSetData()
 
 #include "ibtk/LMarkerSet.h"
 
-template class IndexData<NDIM,IBTK::LMarkerSet,CellGeometry<NDIM> >;
-template class IndexDataFactory<NDIM,IBTK::LMarkerSet,CellGeometry<NDIM> >;
-template class IndexDataNode<NDIM,IBTK::LMarkerSet,CellGeometry<NDIM> >;
-template class IndexIterator<NDIM,IBTK::LMarkerSet,CellGeometry<NDIM> >;
-template class IndexVariable<NDIM,IBTK::LMarkerSet,CellGeometry<NDIM> >;
-template class Pointer<IndexData<NDIM,IBTK::LMarkerSet,CellGeometry<NDIM> > >;
-template class Pointer<IndexVariable<NDIM,IBTK::LMarkerSet,CellGeometry<NDIM> > >;
+template class IndexData<IBTK::LMarkerSet,CellGeometry >;
+template class IndexDataFactory<IBTK::LMarkerSet,CellGeometry >;
+template class IndexDataNode<IBTK::LMarkerSet,CellGeometry >;
+template class IndexIterator<IBTK::LMarkerSet,CellGeometry >;
+template class IndexVariable<IBTK::LMarkerSet,CellGeometry >;
+template class boost::shared_ptr<IndexData<IBTK::LMarkerSet,CellGeometry > >;
+template class boost::shared_ptr<IndexVariable<IBTK::LMarkerSet,CellGeometry > >;
 template class IBTK::LSetData<IBTK::LMarker>;
-template class Pointer<IBTK::LSetData<IBTK::LMarker> >;
+template class boost::shared_ptr<IBTK::LSetData<IBTK::LMarker> >;
 
 #include "ibtk/LNodeSet.h"
 
-template class IndexData<NDIM,IBTK::LNodeSet,CellGeometry<NDIM> >;
-template class IndexDataFactory<NDIM,IBTK::LNodeSet,CellGeometry<NDIM> >;
-template class IndexDataNode<NDIM,IBTK::LNodeSet,CellGeometry<NDIM> >;
-template class IndexIterator<NDIM,IBTK::LNodeSet,CellGeometry<NDIM> >;
-template class IndexVariable<NDIM,IBTK::LNodeSet,CellGeometry<NDIM> >;
-template class Pointer<IndexData<NDIM,IBTK::LNodeSet,CellGeometry<NDIM> > >;
-template class Pointer<IndexVariable<NDIM,IBTK::LNodeSet,CellGeometry<NDIM> > >;
+template class IndexData<IBTK::LNodeSet,CellGeometry >;
+template class IndexDataFactory<IBTK::LNodeSet,CellGeometry >;
+template class IndexDataNode<IBTK::LNodeSet,CellGeometry >;
+template class IndexIterator<IBTK::LNodeSet,CellGeometry >;
+template class IndexVariable<IBTK::LNodeSet,CellGeometry >;
+template class boost::shared_ptr<IndexData<IBTK::LNodeSet,CellGeometry > >;
+template class boost::shared_ptr<IndexVariable<IBTK::LNodeSet,CellGeometry > >;
 template class IBTK::LSetData<IBTK::LNode>;
-template class Pointer<IBTK::LSetData<IBTK::LNode> >;
+template class boost::shared_ptr<IBTK::LSetData<IBTK::LNode> >;
 
 #include "ibtk/LNodeIndexSet.h"
 
 namespace SAMRAI {
 namespace pdat {
-template <int DIM> class CellGeometry;
+class CellGeometry;
 }  // namespace pdat
 }  // namespace SAMRAI
 
-template class IndexData<NDIM,IBTK::LNodeIndexSet,CellGeometry<NDIM> >;
-template class IndexDataFactory<NDIM,IBTK::LNodeIndexSet,CellGeometry<NDIM> >;
-template class IndexDataNode<NDIM,IBTK::LNodeIndexSet,CellGeometry<NDIM> >;
-template class IndexIterator<NDIM,IBTK::LNodeIndexSet,CellGeometry<NDIM> >;
-template class IndexVariable<NDIM,IBTK::LNodeIndexSet,CellGeometry<NDIM> >;
-template class Pointer<IndexData<NDIM,IBTK::LNodeIndexSet,CellGeometry<NDIM> > >;
-template class Pointer<IndexVariable<NDIM,IBTK::LNodeIndexSet,CellGeometry<NDIM> > >;
+template class IndexData<IBTK::LNodeIndexSet,CellGeometry >;
+template class IndexDataFactory<IBTK::LNodeIndexSet,CellGeometry >;
+template class IndexDataNode<IBTK::LNodeIndexSet,CellGeometry >;
+template class IndexIterator<IBTK::LNodeIndexSet,CellGeometry >;
+template class IndexVariable<IBTK::LNodeIndexSet,CellGeometry >;
+template class boost::shared_ptr<IndexData<IBTK::LNodeIndexSet,CellGeometry > >;
+template class boost::shared_ptr<IndexVariable<IBTK::LNodeIndexSet,CellGeometry > >;
 template class IBTK::LSetData<IBTK::LNodeIndex>;
-template class Pointer<IBTK::LSetData<IBTK::LNodeIndex> >;
+template class boost::shared_ptr<IBTK::LSetData<IBTK::LNodeIndex> >;
 
 //////////////////////////////////////////////////////////////////////////////

@@ -34,10 +34,10 @@
 
 #include <vector>
 
-#include "CartesianPatchGeometry.h"
-#include "Index.h"
+#include "SAMRAI/geom/CartesianPatchGeometry.h"
+#include "SAMRAI/hier/Index.h"
 #include "LMarkerRefine.h"
-#include "Patch.h"
+#include "SAMRAI/hier/Patch.h"
 #include "boost/array.hpp"
 #include "ibtk/IndexUtilities.h"
 #include "ibtk/IndexUtilities-inl.h"
@@ -54,7 +54,7 @@
 
 namespace SAMRAI {
 namespace hier {
-template <int DIM> class Variable;
+class Variable;
 }  // namespace hier
 }  // namespace SAMRAI
 
@@ -88,10 +88,10 @@ LMarkerRefine::~LMarkerRefine()
 
 bool
 LMarkerRefine::findRefineOperator(
-    const Pointer<Variable<NDIM> >& var,
+    const boost::shared_ptr<Variable >& var,
     const std::string& op_name) const
 {
-    Pointer<LMarkerSetVariable> mark_var = var;
+    boost::shared_ptr<LMarkerSetVariable> mark_var = var;
     return (mark_var && op_name == s_op_name);
 }// findRefineOperator
 
@@ -107,7 +107,7 @@ LMarkerRefine::getOperatorPriority() const
     return REFINE_OP_PRIORITY;
 }// getOperatorPriority
 
-IntVector<NDIM>
+IntVector
 LMarkerRefine::getStencilWidth() const
 {
     return REFINE_OP_STENCIL_WIDTH;
@@ -115,31 +115,31 @@ LMarkerRefine::getStencilWidth() const
 
 void
 LMarkerRefine::refine(
-    Patch<NDIM>& fine,
-    const Patch<NDIM>& coarse,
+    Patch& fine,
+    const Patch& coarse,
     const int dst_component,
     const int src_component,
-    const Box<NDIM>& fine_box,
-    const IntVector<NDIM>& ratio) const
+    const Box& fine_box,
+    const IntVector& ratio) const
 {
-    Pointer<LMarkerSetData> dst_mark_data = fine  .getPatchData(dst_component);
-    Pointer<LMarkerSetData> src_mark_data = coarse.getPatchData(src_component);
+    boost::shared_ptr<LMarkerSetData> dst_mark_data = fine  .getPatchData(dst_component);
+    boost::shared_ptr<LMarkerSetData> src_mark_data = coarse.getPatchData(src_component);
 
-    const Box<NDIM>& fine_patch_box = fine.getBox();
-    const Pointer<CartesianPatchGeometry<NDIM> > fine_patch_geom = fine.getPatchGeometry();
-    const Index<NDIM>& fine_patch_lower = fine_patch_box.lower();
-    const Index<NDIM>& fine_patch_upper = fine_patch_box.upper();
+    const Box& fine_patch_box = fine.getBox();
+    const boost::shared_ptr<CartesianPatchGeometry > fine_patch_geom = fine.getPatchGeometry();
+    const Index& fine_patch_lower = fine_patch_box.lower();
+    const Index& fine_patch_upper = fine_patch_box.upper();
     const double* const fine_patchXLower = fine_patch_geom->getXLower();
     const double* const fine_patchXUpper = fine_patch_geom->getXUpper();
     const double* const fine_patchDx = fine_patch_geom->getDx();
 
-    const Pointer<CartesianPatchGeometry<NDIM> > coarse_patch_geom = coarse.getPatchGeometry();
+    const boost::shared_ptr<CartesianPatchGeometry > coarse_patch_geom = coarse.getPatchGeometry();
     const double* const coarse_patchDx = coarse_patch_geom->getDx();
 
-    const Box<NDIM> coarse_box = Box<NDIM>::coarsen(fine_box,ratio);
+    const Box coarse_box = Box::coarsen(fine_box,ratio);
     for (LMarkerSetData::SetIterator it(*src_mark_data); it; it++)
     {
-        const Index<NDIM>& coarse_i = it.getIndex();
+        const Index& coarse_i = it.getIndex();
         if (coarse_box.contains(coarse_i))
         {
             const LMarkerSet& coarse_mark_set = it();
@@ -147,19 +147,19 @@ LMarkerRefine::refine(
             {
                 const LMarkerSet::value_type& coarse_mark = *cit;
                 const Point& X = coarse_mark->getPosition();
-                const IntVector<NDIM>& offset = coarse_mark->getPeriodicOffset();
+                const IntVector& offset = coarse_mark->getPeriodicOffset();
                 boost::array<double,NDIM> X_shifted;
                 for (unsigned int d = 0; d < NDIM; ++d)
                 {
                     X_shifted[d] = X[d] + static_cast<double>(offset(d))*coarse_patchDx[d];
                 }
 
-                const Index<NDIM> fine_i = IndexUtilities::getCellIndex(X_shifted, fine_patchXLower, fine_patchXUpper, fine_patchDx, fine_patch_lower, fine_patch_upper);
+                const Index fine_i = IndexUtilities::getCellIndex(X_shifted, fine_patchXLower, fine_patchXUpper, fine_patchDx, fine_patch_lower, fine_patch_upper);
                 if (fine_box.contains(fine_i))
                 {
                     if (!dst_mark_data->isElement(fine_i))
                     {
-                        dst_mark_data->appendItemPointer(fine_i, new LMarkerSet());
+                        dst_mark_data->appendItemboost::shared_ptr(fine_i, new LMarkerSet());
                     }
                     LMarkerSet& fine_mark_set = *(dst_mark_data->getItem(fine_i));
                     fine_mark_set.push_back(coarse_mark);

@@ -34,10 +34,10 @@
 
 #include <ostream>
 
-#include "IntVector.h"
+#include "SAMRAI/hier/IntVector.h"
 #include "LTransaction.h"
 #include "ibtk/namespaces.h" // IWYU pragma: keep
-#include "tbox/AbstractStream.h"
+#include "SAMRAI/tbox/AbstractStream.h"
 
 /////////////////////////////// NAMESPACE ////////////////////////////////////
 
@@ -143,7 +143,7 @@ void
 LTransaction<T>::unpackStream(
     AbstractStream& stream)
 {
-    static const IntVector<NDIM> periodic_offset = 0;
+    static const IntVector periodic_offset = 0;
     int num_items;
     stream >> num_items;
     d_dst_item_set.resize(num_items);

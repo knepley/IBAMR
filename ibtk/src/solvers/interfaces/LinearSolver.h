@@ -38,9 +38,9 @@
 #include <iosfwd>
 #include <vector>
 
-#include "SAMRAIVectorReal.h"
+#include "SAMRAI/solv/SAMRAIVectorReal.h"
 #include "ibtk/GeneralSolver.h"
-#include "tbox/Pointer.h"
+
 
 /////////////////////////////// CLASS DEFINITION /////////////////////////////
 
@@ -70,7 +70,7 @@ public:
      */
     //\{
 
-    typedef SAMRAI::solv::SAMRAIVectorReal<NDIM,double> SAMRAIVectorReal_NDIM_double;  // fix for g++ 4.2
+    typedef SAMRAI::solv::SAMRAIVectorReal<double> SAMRAIVectorReal_NDIM_double;  // fix for g++ 4.2
 
     /*!
      * \brief Set the nullspace of the linear system.
@@ -82,7 +82,7 @@ public:
     virtual void
     setNullspace(
         bool nullspace_contains_constant_vec,
-        const std::vector<SAMRAI::tbox::Pointer<SAMRAIVectorReal_NDIM_double> >& nullspace_basis_vecs=std::vector<SAMRAI::tbox::Pointer<SAMRAIVectorReal_NDIM_double> >());
+        const std::vector<boost::shared_ptr<SAMRAIVectorReal_NDIM_double> >& nullspace_basis_vecs=std::vector<boost::shared_ptr<SAMRAIVectorReal_NDIM_double> >());
 
     /*!
      * \brief Get whether the nullspace of the linear system contains th
@@ -94,7 +94,7 @@ public:
     /*!
      * \brief Get the basis vectors for the nullspace of the linear system.
      */
-    virtual const std::vector<SAMRAI::tbox::Pointer<SAMRAI::solv::SAMRAIVectorReal<NDIM,double> > >&
+    virtual const std::vector<boost::shared_ptr<SAMRAI::solv::SAMRAIVectorReal<double> > >&
     getNullspaceBasisVectors() const;
 
     //\}
@@ -139,7 +139,7 @@ protected:
 
     // Nullspace data.
     bool d_nullspace_contains_constant_vec;
-    std::vector<SAMRAI::tbox::Pointer<SAMRAI::solv::SAMRAIVectorReal<NDIM,double> > > d_nullspace_basis_vecs;
+    std::vector<boost::shared_ptr<SAMRAI::solv::SAMRAIVectorReal<double> > > d_nullspace_basis_vecs;
 
 private:
     /*!

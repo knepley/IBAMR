@@ -71,7 +71,7 @@ NewtonKrylovSolver::~NewtonKrylovSolver()
 
 void
 NewtonKrylovSolver::setHierarchyMathOps(
-    Pointer<HierarchyMathOps> hier_math_ops)
+    boost::shared_ptr<HierarchyMathOps> hier_math_ops)
 {
     NewtonKrylovSolver::setHierarchyMathOps(hier_math_ops);
     if (d_F) d_F->setHierarchyMathOps(d_hier_math_ops);
@@ -115,9 +115,9 @@ NewtonKrylovSolver::setTimeInterval(
 
 void
 NewtonKrylovSolver::setOperator(
-    Pointer<GeneralOperator> F)
+    boost::shared_ptr<GeneralOperator> F)
 {
-    Pointer<GeneralOperator> F_old = d_F;
+    boost::shared_ptr<GeneralOperator> F_old = d_F;
     d_F = F;
     d_F->setHomogeneousBc(d_homogeneous_bc);
     d_F->setSolutionTime(d_solution_time);
@@ -126,7 +126,7 @@ NewtonKrylovSolver::setOperator(
     return;
 }// setOperator
 
-Pointer<GeneralOperator>
+boost::shared_ptr<GeneralOperator>
 NewtonKrylovSolver::getOperator() const
 {
     return d_F;
@@ -134,9 +134,9 @@ NewtonKrylovSolver::getOperator() const
 
 void
 NewtonKrylovSolver::setJacobian(
-    Pointer<JacobianOperator> J)
+    boost::shared_ptr<JacobianOperator> J)
 {
-    Pointer<JacobianOperator> J_old = d_J;
+    boost::shared_ptr<JacobianOperator> J_old = d_J;
     d_J = J;
     d_J->setHomogeneousBc(true);
     d_J->setSolutionTime(d_solution_time);
@@ -145,13 +145,13 @@ NewtonKrylovSolver::setJacobian(
     return;
 }// setJacobian
 
-Pointer<JacobianOperator>
+boost::shared_ptr<JacobianOperator>
 NewtonKrylovSolver::getJacobian() const
 {
     return d_J;
 }// getJacobian
 
-Pointer<KrylovLinearSolver>
+boost::shared_ptr<KrylovLinearSolver>
 NewtonKrylovSolver::getLinearSolver() const
 {
     return d_krylov_solver;

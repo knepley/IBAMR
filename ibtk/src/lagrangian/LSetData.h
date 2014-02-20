@@ -35,10 +35,10 @@
 
 /////////////////////////////// INCLUDES /////////////////////////////////////
 
-#include "Box.h"
-#include "CellIterator.h"
-#include "IndexData.h"
-#include "IntVector.h"
+#include "SAMRAI/hier/Box.h"
+#include "SAMRAI/pdat/CellIterator.h"
+#include "SAMRAI/pdat/IndexData.h"
+#include "SAMRAI/hier/IntVector.h"
 #include "ibtk/FixedSizedStream-inl.h"
 #include "ibtk/LMarker.h"
 #include "ibtk/LMarker-inl.h"
@@ -54,7 +54,7 @@ template <class T> class LSet;
 }  // namespace IBTK
 namespace SAMRAI {
 namespace pdat {
-template <int DIM> class CellGeometry;
+class CellGeometry;
 }  // namespace pdat
 }  // namespace SAMRAI
 
@@ -77,19 +77,19 @@ namespace IBTK
  */
 template<class T>
 class LSetData
-    : public SAMRAI::pdat::IndexData<NDIM,LSet<T>,SAMRAI::pdat::CellGeometry<NDIM> >
+    : public SAMRAI::pdat::IndexData<LSet<T>,SAMRAI::pdat::CellGeometry >
 {
 public:
     /*!
      * This iterator iterates over the elements of a cell centered box geometry.
      */
-    typedef SAMRAI::pdat::CellIterator<NDIM> CellIterator;
+    typedef SAMRAI::pdat::CellIterator CellIterator;
 
     /*!
      * Thhis iterator iterates over the LSet elements within the IndexData patch
      * data object.
      */
-    typedef SAMRAI::pdat::IndexIterator<NDIM,LSet<T>,SAMRAI::pdat::CellGeometry<NDIM> > SetIterator;
+    typedef SAMRAI::pdat::IndexIterator<LSet<T>,SAMRAI::pdat::CellGeometry > SetIterator;
 
     /*!
      * This iterator iterates over the Lagrangian elements located within a cell
@@ -103,7 +103,7 @@ public:
      */
     DataIterator
     data_begin(
-        const SAMRAI::hier::Box<NDIM>& box);
+        const SAMRAI::hier::Box& box);
 
     /*!
      * Return an iterator pointing to the end of the collection of Lagrangian
@@ -118,8 +118,8 @@ public:
      * the ghost nodes in each coordinate direction.
      */
     LSetData(
-        const SAMRAI::hier::Box<NDIM>& box,
-        const SAMRAI::hier::IntVector<NDIM>& ghosts);
+        const SAMRAI::hier::Box& box,
+        const SAMRAI::hier::IntVector& ghosts);
 
     /*!
      * The virtual destructor for an LSetData object.

@@ -36,30 +36,27 @@
 #include <ostream>
 #include <string>
 
-#include "ArrayData.h"
-#include "BoundaryBox.h"
-#include "Box.h"
+#include "SAMRAI/hier/BoundaryBox.h"
+#include "SAMRAI/hier/Box.h"
 #include "CartSideRobinPhysBdryOp.h"
-#include "CartesianPatchGeometry.h"
+#include "SAMRAI/geom/CartesianPatchGeometry.h"
 #include "IBTK_config.h"
-#include "Index.h"
-#include "Patch.h"
-#include "PatchGeometry.h"
-#include "RobinBcCoefStrategy.h"
-#include "SAMRAI_config.h"
-#include "SideData.h"
-#include "SideGeometry.h"
-#include "SideVariable.h"
-#include "Variable.h"
-#include "VariableDatabase.h"
+#include "SAMRAI/hier/Index.h"
+#include "SAMRAI/hier/Patch.h"
+#include "SAMRAI/hier/PatchGeometry.h"
+#include "SAMRAI/solv/RobinBcCoefStrategy.h"
+#include "SAMRAI/SAMRAI_config.h"
+#include "SAMRAI/pdat/SideData.h"
+#include "SAMRAI/pdat/SideGeometry.h"
+#include "SAMRAI/pdat/SideVariable.h"
+#include "SAMRAI/hier/Variable.h"
+#include "SAMRAI/hier/VariableDatabase.h"
 #include "boost/array.hpp"
 #include "ibtk/ExtendedRobinBcCoefStrategy.h"
 #include "ibtk/PhysicalBoundaryUtilities.h"
 #include "boost/array.hpp"
 #include "ibtk/namespaces.h" // IWYU pragma: keep
-#include "tbox/Array.h"
-#include "tbox/Pointer.h"
-#include "tbox/Utilities.h"
+#include "SAMRAI/tbox/Utilities.h"
 
 // FORTRAN ROUTINES
 #if (NDIM == 2)
@@ -335,12 +332,12 @@ namespace
 {
 static const int REFINE_OP_STENCIL_WIDTH = 1;
 
-inline Box<NDIM>
+inline Box
 compute_tangential_extension(
-    const Box<NDIM>& box,
+    const Box& box,
     const int data_axis)
 {
-    Box<NDIM> extended_box = box;
+    Box extended_box = box;
     extended_box.upper()(data_axis) += 1;
     return extended_box;
 }// compute_tangential_extension
@@ -357,7 +354,7 @@ CartSideRobinPhysBdryOp::CartSideRobinPhysBdryOp()
 
 CartSideRobinPhysBdryOp::CartSideRobinPhysBdryOp(
     const int patch_data_index,
-    const std::vector<RobinBcCoefStrategy<NDIM>*>& bc_coefs,
+    const std::vector<boost::shared_ptr<RobinBcCoefStrategy> >& bc_coefs,
     const bool homogeneous_bc)
     : RobinPhysBdryPatchStrategy()
 {
@@ -372,7 +369,7 @@ CartSideRobinPhysBdryOp::CartSideRobinPhysBdryOp(
 
 CartSideRobinPhysBdryOp::CartSideRobinPhysBdryOp(
     const std::set<int>& patch_data_indices,
-    const std::vector<RobinBcCoefStrategy<NDIM>*>& bc_coefs,
+    const std::vector<boost::shared_ptr<RobinBcCoefStrategy> >& bc_coefs,
     const bool homogeneous_bc)
     : RobinPhysBdryPatchStrategy()
 {
@@ -387,7 +384,7 @@ CartSideRobinPhysBdryOp::CartSideRobinPhysBdryOp(
 
 CartSideRobinPhysBdryOp::CartSideRobinPhysBdryOp(
     const ComponentSelector& patch_data_indices,
-    const std::vector<RobinBcCoefStrategy<NDIM>*>& bc_coefs,
+    const std::vector<boost::shared_ptr<RobinBcCoefStrategy> >& bc_coefs,
     const bool homogeneous_bc)
     : RobinPhysBdryPatchStrategy()
 {
@@ -408,18 +405,18 @@ CartSideRobinPhysBdryOp::~CartSideRobinPhysBdryOp()
 
 void
 CartSideRobinPhysBdryOp::setPhysicalBoundaryConditions(
-    Patch<NDIM>& patch,
+    Patch& patch,
     const double fill_time,
-    const IntVector<NDIM>& ghost_width_to_fill)
+    const IntVector& ghost_width_to_fill)
 {
-    if (ghost_width_to_fill == IntVector<NDIM>(0)) return;
+    if (ghost_width_to_fill == IntVector::getZero(patch.getDim())) return;
 
+#if !defined(NDEBUG)
     // Ensure the target patch data corresponds to a side centered variable and
     // that the proper number of boundary condition objects have been provided.
-    for (std::set<int>::const_iterator cit = d_patch_data_indices.begin(); cit != d_patch_data_indices.end(); ++cit)
+    for (const auto& patch_data_idx : d_patch_data_indices)
     {
-        const int patch_data_idx = (*cit);
-        Pointer<SideData<NDIM,double> > patch_data = patch.getPatchData(patch_data_idx);
+        auto patch_data = BOOST_CAST<SideData<double> >(patch.getPatchData(patch_data_idx));
         if (!patch_data)
         {
             TBOX_ERROR("CartSideRobinPhysBdryOp::setPhysicalBoundaryConditions():\n"
@@ -432,59 +429,57 @@ CartSideRobinPhysBdryOp::setPhysicalBoundaryConditions(
                        << "  but " << d_bc_coefs.size() << " boundary condition coefficient objects were provided to the class constructor." << std::endl);
         }
     }
+#endif
 
     // Set the boundary conditions along the co-dimension one boundary boxes,
     // then extrapolate those values to the co-dimension two and three boundary
     // boxes.
     static const bool adjoint_op = false;
-    const Array<BoundaryBox<NDIM> > physical_codim1_boxes = PhysicalBoundaryUtilities::getPhysicalBoundaryCodim1Boxes(patch);
-    for (std::set<int>::const_iterator cit = d_patch_data_indices.begin(); cit != d_patch_data_indices.end(); ++cit)
+    const std::vector<BoundaryBox> physical_codim1_boxes = PhysicalBoundaryUtilities::getPhysicalBoundaryCodim1Boxes(patch);
+    for (const auto& patch_data_idx : d_patch_data_indices)
     {
-        const int patch_data_idx = (*cit);
         fillGhostCellValuesCodim1Normal(patch_data_idx, physical_codim1_boxes, fill_time, ghost_width_to_fill, patch, adjoint_op);
     }
-    for (std::set<int>::const_iterator cit = d_patch_data_indices.begin(); cit != d_patch_data_indices.end(); ++cit)
+    for (const auto& patch_data_idx : d_patch_data_indices)
     {
-        const int patch_data_idx = (*cit);
         fillGhostCellValuesCodim1Transverse(patch_data_idx, physical_codim1_boxes, fill_time, ghost_width_to_fill, patch, adjoint_op);
     }
-    const Array<BoundaryBox<NDIM> > physical_codim2_boxes = PhysicalBoundaryUtilities::getPhysicalBoundaryCodim2Boxes(patch);
-    for (std::set<int>::const_iterator cit = d_patch_data_indices.begin(); cit != d_patch_data_indices.end(); ++cit)
+    const std::vector<BoundaryBox> physical_codim2_boxes = PhysicalBoundaryUtilities::getPhysicalBoundaryCodim2Boxes(patch);
+    for (const auto& patch_data_idx : d_patch_data_indices)
     {
-        const int patch_data_idx = (*cit);
         fillGhostCellValuesCodim2(patch_data_idx, physical_codim2_boxes, ghost_width_to_fill, patch, adjoint_op);
     }
 #if (NDIM > 2)
-    const Array<BoundaryBox<NDIM> > physical_codim3_boxes = PhysicalBoundaryUtilities::getPhysicalBoundaryCodim3Boxes(patch);
-    for (std::set<int>::const_iterator cit = d_patch_data_indices.begin(); cit != d_patch_data_indices.end(); ++cit)
+    const std::vector<BoundaryBox> physical_codim3_boxes = PhysicalBoundaryUtilities::getPhysicalBoundaryCodim3Boxes(patch);
+    for (const auto& patch_data_idx : d_patch_data_indices)
     {
-        const int patch_data_idx = (*cit);
         fillGhostCellValuesCodim3(patch_data_idx, physical_codim3_boxes, ghost_width_to_fill, patch, adjoint_op);
     }
 #endif
     return;
 }// setPhysicalBoundaryConditions
 
-IntVector<NDIM>
-    CartSideRobinPhysBdryOp::getRefineOpStencilWidth() const
+IntVector
+CartSideRobinPhysBdryOp::getRefineOpStencilWidth(
+    const Dimension& dim) const
 {
-    return REFINE_OP_STENCIL_WIDTH;
+    return IntVector(dim, REFINE_OP_STENCIL_WIDTH);
 }// getRefineOpStencilWidth
 
 void
 CartSideRobinPhysBdryOp::accumulateFromPhysicalBoundaryData(
-    Patch<NDIM>& patch,
+    Patch& patch,
     const double fill_time,
-    const IntVector<NDIM>& ghost_width_to_fill)
+    const IntVector& ghost_width_to_fill)
 {
-    if (ghost_width_to_fill == IntVector<NDIM>(0)) return;
+    if (ghost_width_to_fill == IntVector::getZero(patch.getDim())) return;
 
+#if !defined(NDEBUG)
     // Ensure the target patch data corresponds to a side centered variable and
     // that the proper number of boundary condition objects have been provided.
-    for (std::set<int>::const_iterator cit = d_patch_data_indices.begin(); cit != d_patch_data_indices.end(); ++cit)
+    for (const auto& patch_data_idx : d_patch_data_indices)
     {
-        const int patch_data_idx = (*cit);
-        Pointer<SideData<NDIM,double> > patch_data = patch.getPatchData(patch_data_idx);
+        auto patch_data = BOOST_CAST<SideData<double> >(patch.getPatchData(patch_data_idx));
         if (!patch_data)
         {
             TBOX_ERROR("CartSideRobinPhysBdryOp::accumulateFromPhysicalBoundaryData():\n"
@@ -497,34 +492,31 @@ CartSideRobinPhysBdryOp::accumulateFromPhysicalBoundaryData(
                        << "  but " << d_bc_coefs.size() << " boundary condition coefficient objects were provided to the class constructor." << std::endl);
         }
     }
+#endif
 
     // Set the boundary conditions along the co-dimension one boundary boxes,
     // then extrapolate those values to the co-dimension two and three boundary
     // boxes.
     static const bool adjoint_op = true;
 #if (NDIM > 2)
-    const Array<BoundaryBox<NDIM> > physical_codim3_boxes = PhysicalBoundaryUtilities::getPhysicalBoundaryCodim3Boxes(patch);
-    for (std::set<int>::const_iterator cit = d_patch_data_indices.begin(); cit != d_patch_data_indices.end(); ++cit)
+    const std::vector<BoundaryBox> physical_codim3_boxes = PhysicalBoundaryUtilities::getPhysicalBoundaryCodim3Boxes(patch);
+    for (const auto& patch_data_idx : d_patch_data_indices)
     {
-        const int patch_data_idx = (*cit);
         fillGhostCellValuesCodim3(patch_data_idx, physical_codim3_boxes, ghost_width_to_fill, patch, adjoint_op);
     }
 #endif
-    const Array<BoundaryBox<NDIM> > physical_codim2_boxes = PhysicalBoundaryUtilities::getPhysicalBoundaryCodim2Boxes(patch);
-    for (std::set<int>::const_iterator cit = d_patch_data_indices.begin(); cit != d_patch_data_indices.end(); ++cit)
+    const std::vector<BoundaryBox> physical_codim2_boxes = PhysicalBoundaryUtilities::getPhysicalBoundaryCodim2Boxes(patch);
+    for (const auto& patch_data_idx : d_patch_data_indices)
     {
-        const int patch_data_idx = (*cit);
         fillGhostCellValuesCodim2(patch_data_idx, physical_codim2_boxes, ghost_width_to_fill, patch, adjoint_op);
     }
-    const Array<BoundaryBox<NDIM> > physical_codim1_boxes = PhysicalBoundaryUtilities::getPhysicalBoundaryCodim1Boxes(patch);
-    for (std::set<int>::const_iterator cit = d_patch_data_indices.begin(); cit != d_patch_data_indices.end(); ++cit)
+    const std::vector<BoundaryBox> physical_codim1_boxes = PhysicalBoundaryUtilities::getPhysicalBoundaryCodim1Boxes(patch);
+    for (const auto& patch_data_idx : d_patch_data_indices)
     {
-        const int patch_data_idx = (*cit);
         fillGhostCellValuesCodim1Transverse(patch_data_idx, physical_codim1_boxes, fill_time, ghost_width_to_fill, patch, adjoint_op);
     }
-    for (std::set<int>::const_iterator cit = d_patch_data_indices.begin(); cit != d_patch_data_indices.end(); ++cit)
+    for (const auto& patch_data_idx : d_patch_data_indices)
     {
-        const int patch_data_idx = (*cit);
         fillGhostCellValuesCodim1Normal(patch_data_idx, physical_codim1_boxes, fill_time, ghost_width_to_fill, patch, adjoint_op);
     }
     return;
@@ -535,24 +527,26 @@ CartSideRobinPhysBdryOp::accumulateFromPhysicalBoundaryData(
 /////////////////////////////// PRIVATE //////////////////////////////////////
 
 void
-    CartSideRobinPhysBdryOp::fillGhostCellValuesCodim1Normal(
+CartSideRobinPhysBdryOp::fillGhostCellValuesCodim1Normal(
     const int patch_data_idx,
-        const Array<BoundaryBox<NDIM> >& physical_codim1_boxes,
-        const double fill_time,
-        const IntVector<NDIM>& ghost_width_to_fill,
-        Patch<NDIM>& patch,
-        const bool adjoint_op)
+    const std::vector<BoundaryBox>& physical_codim1_boxes,
+    const double fill_time,
+    const IntVector& ghost_width_to_fill,
+    Patch& patch,
+    const bool adjoint_op)
 {
     const int n_physical_codim1_boxes = physical_codim1_boxes.size();
     if (n_physical_codim1_boxes == 0) return;
 
-    const Box<NDIM>& patch_box = patch.getBox();
-    Pointer<CartesianPatchGeometry<NDIM> > pgeom = patch.getPatchGeometry();
+    const Box& patch_box = patch.getBox();
+    auto pgeom = BOOST_CAST<CartesianPatchGeometry >(patch.getPatchGeometry());
+    TBOX_ASSERT(pgeom);
     const double* const dx = pgeom->getDx();
-    Pointer<SideData<NDIM,double> > patch_data = patch.getPatchData(patch_data_idx);
+    auto patch_data = BOOST_CAST<SideData<double> >(patch.getPatchData(patch_data_idx));
+    TBOX_ASSERT(patch_data);
     const int patch_data_depth = patch_data->getDepth();
-    VariableDatabase<NDIM>* var_db = VariableDatabase<NDIM>::getDatabase();
-    Pointer<Variable<NDIM> > var;
+    VariableDatabase* var_db = VariableDatabase::getDatabase();
+    boost::shared_ptr<Variable > var;
     var_db->mapIndexToVariable(patch_data_idx, var);
     const int patch_data_gcw = (patch_data->getGhostCellWidth()).max();
 #if !defined(NDEBUG)
@@ -562,25 +556,25 @@ void
                    "  patch data for patch data index " << patch_data_idx << " does not have uniform ghost cell widths." << std::endl);
     }
 #endif
-    const IntVector<NDIM> gcw_to_fill = IntVector<NDIM>::min(patch_data->getGhostCellWidth(), ghost_width_to_fill);
+    const IntVector gcw_to_fill = IntVector::min(patch_data->getGhostCellWidth(), ghost_width_to_fill);
 
     // Set the boundary condition coefficients and then set the ghost cell
     // values.
     for (int n = 0; n < n_physical_codim1_boxes; ++n)
     {
-        const BoundaryBox<NDIM>& bdry_box   = physical_codim1_boxes[n];
+        const BoundaryBox& bdry_box   = physical_codim1_boxes[n];
         const unsigned int location_index   = bdry_box.getLocationIndex();
         const unsigned int bdry_normal_axis = location_index / 2;
-        const Box<NDIM> bc_fill_box = pgeom->getBoundaryFillBox(bdry_box, patch_box, gcw_to_fill);
-        const BoundaryBox<NDIM> trimmed_bdry_box(bdry_box.getBox()*bc_fill_box, bdry_box.getBoundaryType(), location_index);
-        const Box<NDIM> bc_coef_box = PhysicalBoundaryUtilities::makeSideBoundaryCodim1Box(trimmed_bdry_box);
-        Pointer<ArrayData<NDIM,double> > acoef_data = new ArrayData<NDIM,double>(bc_coef_box, 1);
-        Pointer<ArrayData<NDIM,double> > bcoef_data = new ArrayData<NDIM,double>(bc_coef_box, 1);
-        Pointer<ArrayData<NDIM,double> > gcoef_data = new ArrayData<NDIM,double>(bc_coef_box, 1);
+        const Box bc_fill_box = pgeom->getBoundaryFillBox(bdry_box, patch_box, gcw_to_fill);
+        const BoundaryBox trimmed_bdry_box(bdry_box.getBox()*bc_fill_box, bdry_box.getBoundaryType(), location_index);
+        const Box bc_coef_box = PhysicalBoundaryUtilities::makeSideBoundaryCodim1Box(trimmed_bdry_box);
+        auto acoef_data = boost::make_shared<ArrayData<double> >(bc_coef_box, 1);
+        auto bcoef_data = boost::make_shared<ArrayData<double> >(bc_coef_box, 1);
+        auto gcoef_data = boost::make_shared<ArrayData<double> >(bc_coef_box, 1);
         for (int d = 0; d < patch_data_depth; ++d)
         {
-            RobinBcCoefStrategy<NDIM>* bc_coef = d_bc_coefs[NDIM*d+bdry_normal_axis];
-            ExtendedRobinBcCoefStrategy* const extended_bc_coef = dynamic_cast<ExtendedRobinBcCoefStrategy*>(bc_coef);
+            auto bc_coef = d_bc_coefs[NDIM*d+bdry_normal_axis];
+            auto extended_bc_coef = boost::dynamic_pointer_cast<ExtendedRobinBcCoefStrategy>(bc_coef);
             if (extended_bc_coef)
             {
                 extended_bc_coef->setTargetPatchDataIndex(patch_data_idx);
@@ -702,24 +696,28 @@ void
 void
 CartSideRobinPhysBdryOp::fillGhostCellValuesCodim1Transverse(
     const int patch_data_idx,
-    const Array<BoundaryBox<NDIM> >& physical_codim1_boxes,
+    const std::vector<BoundaryBox>& physical_codim1_boxes,
     const double fill_time,
-    const IntVector<NDIM>& ghost_width_to_fill,
-    Patch<NDIM>& patch,
+    const IntVector& ghost_width_to_fill,
+    Patch& patch,
     const bool adjoint_op)
 {
     const int n_physical_codim1_boxes = physical_codim1_boxes.size();
     if (n_physical_codim1_boxes == 0) return;
 
-    const Box<NDIM>& patch_box = patch.getBox();
-    Pointer<CartesianPatchGeometry<NDIM> > pgeom = patch.getPatchGeometry();
+    const Dimension& dim = patch.getDim();
+    const int ndim = dim.getValue();
+    const Box& patch_box = patch.getBox();
+    auto pgeom = BOOST_CAST<CartesianPatchGeometry >(patch.getPatchGeometry());
+    TBOX_ASSERT(pgeom);
     const double* const dx = pgeom->getDx();
     const double* const patch_x_lower = pgeom->getXLower();
     const double* const patch_x_upper = pgeom->getXUpper();
-    Pointer<SideData<NDIM,double> > patch_data = patch.getPatchData(patch_data_idx);
+    auto patch_data = BOOST_CAST<SideData<double> >(patch.getPatchData(patch_data_idx));
+    TBOX_ASSERT(patch_data);
     const int patch_data_depth = patch_data->getDepth();
-    VariableDatabase<NDIM>* var_db = VariableDatabase<NDIM>::getDatabase();
-    Pointer<Variable<NDIM> > var;
+    VariableDatabase* var_db = VariableDatabase::getDatabase();
+    boost::shared_ptr<Variable > var;
     var_db->mapIndexToVariable(patch_data_idx, var);
     const int patch_data_gcw = (patch_data->getGhostCellWidth()).max();
 #if !defined(NDEBUG)
@@ -729,24 +727,21 @@ CartSideRobinPhysBdryOp::fillGhostCellValuesCodim1Transverse(
                    "  patch data for patch data index " << patch_data_idx << " does not have uniform ghost cell widths." << std::endl);
     }
 #endif
-    const IntVector<NDIM> gcw_to_fill = IntVector<NDIM>::min(patch_data->getGhostCellWidth(), ghost_width_to_fill);
+    const IntVector gcw_to_fill = IntVector::min(patch_data->getGhostCellWidth(), ghost_width_to_fill);
 
-    boost::array<Box<NDIM>,NDIM> side_box;
-    for (unsigned int axis = 0; axis < NDIM; ++axis)
+    std::vector<Box> side_box(ndim, Box(dim));
+    for (unsigned int axis = 0; axis < ndim; ++axis)
     {
-        side_box[axis] = SideGeometry<NDIM>::toSideBox(patch_box,axis);
+        side_box[axis] = SideGeometry::toSideBox(patch_box,axis);
     }
 
-    const IntVector<NDIM>& ratio_to_level_zero = pgeom->getRatio();
-    Array<Array<bool> > touches_regular_bdry(NDIM), touches_periodic_bdry(NDIM);
-    for (unsigned int axis = 0; axis < NDIM; ++axis)
+    const IntVector& ratio_to_level_zero = pgeom->getRatio();
+    PatchGeometry::TwoDimBool touches_regular_bdry(dim);
+    for (unsigned int axis = 0; axis < ndim; ++axis)
     {
-        touches_regular_bdry [axis].resizeArray(2);
-        touches_periodic_bdry[axis].resizeArray(2);
         for (int upperlower = 0; upperlower < 2; ++upperlower)
         {
-            touches_regular_bdry [axis][upperlower] = pgeom->getTouchesRegularBoundary( axis,upperlower);
-            touches_periodic_bdry[axis][upperlower] = pgeom->getTouchesPeriodicBoundary(axis,upperlower);
+            touches_regular_bdry (axis,upperlower) = pgeom->getTouchesRegularBoundary(axis,upperlower);
         }
     }
 
@@ -754,38 +749,38 @@ CartSideRobinPhysBdryOp::fillGhostCellValuesCodim1Transverse(
     // values.
     for (int n = 0; n < n_physical_codim1_boxes; ++n)
     {
-        const BoundaryBox<NDIM>& bdry_box   = physical_codim1_boxes[n];
+        const BoundaryBox& bdry_box   = physical_codim1_boxes[n];
         const unsigned int location_index   = bdry_box.getLocationIndex();
         const unsigned int bdry_normal_axis = location_index / 2;
-        const Box<NDIM> bc_fill_box = pgeom->getBoundaryFillBox(bdry_box, patch_box, gcw_to_fill);
-        const BoundaryBox<NDIM> trimmed_bdry_box(bdry_box.getBox()*bc_fill_box, bdry_box.getBoundaryType(), location_index);
-        for (unsigned int axis = 0; axis < NDIM; ++axis)
+        const Box bc_fill_box = pgeom->getBoundaryFillBox(bdry_box, patch_box, gcw_to_fill);
+        const BoundaryBox trimmed_bdry_box(bdry_box.getBox()*bc_fill_box, bdry_box.getBoundaryType(), location_index);
+        for (unsigned int axis = 0; axis < ndim; ++axis)
         {
             if (axis != bdry_normal_axis)
             {
-                const Box<NDIM> bc_coef_box = compute_tangential_extension(PhysicalBoundaryUtilities::makeSideBoundaryCodim1Box(trimmed_bdry_box), axis);
-                Pointer<ArrayData<NDIM,double> > acoef_data = new ArrayData<NDIM,double>(bc_coef_box, 1);
-                Pointer<ArrayData<NDIM,double> > bcoef_data = new ArrayData<NDIM,double>(bc_coef_box, 1);
-                Pointer<ArrayData<NDIM,double> > gcoef_data = new ArrayData<NDIM,double>(bc_coef_box, 1);
+                const Box bc_coef_box = compute_tangential_extension(PhysicalBoundaryUtilities::makeSideBoundaryCodim1Box(trimmed_bdry_box), axis);
+                auto acoef_data = boost::make_shared<ArrayData<double> >(bc_coef_box, 1);
+                auto bcoef_data = boost::make_shared<ArrayData<double> >(bc_coef_box, 1);
+                auto gcoef_data = boost::make_shared<ArrayData<double> >(bc_coef_box, 1);
 
                 // Temporarily reset the patch geometry object associated with
                 // the patch so that boundary conditions are set at the correct
                 // spatial locations.
                 boost::array<double,NDIM> shifted_patch_x_lower, shifted_patch_x_upper;
-                for (unsigned int d = 0; d < NDIM; ++d)
+                for (unsigned int d = 0; d < ndim; ++d)
                 {
                     shifted_patch_x_lower[d] = patch_x_lower[d];
                     shifted_patch_x_upper[d] = patch_x_upper[d];
                 }
                 shifted_patch_x_lower[axis] -= 0.5*dx[axis];
                 shifted_patch_x_upper[axis] -= 0.5*dx[axis];
-                patch.setPatchGeometry(new CartesianPatchGeometry<NDIM>(ratio_to_level_zero, touches_regular_bdry, touches_periodic_bdry, dx, shifted_patch_x_lower.data(), shifted_patch_x_upper.data()));
+                patch.setPatchGeometry(boost::make_shared<CartesianPatchGeometry>(ratio_to_level_zero, touches_regular_bdry, dx, shifted_patch_x_lower.data(), shifted_patch_x_upper.data()));
 
                 // Set the boundary condition coefficients.
                 for (int d = 0; d < patch_data_depth; ++d)
                 {
-                    RobinBcCoefStrategy<NDIM>* bc_coef = d_bc_coefs[NDIM*d+axis];
-                    ExtendedRobinBcCoefStrategy* const extended_bc_coef = dynamic_cast<ExtendedRobinBcCoefStrategy*>(bc_coef);
+                    auto bc_coef = d_bc_coefs[ndim*d+axis];
+                    auto extended_bc_coef = boost::dynamic_pointer_cast<ExtendedRobinBcCoefStrategy>(bc_coef);
                     if (extended_bc_coef)
                     {
                         extended_bc_coef->setTargetPatchDataIndex(patch_data_idx);
@@ -915,17 +910,19 @@ CartSideRobinPhysBdryOp::fillGhostCellValuesCodim1Transverse(
 void
 CartSideRobinPhysBdryOp::fillGhostCellValuesCodim2(
     const int patch_data_idx,
-    const Array<BoundaryBox<NDIM> >& physical_codim2_boxes,
-    const IntVector<NDIM>& ghost_width_to_fill,
-    const Patch<NDIM>& patch,
+    const std::vector<BoundaryBox>& physical_codim2_boxes,
+    const IntVector& ghost_width_to_fill,
+    const Patch& patch,
     const bool adjoint_op)
 {
     const int n_physical_codim2_boxes = physical_codim2_boxes.size();
     if (n_physical_codim2_boxes == 0) return;
 
-    const Box<NDIM>& patch_box = patch.getBox();
-    Pointer<CartesianPatchGeometry<NDIM> > pgeom = patch.getPatchGeometry();
-    Pointer<SideData<NDIM,double> > patch_data = patch.getPatchData(patch_data_idx);
+    const Box& patch_box = patch.getBox();
+    auto pgeom = BOOST_CAST<CartesianPatchGeometry >(patch.getPatchGeometry());
+    TBOX_ASSERT(pgeom);
+    auto patch_data = BOOST_CAST<SideData<double> >(patch.getPatchData(patch_data_idx));
+    TBOX_ASSERT(patch_data);
     const int patch_data_depth = patch_data->getDepth();
     const int patch_data_gcw = (patch_data->getGhostCellWidth()).max();
 #if !defined(NDEBUG)
@@ -935,21 +932,21 @@ CartSideRobinPhysBdryOp::fillGhostCellValuesCodim2(
                    "  patch data for patch data index " << patch_data_idx << " does not have uniform ghost cell widths." << std::endl);
     }
 #endif
-    const IntVector<NDIM> gcw_to_fill = IntVector<NDIM>::min(patch_data->getGhostCellWidth(), ghost_width_to_fill);
+    const IntVector gcw_to_fill = IntVector::min(patch_data->getGhostCellWidth(), ghost_width_to_fill);
 
 #if (NDIM == 3)
-    boost::array<Box<NDIM>,NDIM> side_box;
-    for (unsigned int axis = 0; axis < NDIM; ++axis)
+    std::vector<Box> side_box(ndim, Box(dim));
+    for (unsigned int axis = 0; axis < ndim; ++axis)
     {
-        side_box[axis] = SideGeometry<NDIM>::toSideBox(patch_box,axis);
+        side_box[axis] = SideGeometry::toSideBox(patch_box,axis);
     }
 #endif
 
     for (int n = 0; n < n_physical_codim2_boxes; ++n)
     {
-        const BoundaryBox<NDIM>& bdry_box = physical_codim2_boxes[n];
+        const BoundaryBox& bdry_box = physical_codim2_boxes[n];
         const unsigned int location_index = bdry_box.getLocationIndex();
-        const Box<NDIM> bc_fill_box = pgeom->getBoundaryFillBox(bdry_box, patch_box, gcw_to_fill);
+        const Box bc_fill_box = pgeom->getBoundaryFillBox(bdry_box, patch_box, gcw_to_fill);
         for (int d = 0; d < patch_data_depth; ++d)
         {
             if (adjoint_op)
@@ -1028,17 +1025,17 @@ CartSideRobinPhysBdryOp::fillGhostCellValuesCodim2(
 void
 CartSideRobinPhysBdryOp::fillGhostCellValuesCodim3(
     const int patch_data_idx,
-    const Array<BoundaryBox<NDIM> >& physical_codim3_boxes,
-    const IntVector<NDIM>& ghost_width_to_fill,
-    const Patch<NDIM>& patch,
+    const std::vector<BoundaryBox>& physical_codim3_boxes,
+    const IntVector& ghost_width_to_fill,
+    const Patch& patch,
     const bool adjoint_op)
 {
     const int n_physical_codim3_boxes = physical_codim3_boxes.size();
     if (n_physical_codim3_boxes == 0) return;
 
-    const Box<NDIM>& patch_box = patch.getBox();
-    Pointer<CartesianPatchGeometry<NDIM> > pgeom = patch.getPatchGeometry();
-    Pointer<SideData<NDIM,double> > patch_data = patch.getPatchData(patch_data_idx);
+    const Box& patch_box = patch.getBox();
+    auto pgeom = BOOST_CAST<CartesianPatchGeometry>(patch.getPatchGeometry())();
+    boost::shared_ptr<SideData<double> > patch_data = patch.getPatchData(patch_data_idx);
     const int patch_data_depth = patch_data->getDepth();
     const int patch_data_gcw = (patch_data->getGhostCellWidth()).max();
 #if !defined(NDEBUG)
@@ -1048,13 +1045,13 @@ CartSideRobinPhysBdryOp::fillGhostCellValuesCodim3(
                    "  patch data for patch data index " << patch_data_idx << " does not have uniform ghost cell widths." << std::endl);
     }
 #endif
-    const IntVector<NDIM> gcw_to_fill = IntVector<NDIM>::min(patch_data->getGhostCellWidth(), ghost_width_to_fill);
+    const IntVector gcw_to_fill = IntVector::min(patch_data->getGhostCellWidth(), ghost_width_to_fill);
 
     for (int n = 0; n < n_physical_codim3_boxes; ++n)
     {
-        const BoundaryBox<NDIM>& bdry_box = physical_codim3_boxes[n];
+        const BoundaryBox& bdry_box = physical_codim3_boxes[n];
         const unsigned int location_index = bdry_box.getLocationIndex();
-        const Box<NDIM> bc_fill_box = pgeom->getBoundaryFillBox(bdry_box, patch_box, gcw_to_fill);
+        const Box bc_fill_box = pgeom->getBoundaryFillBox(bdry_box, patch_box, gcw_to_fill);
         for (int d = 0; d < patch_data_depth; ++d)
         {
             if (adjoint_op)

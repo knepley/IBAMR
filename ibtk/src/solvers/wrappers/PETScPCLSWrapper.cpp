@@ -44,7 +44,7 @@
 #include "ibtk/namespaces.h" // IWYU pragma: keep
 #include "mpi.h"
 #include "petscsys.h"
-#include "tbox/Utilities.h"
+#include "SAMRAI/tbox/Utilities.h"
 
 /////////////////////////////// NAMESPACE ////////////////////////////////////
 
@@ -81,14 +81,14 @@ PETScPCLSWrapper::getPETScPC() const
 
 bool
 PETScPCLSWrapper::solveSystem(
-    SAMRAIVectorReal<NDIM,double>& x,
-    SAMRAIVectorReal<NDIM,double>& b)
+    SAMRAIVectorReal<double>& x,
+    SAMRAIVectorReal<double>& b)
 {
     if (!d_is_initialized) initializeSolverState(x,b);
 
     // Update the PETSc Vec wrappers.
-    PETScSAMRAIVectorReal::replaceSAMRAIVector(d_petsc_x, Pointer<SAMRAIVectorReal<NDIM,double> >(&x,false));
-    PETScSAMRAIVectorReal::replaceSAMRAIVector(d_petsc_b, Pointer<SAMRAIVectorReal<NDIM,double> >(&b,false));
+    PETScSAMRAIVectorReal::replaceSAMRAIVector(d_petsc_x, boost::shared_ptr<SAMRAIVectorReal<double> >(&x,false));
+    PETScSAMRAIVectorReal::replaceSAMRAIVector(d_petsc_b, boost::shared_ptr<SAMRAIVectorReal<double> >(&b,false));
 
     // Apply the preconditioner.
     int ierr = PCApply(d_petsc_pc,d_petsc_x,d_petsc_b); IBTK_CHKERRQ(ierr);
@@ -97,8 +97,8 @@ PETScPCLSWrapper::solveSystem(
 
 void
 PETScPCLSWrapper::initializeSolverState(
-    const SAMRAIVectorReal<NDIM,double>& x,
-    const SAMRAIVectorReal<NDIM,double>& b)
+    const SAMRAIVectorReal<double>& x,
+    const SAMRAIVectorReal<double>& b)
 {
     if (d_is_initialized) deallocateSolverState();
     d_x = x.cloneVector("");

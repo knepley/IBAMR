@@ -39,7 +39,7 @@
 #include <string>
 
 #include "ibtk/LinearSolver.h"
-#include "tbox/Pointer.h"
+
 
 namespace SAMRAI {
 namespace solv {
@@ -86,7 +86,7 @@ public:
      */
     BJacobiPreconditioner(
         const std::string& object_name,
-        SAMRAI::tbox::Pointer<SAMRAI::tbox::Database> input_db,
+        boost::shared_ptr<SAMRAI::tbox::Database> input_db,
         const std::string& default_options_prefix);
 
     /*!
@@ -100,7 +100,7 @@ public:
      */
     void
     setComponentPreconditioner(
-        SAMRAI::tbox::Pointer<LinearSolver> preconditioner,
+        boost::shared_ptr<LinearSolver> preconditioner,
         unsigned int component);
 
     /*!
@@ -147,8 +147,8 @@ public:
      */
     bool
     solveSystem(
-        SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& x,
-        SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& b);
+        SAMRAI::solv::SAMRAIVectorReal<double>& x,
+        SAMRAI::solv::SAMRAIVectorReal<double>& b);
 
     /*!
      * \brief Compute hierarchy dependent data required for solving \f$Ax=b\f$.
@@ -189,8 +189,8 @@ public:
      */
     void
     initializeSolverState(
-        const SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& x,
-        const SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& b);
+        const SAMRAI::solv::SAMRAIVectorReal<double>& x,
+        const SAMRAI::solv::SAMRAIVectorReal<double>& b);
 
     /*!
      * \brief Remove all hierarchy dependent data allocated by
@@ -280,7 +280,7 @@ private:
     /*!
      * The component preconditioners.
      */
-    std::map<unsigned int,SAMRAI::tbox::Pointer<LinearSolver> > d_pc_map;
+    std::map<unsigned int,boost::shared_ptr<LinearSolver> > d_pc_map;
 };
 }// namespace IBTK
 

@@ -38,17 +38,17 @@
 #include <string>
 #include <vector>
 
-#include "PatchHierarchy.h"
-#include "SAMRAIVectorReal.h"
+#include "SAMRAI/hier/PatchHierarchy.h"
+#include "SAMRAI/solv/SAMRAIVectorReal.h"
 #include "ibtk/LinearSolver.h"
 #include "petscksp.h"
 #include "petscmat.h"
 #include "petscvec.h"
-#include "tbox/Pointer.h"
+
 
 namespace SAMRAI {
 namespace hier {
-template <int DIM> class PatchLevel;
+class PatchLevel;
 }  // namespace hier
 namespace tbox {
 class Database;
@@ -113,7 +113,7 @@ public:
      */
     //\{
 
-    typedef SAMRAI::solv::SAMRAIVectorReal<NDIM,double> SAMRAIVectorReal_NDIM_double;  // fix for g++ 4.2
+    typedef SAMRAI::solv::SAMRAIVectorReal<double> SAMRAIVectorReal_NDIM_double;  // fix for g++ 4.2
 
     /*!
      * \brief Set the nullspace of the linear system.
@@ -121,7 +121,7 @@ public:
     void
     setNullspace(
         bool contains_constant_vec,
-        const std::vector<SAMRAI::tbox::Pointer<SAMRAIVectorReal_NDIM_double> >& nullspace_basis_vecs=std::vector<SAMRAI::tbox::Pointer<SAMRAIVectorReal_NDIM_double> >());
+        const std::vector<boost::shared_ptr<SAMRAIVectorReal_NDIM_double> >& nullspace_basis_vecs=std::vector<boost::shared_ptr<SAMRAIVectorReal_NDIM_double> >());
 
     /*!
      * \brief Solve the linear system of equations \f$Ax=b\f$ for \f$x\f$.
@@ -162,8 +162,8 @@ public:
      */
     bool
     solveSystem(
-        SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& x,
-        SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& b);
+        SAMRAI::solv::SAMRAIVectorReal<double>& x,
+        SAMRAI::solv::SAMRAIVectorReal<double>& b);
 
     /*!
      * \brief Compute hierarchy dependent data required for solving \f$Ax=b\f$.
@@ -208,8 +208,8 @@ public:
      */
     void
     initializeSolverState(
-        const SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& x,
-        const SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& b);
+        const SAMRAI::solv::SAMRAIVectorReal<double>& x,
+        const SAMRAI::solv::SAMRAIVectorReal<double>& b);
 
     /*!
      * \brief Remove all hierarchy dependent data allocated by
@@ -235,7 +235,7 @@ protected:
      */
     void
     init(
-        SAMRAI::tbox::Pointer<SAMRAI::tbox::Database> input_db,
+        boost::shared_ptr<SAMRAI::tbox::Database> input_db,
         const std::string& default_options_prefix);
 
     /*!
@@ -243,8 +243,8 @@ protected:
      */
     virtual void
     initializeSolverStateSpecialized(
-        const SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& x,
-        const SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& b) = 0;
+        const SAMRAI::solv::SAMRAIVectorReal<double>& x,
+        const SAMRAI::solv::SAMRAIVectorReal<double>& b) = 0;
 
     /*!
      * \brief Remove all hierarchy dependent data allocated by
@@ -259,8 +259,8 @@ protected:
     virtual void
     copyToPETScVec(
         Vec& petsc_x,
-        SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& x,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::PatchLevel<NDIM> > patch_level) = 0;
+        SAMRAI::solv::SAMRAIVectorReal<double>& x,
+        boost::shared_ptr<SAMRAI::hier::PatchLevel > patch_level) = 0;
 
     /*!
      * \brief Copy a generic vector from the PETSc representation.
@@ -268,8 +268,8 @@ protected:
     virtual void
     copyFromPETScVec(
         Vec& petsc_x,
-        SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& x,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::PatchLevel<NDIM> > patch_level) = 0;
+        SAMRAI::solv::SAMRAIVectorReal<double>& x,
+        boost::shared_ptr<SAMRAI::hier::PatchLevel > patch_level) = 0;
 
     /*!
      * \brief Copy solution and right-hand-side data to the PETSc
@@ -280,9 +280,9 @@ protected:
     setupKSPVecs(
         Vec& petsc_x,
         Vec& petsc_b,
-        SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& x,
-        SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& b,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::PatchLevel<NDIM> > patch_level) = 0;
+        SAMRAI::solv::SAMRAIVectorReal<double>& x,
+        SAMRAI::solv::SAMRAIVectorReal<double>& b,
+        boost::shared_ptr<SAMRAI::hier::PatchLevel > patch_level) = 0;
 
     /*!
      * \brief Setup the solver nullspace (if any).
@@ -293,7 +293,7 @@ protected:
     /*!
      * \brief Associated hierarchy.
      */
-    SAMRAI::tbox::Pointer<SAMRAI::hier::PatchHierarchy<NDIM> > d_hierarchy;
+    boost::shared_ptr<SAMRAI::hier::PatchHierarchy > d_hierarchy;
 
     /*!
      * \brief Associated level number.

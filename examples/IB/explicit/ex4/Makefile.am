@@ -8,7 +8,7 @@ EXTRA_DIST += generate_mesh3d.m
 EXTRA_DIST += curve3d_64.vertex curve3d_64.rod curve3d_64.director
 
 EXTRA_PROGRAMS =
-if SAMRAI3D_ENABLED
+if IBAMR3D_ENABLED
 EXTRA_PROGRAMS += main3d
 endif
 

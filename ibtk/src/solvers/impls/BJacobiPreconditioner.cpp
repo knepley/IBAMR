@@ -39,14 +39,14 @@
 #include <utility>
 
 #include "BJacobiPreconditioner.h"
-#include "PatchHierarchy.h"
-#include "SAMRAIVectorReal.h"
-#include "SAMRAI_config.h"
+#include "SAMRAI/hier/PatchHierarchy.h"
+#include "SAMRAI/solv/SAMRAIVectorReal.h"
+#include "SAMRAI/SAMRAI_config.h"
 #include "ibtk/GeneralSolver.h"
 #include "ibtk/ibtk_utilities.h"
 #include "ibtk/namespaces.h" // IWYU pragma: keep
-#include "tbox/Database.h"
-#include "tbox/Utilities.h"
+#include "SAMRAI/tbox/Database.h"
+#include "SAMRAI/tbox/Utilities.h"
 
 /////////////////////////////// NAMESPACE ////////////////////////////////////
 
@@ -58,7 +58,7 @@ namespace IBTK
 
 BJacobiPreconditioner::BJacobiPreconditioner(
     const std::string& object_name,
-    Pointer<Database> input_db,
+    boost::shared_ptr<Database> input_db,
     const std::string& /*default_options_prefix*/)
     : d_pc_map()
 {
@@ -87,7 +87,7 @@ BJacobiPreconditioner::~BJacobiPreconditioner()
 
 void
 BJacobiPreconditioner::setComponentPreconditioner(
-    Pointer<LinearSolver> preconditioner,
+    boost::shared_ptr<LinearSolver> preconditioner,
     const unsigned int component)
 {
 #if !defined(NDEBUG)
@@ -99,14 +99,14 @@ BJacobiPreconditioner::setComponentPreconditioner(
 
 bool
 BJacobiPreconditioner::solveSystem(
-    SAMRAIVectorReal<NDIM,double>& x,
-    SAMRAIVectorReal<NDIM,double>& b)
+    SAMRAIVectorReal<double>& x,
+    SAMRAIVectorReal<double>& b)
 {
     // Initialize the preconditioner, when necessary.
     const bool deallocate_after_solve = !d_is_initialized;
     if (deallocate_after_solve) initializeSolverState(x,b);
 
-    Pointer<PatchHierarchy<NDIM> > hierarchy = x.getPatchHierarchy();
+    boost::shared_ptr<PatchHierarchy > hierarchy = x.getPatchHierarchy();
     const int coarsest_ln = x.getCoarsestLevelNumber();
     const int   finest_ln = x.getFinestLevelNumber()  ;
 #if !defined(NDEBUG)
@@ -132,14 +132,14 @@ BJacobiPreconditioner::solveSystem(
         std::ostringstream str;
         str << comp;
 
-        SAMRAIVectorReal<NDIM,double> x_comp(x_name+"_component_"+str.str(), hierarchy, coarsest_ln, finest_ln);
+        SAMRAIVectorReal<double> x_comp(x_name+"_component_"+str.str(), hierarchy, coarsest_ln, finest_ln);
         x_comp.addComponent(x.getComponentVariable(comp), x.getComponentDescriptorIndex(comp), x.getControlVolumeIndex(comp));
 
-        SAMRAIVectorReal<NDIM,double> b_comp(b_name+"_component_"+str.str(), hierarchy, coarsest_ln, finest_ln);
+        SAMRAIVectorReal<double> b_comp(b_name+"_component_"+str.str(), hierarchy, coarsest_ln, finest_ln);
         b_comp.addComponent(b.getComponentVariable(comp), b.getComponentDescriptorIndex(comp), b.getControlVolumeIndex(comp));
 
         // Configure the component preconditioner.
-        Pointer<LinearSolver> pc_comp = d_pc_map[comp];
+        boost::shared_ptr<LinearSolver> pc_comp = d_pc_map[comp];
         pc_comp->setInitialGuessNonzero(d_initial_guess_nonzero);
         pc_comp->setMaxIterations(d_max_iterations);
         pc_comp->setAbsoluteTolerance(d_abs_residual_tol);
@@ -157,10 +157,10 @@ BJacobiPreconditioner::solveSystem(
 
 void
 BJacobiPreconditioner::initializeSolverState(
-    const SAMRAIVectorReal<NDIM,double>& x,
-    const SAMRAIVectorReal<NDIM,double>& b)
+    const SAMRAIVectorReal<double>& x,
+    const SAMRAIVectorReal<double>& b)
 {
-    Pointer<PatchHierarchy<NDIM> > hierarchy = x.getPatchHierarchy();
+    boost::shared_ptr<PatchHierarchy > hierarchy = x.getPatchHierarchy();
     const int coarsest_ln = x.getCoarsestLevelNumber();
     const int finest_ln = x.getFinestLevelNumber();
 #if !defined(NDEBUG)
@@ -172,12 +172,12 @@ BJacobiPreconditioner::initializeSolverState(
     // Initialize the component preconditioners.
     const std::string& x_name = x.getName();
     const std::string& b_name = b.getName();
-    for (std::map<unsigned int,Pointer<LinearSolver> >::iterator it = d_pc_map.begin(); it != d_pc_map.end(); ++it)
+    for (std::map<unsigned int,boost::shared_ptr<LinearSolver> >::iterator it = d_pc_map.begin(); it != d_pc_map.end(); ++it)
     {
         const int comp = it->first;
-        SAMRAIVectorReal<NDIM,double> x_comp(x_name+"_component", hierarchy, coarsest_ln, finest_ln);
+        SAMRAIVectorReal<double> x_comp(x_name+"_component", hierarchy, coarsest_ln, finest_ln);
         x_comp.addComponent(x.getComponentVariable(comp), x.getComponentDescriptorIndex(comp), x.getControlVolumeIndex(comp));
-        SAMRAIVectorReal<NDIM,double> b_comp(b_name+"_component", hierarchy, coarsest_ln, finest_ln);
+        SAMRAIVectorReal<double> b_comp(b_name+"_component", hierarchy, coarsest_ln, finest_ln);
         b_comp.addComponent(b.getComponentVariable(comp), b.getComponentDescriptorIndex(comp), b.getControlVolumeIndex(comp));
         d_pc_map[comp]->initializeSolverState(x_comp, b_comp);
     }
@@ -193,7 +193,7 @@ BJacobiPreconditioner::deallocateSolverState()
     if (!d_is_initialized) return;
 
     // Deallocate the component preconditioners.
-    for (std::map<unsigned int,Pointer<LinearSolver> >::iterator it = d_pc_map.begin(); it != d_pc_map.end(); ++it)
+    for (std::map<unsigned int,boost::shared_ptr<LinearSolver> >::iterator it = d_pc_map.begin(); it != d_pc_map.end(); ++it)
     {
         const int comp = it->first;
         d_pc_map[comp]->deallocateSolverState();

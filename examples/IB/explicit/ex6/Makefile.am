@@ -10,7 +10,7 @@ EXTRA_DIST += curve2d_64.vertex curve2d_128.vertex curve2d_256.vertex curve2d_51
 EXTRA_DIST += curve2d_64.spring curve2d_128.spring curve2d_256.spring curve2d_512.spring
 
 EXTRA_PROGRAMS =
-if SAMRAI2D_ENABLED
+if IBAMR2D_ENABLED
 EXTRA_PROGRAMS += main2d
 endif
 

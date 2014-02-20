@@ -6,10 +6,10 @@ SOURCES = main.cpp QInit.cpp QInit.h UFunction.cpp UFunction.h
 EXTRA_DIST = input2d input3d
 
 EXTRA_PROGRAMS =
-if SAMRAI2D_ENABLED
+if IBAMR2D_ENABLED
 EXTRA_PROGRAMS += main2d
 endif
-if SAMRAI3D_ENABLED
+if IBAMR3D_ENABLED
 EXTRA_PROGRAMS += main3d
 endif
 

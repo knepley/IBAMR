@@ -38,7 +38,7 @@
 #include <string>
 
 #include "ibtk/LinearOperator.h"
-#include "tbox/Pointer.h"
+
 
 namespace SAMRAI {
 namespace solv {
@@ -82,7 +82,7 @@ public:
      */
     virtual void
     formJacobian(
-        SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& x) = 0;
+        SAMRAI::solv::SAMRAIVectorReal<double>& x) = 0;
 
     /*!
      * \brief Return the vector where the Jacobian is evaluated.
@@ -91,7 +91,7 @@ public:
      * NULL pointer if the operator is not initialized, or if formJacobian() has
      * not been called.
      */
-    virtual SAMRAI::tbox::Pointer<SAMRAI::solv::SAMRAIVectorReal<NDIM,double> >
+    virtual boost::shared_ptr<SAMRAI::solv::SAMRAIVectorReal<double> >
     getBaseVector() const = 0;
 
     //\}

@@ -37,15 +37,15 @@
 
 #include <string>
 
-#include "Box.h"
-#include "IntVector.h"
-#include "VariableFillPattern.h"
-#include "tbox/Pointer.h"
+#include "SAMRAI/hier/Box.h"
+#include "SAMRAI/hier/IntVector.h"
+#include "SAMRAI/xfer/VariableFillPattern.h"
+
 
 namespace SAMRAI {
 namespace hier {
-template <int DIM> class BoxGeometry;
-template <int DIM> class BoxOverlap;
+class BoxGeometry;
+class BoxOverlap;
 }  // namespace hier
 }  // namespace SAMRAI
 
@@ -61,7 +61,7 @@ namespace IBTK
  * "synchronizing" side-centered values at patch boundaries.
  */
 class SideSynchCopyFillPattern
-    : public SAMRAI::xfer::VariableFillPattern<NDIM>
+    : public SAMRAI::xfer::VariableFillPattern
 {
 public:
     /*!
@@ -90,19 +90,19 @@ public:
      *
      * \return                    pointer to the calculated overlap object
      */
-    SAMRAI::tbox::Pointer<SAMRAI::hier::BoxOverlap<NDIM> >
+    boost::shared_ptr<SAMRAI::hier::BoxOverlap >
     calculateOverlap(
-        const SAMRAI::hier::BoxGeometry<NDIM>& dst_geometry,
-        const SAMRAI::hier::BoxGeometry<NDIM>& src_geometry,
-        const SAMRAI::hier::Box<NDIM>& dst_patch_box,
-        const SAMRAI::hier::Box<NDIM>& src_mask,
+        const SAMRAI::hier::BoxGeometry& dst_geometry,
+        const SAMRAI::hier::BoxGeometry& src_geometry,
+        const SAMRAI::hier::Box& dst_patch_box,
+        const SAMRAI::hier::Box& src_mask,
         bool overwrite_interior,
-        const SAMRAI::hier::IntVector<NDIM>& src_offset) const;
+        const SAMRAI::hier::IntVector& src_offset) const;
 
     /*!
      * Returns the stencil width.
      */
-    SAMRAI::hier::IntVector<NDIM>&
+    SAMRAI::hier::IntVector&
     getStencilWidth();
 
     /*!
@@ -135,7 +135,7 @@ private:
     operator=(
         const SideSynchCopyFillPattern& that);
 
-    SAMRAI::hier::IntVector<NDIM> d_stencil_width;
+    SAMRAI::hier::IntVector d_stencil_width;
 };
 }// namespace IBTK
 

@@ -32,11 +32,11 @@
 
 /////////////////////////////// INCLUDES /////////////////////////////////////
 
-#include "IntVector.h"
+#include "SAMRAI/hier/IntVector.h"
 #include "LSetVariable.h"
 #include "ibtk/LSetDataFactory.h"
 #include "ibtk/namespaces.h" // IWYU pragma: keep
-#include "tbox/Pointer.h"
+
 
 namespace IBTK {
 class LMarker;
@@ -55,7 +55,7 @@ namespace IBTK
 template<class T>
 LSetVariable<T>::LSetVariable(
     const std::string& name)
-    : Variable<NDIM>(name, new LSetDataFactory<T>(IntVector<NDIM>(0)))
+    : Variable(name, new LSetDataFactory<T>(IntVector(0)))
 {
     // intentionally blank
     return;
@@ -94,12 +94,12 @@ LSetVariable<T>::fineBoundaryRepresentsVariable() const
 
 
 template class IBTK::LSetVariable<IBTK::LMarker>;
-template class Pointer<IBTK::LSetVariable<IBTK::LMarker> >;
+template class boost::shared_ptr<IBTK::LSetVariable<IBTK::LMarker> >;
 
 template class IBTK::LSetVariable<IBTK::LNode>;
-template class Pointer<IBTK::LSetVariable<IBTK::LNode> >;
+template class boost::shared_ptr<IBTK::LSetVariable<IBTK::LNode> >;
 
 template class IBTK::LSetVariable<IBTK::LNodeIndex>;
-template class Pointer<IBTK::LSetVariable<IBTK::LNodeIndex> >;
+template class boost::shared_ptr<IBTK::LSetVariable<IBTK::LNodeIndex> >;
 
 //////////////////////////////////////////////////////////////////////////////

@@ -42,19 +42,19 @@
 #include <vector>
 
 #include "BasePatchLevel.h"
-#include "CartesianGridGeometry.h"
-#include "CellVariable.h"
-#include "CoarsenAlgorithm.h"
-#include "CoarsenSchedule.h"
-#include "ComponentSelector.h"
-#include "IntVector.h"
+#include "SAMRAI/geom/CartesianGridGeometry.h"
+#include "SAMRAI/pdat/CellVariable.h"
+#include "SAMRAI/xfer/CoarsenAlgorithm.h"
+#include "SAMRAI/xfer/CoarsenSchedule.h"
+#include "SAMRAI/hier/ComponentSelector.h"
+#include "SAMRAI/hier/IntVector.h"
 #include "LoadBalancer.h"
-#include "PatchHierarchy.h"
-#include "RefineAlgorithm.h"
-#include "RefineSchedule.h"
-#include "StandardTagAndInitStrategy.h"
-#include "VariableContext.h"
-#include "VisItDataWriter.h"
+#include "SAMRAI/hier/PatchHierarchy.h"
+#include "SAMRAI/xfer/RefineAlgorithm.h"
+#include "SAMRAI/xfer/RefineSchedule.h"
+#include "SAMRAI/mesh/StandardTagAndInitStrategy.h"
+#include "SAMRAI/hier/VariableContext.h"
+#include "SAMRAI/appu/VisItDataWriter.h"
 #include "boost/array.hpp"
 #include "ibtk/LInitStrategy.h"
 #include "ibtk/LNodeSet.h"
@@ -64,15 +64,15 @@
 #include "ibtk/RobinPhysBdryPatchStrategy.h"
 #include "petscao.h"
 #include "petscvec.h"
-#include "tbox/Pointer.h"
-#include "tbox/Serializable.h"
+
+#include "SAMRAI/tbox/Serializable.h"
 
 namespace IBTK {
 class LMesh;
 }  // namespace IBTK
 namespace SAMRAI {
 namespace hier {
-template <int DIM> class BasePatchHierarchy;
+class BasePatchHierarchy;
 }  // namespace hier
 namespace tbox {
 class Database;
@@ -100,7 +100,7 @@ namespace IBTK
  */
 class LDataManager
     : public SAMRAI::tbox::Serializable,
-      public SAMRAI::mesh::StandardTagAndInitStrategy<NDIM>
+      public SAMRAI::mesh::StandardTagAndInitStrategy
 {
 public:
     /*!
@@ -142,7 +142,7 @@ public:
         const std::string& name,
         const std::string& default_interp_kernel_fcn,
         const std::string& default_spread_kernel_fcn,
-        const SAMRAI::hier::IntVector<NDIM>& min_ghost_cell_width=SAMRAI::hier::IntVector<NDIM>(0),
+        const SAMRAI::hier::IntVector& min_ghost_cell_width=SAMRAI::hier::IntVector(0),
         bool register_for_restart=true);
 
     /*!
@@ -165,12 +165,12 @@ public:
      */
     void
     setPatchHierarchy(
-        SAMRAI::tbox::Pointer<SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy);
+        boost::shared_ptr<SAMRAI::hier::PatchHierarchy > hierarchy);
 
     /*!
      * \brief Get the patch hierarchy used by this object.
      */
-    SAMRAI::tbox::Pointer<SAMRAI::hier::PatchHierarchy<NDIM> >
+    boost::shared_ptr<SAMRAI::hier::PatchHierarchy >
     getPatchHierarchy() const;
 
     /*!
@@ -198,7 +198,7 @@ public:
      * \brief Return the ghost cell width associated with the interaction
      * scheme.
      */
-    const SAMRAI::hier::IntVector<NDIM>&
+    const SAMRAI::hier::IntVector&
     getGhostCellWidth() const;
 
     /*!
@@ -230,12 +230,12 @@ public:
     void
     spread(
         int f_data_idx,
-        SAMRAI::tbox::Pointer<LData> F_data,
-        SAMRAI::tbox::Pointer<LData> X_data,
-        SAMRAI::tbox::Pointer<LData> ds_data,
+        boost::shared_ptr<LData> F_data,
+        boost::shared_ptr<LData> X_data,
+        boost::shared_ptr<LData> ds_data,
         RobinPhysBdryPatchStrategy* f_phys_bdry_op,
         int level_num,
-        const std::vector<SAMRAI::tbox::Pointer<SAMRAI::xfer::RefineSchedule<NDIM> > >& f_prolongation_scheds=std::vector<SAMRAI::tbox::Pointer<SAMRAI::xfer::RefineSchedule<NDIM> > >(),
+        const std::vector<boost::shared_ptr<SAMRAI::xfer::RefineSchedule > >& f_prolongation_scheds=std::vector<boost::shared_ptr<SAMRAI::xfer::RefineSchedule > >(),
         double fill_data_time=0.0,
         bool F_data_ghost_node_update=true,
         bool X_data_ghost_node_update=true,
@@ -256,11 +256,11 @@ public:
     void
     spread(
         int f_data_idx,
-        std::vector<SAMRAI::tbox::Pointer<LData> >& F_data,
-        std::vector<SAMRAI::tbox::Pointer<LData> >& X_data,
-        std::vector<SAMRAI::tbox::Pointer<LData> >& ds_data,
+        std::vector<boost::shared_ptr<LData> >& F_data,
+        std::vector<boost::shared_ptr<LData> >& X_data,
+        std::vector<boost::shared_ptr<LData> >& ds_data,
         RobinPhysBdryPatchStrategy* f_phys_bdry_op,
-        const std::vector<SAMRAI::tbox::Pointer<SAMRAI::xfer::RefineSchedule<NDIM> > >& f_prolongation_scheds=std::vector<SAMRAI::tbox::Pointer<SAMRAI::xfer::RefineSchedule<NDIM> > >(),
+        const std::vector<boost::shared_ptr<SAMRAI::xfer::RefineSchedule > >& f_prolongation_scheds=std::vector<boost::shared_ptr<SAMRAI::xfer::RefineSchedule > >(),
         double fill_data_time=0.0,
         bool F_data_ghost_node_update=true,
         bool X_data_ghost_node_update=true,
@@ -283,11 +283,11 @@ public:
     void
     spread(
         int f_data_idx,
-        SAMRAI::tbox::Pointer<LData> F_data,
-        SAMRAI::tbox::Pointer<LData> X_data,
+        boost::shared_ptr<LData> F_data,
+        boost::shared_ptr<LData> X_data,
         RobinPhysBdryPatchStrategy* f_phys_bdry_op,
         int level_num,
-        const std::vector<SAMRAI::tbox::Pointer<SAMRAI::xfer::RefineSchedule<NDIM> > >& f_prolongation_scheds=std::vector<SAMRAI::tbox::Pointer<SAMRAI::xfer::RefineSchedule<NDIM> > >(),
+        const std::vector<boost::shared_ptr<SAMRAI::xfer::RefineSchedule > >& f_prolongation_scheds=std::vector<boost::shared_ptr<SAMRAI::xfer::RefineSchedule > >(),
         double fill_data_time=0.0,
         bool F_data_ghost_node_update=true,
         bool X_data_ghost_node_update=true);
@@ -307,10 +307,10 @@ public:
     void
     spread(
         int f_data_idx,
-        std::vector<SAMRAI::tbox::Pointer<LData> >& F_data,
-        std::vector<SAMRAI::tbox::Pointer<LData> >& X_data,
+        std::vector<boost::shared_ptr<LData> >& F_data,
+        std::vector<boost::shared_ptr<LData> >& X_data,
         RobinPhysBdryPatchStrategy* f_phys_bdry_op,
-        const std::vector<SAMRAI::tbox::Pointer<SAMRAI::xfer::RefineSchedule<NDIM> > >& f_prolongation_scheds=std::vector<SAMRAI::tbox::Pointer<SAMRAI::xfer::RefineSchedule<NDIM> > >(),
+        const std::vector<boost::shared_ptr<SAMRAI::xfer::RefineSchedule > >& f_prolongation_scheds=std::vector<boost::shared_ptr<SAMRAI::xfer::RefineSchedule > >(),
         double fill_data_time=0.0,
         bool F_data_ghost_node_update=true,
         bool X_data_ghost_node_update=true,
@@ -324,11 +324,11 @@ public:
     void
     interp(
         int f_data_idx,
-        SAMRAI::tbox::Pointer<LData> F_data,
-        SAMRAI::tbox::Pointer<LData> X_data,
+        boost::shared_ptr<LData> F_data,
+        boost::shared_ptr<LData> X_data,
         int level_num,
-        const std::vector<SAMRAI::tbox::Pointer<SAMRAI::xfer::CoarsenSchedule<NDIM> > >& f_synch_scheds=std::vector<SAMRAI::tbox::Pointer<SAMRAI::xfer::CoarsenSchedule<NDIM> > >(),
-        const std::vector<SAMRAI::tbox::Pointer<SAMRAI::xfer::RefineSchedule<NDIM> > >& f_ghost_fill_scheds=std::vector<SAMRAI::tbox::Pointer<SAMRAI::xfer::RefineSchedule<NDIM> > >(),
+        const std::vector<boost::shared_ptr<SAMRAI::xfer::CoarsenSchedule > >& f_synch_scheds=std::vector<boost::shared_ptr<SAMRAI::xfer::CoarsenSchedule > >(),
+        const std::vector<boost::shared_ptr<SAMRAI::xfer::RefineSchedule > >& f_ghost_fill_scheds=std::vector<boost::shared_ptr<SAMRAI::xfer::RefineSchedule > >(),
         double fill_data_time=0.0);
 
     /*!
@@ -338,10 +338,10 @@ public:
     void
     interp(
         int f_data_idx,
-        std::vector<SAMRAI::tbox::Pointer<LData> >& F_data,
-        std::vector<SAMRAI::tbox::Pointer<LData> >& X_data,
-        const std::vector<SAMRAI::tbox::Pointer<SAMRAI::xfer::CoarsenSchedule<NDIM> > >& f_synch_scheds=std::vector<SAMRAI::tbox::Pointer<SAMRAI::xfer::CoarsenSchedule<NDIM> > >(),
-        const std::vector<SAMRAI::tbox::Pointer<SAMRAI::xfer::RefineSchedule<NDIM> > >& f_ghost_fill_scheds=std::vector<SAMRAI::tbox::Pointer<SAMRAI::xfer::RefineSchedule<NDIM> > >(),
+        std::vector<boost::shared_ptr<LData> >& F_data,
+        std::vector<boost::shared_ptr<LData> >& X_data,
+        const std::vector<boost::shared_ptr<SAMRAI::xfer::CoarsenSchedule > >& f_synch_scheds=std::vector<boost::shared_ptr<SAMRAI::xfer::CoarsenSchedule > >(),
+        const std::vector<boost::shared_ptr<SAMRAI::xfer::RefineSchedule > >& f_ghost_fill_scheds=std::vector<boost::shared_ptr<SAMRAI::xfer::RefineSchedule > >(),
         double fill_data_time=0.0,
         int coarsest_ln=-1,
         int finest_ln=-1);
@@ -352,7 +352,7 @@ public:
      */
     void
     registerLInitStrategy(
-        SAMRAI::tbox::Pointer<LInitStrategy> lag_init);
+        boost::shared_ptr<LInitStrategy> lag_init);
 
     /*!
      * Free the concrete initialization strategy object.
@@ -368,21 +368,21 @@ public:
      */
     void
     registerVisItDataWriter(
-        SAMRAI::tbox::Pointer<SAMRAI::appu::VisItDataWriter<NDIM> > visit_writer);
+        boost::shared_ptr<SAMRAI::appu::VisItDataWriter > visit_writer);
 
     /*!
      * \brief Register a Silo data writer with the manager.
      */
     void
     registerLSiloDataWriter(
-        SAMRAI::tbox::Pointer<LSiloDataWriter> silo_writer);
+        boost::shared_ptr<LSiloDataWriter> silo_writer);
 
     /*!
      * \brief Register a load balancer for non-uniform load balancing.
      */
     void
     registerLoadBalancer(
-        SAMRAI::tbox::Pointer<SAMRAI::mesh::LoadBalancer<NDIM> > load_balancer,
+        boost::shared_ptr<SAMRAI::mesh::LoadBalancer > load_balancer,
         int workload_data_idx);
 
     /*!
@@ -441,7 +441,7 @@ public:
      * \brief Get the Lagrangian mesh associated with the given patch hierarchy
      * level.
      */
-    SAMRAI::tbox::Pointer<LMesh>
+    boost::shared_ptr<LMesh>
     getLMesh(
         int level_number) const;
 
@@ -449,7 +449,7 @@ public:
      * \brief Get the specified Lagrangian quantity data on the given patch
      * hierarchy level.
      */
-    SAMRAI::tbox::Pointer<LData>
+    boost::shared_ptr<LData>
     getLData(
         const std::string& quantity_name,
         int level_number) const;
@@ -462,7 +462,7 @@ public:
      * \note Quantities maintained by the LDataManager must have unique names.
      * The name "X" is reserved for the nodal coordinates.
      */
-    SAMRAI::tbox::Pointer<LData>
+    boost::shared_ptr<LData>
     createLData(
         const std::string& quantity_name,
         int level_number,
@@ -655,7 +655,7 @@ public:
      */
     void
     zeroInactivatedComponents(
-        SAMRAI::tbox::Pointer<LData> lag_data,
+        boost::shared_ptr<LData> lag_data,
         int level_number) const;
 
     /*!
@@ -816,12 +816,12 @@ public:
      */
     void
     initializeLevelData(
-        SAMRAI::tbox::Pointer<SAMRAI::hier::BasePatchHierarchy<NDIM> > hierarchy,
+        boost::shared_ptr<SAMRAI::hier::BasePatchHierarchy > hierarchy,
         int level_number,
         double init_data_time,
         bool can_be_refined,
         bool initial_time,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::BasePatchLevel<NDIM> > old_level=SAMRAI::tbox::Pointer<SAMRAI::hier::BasePatchLevel<NDIM> >(NULL),
+        boost::shared_ptr<SAMRAI::hier::BasePatchLevel > old_level=boost::shared_ptr<SAMRAI::hier::BasePatchLevel >(NULL),
         bool allocate_data=true);
 
     /*!
@@ -841,7 +841,7 @@ public:
      */
     void
     resetHierarchyConfiguration(
-        SAMRAI::tbox::Pointer<SAMRAI::hier::BasePatchHierarchy<NDIM> > hierarchy,
+        boost::shared_ptr<SAMRAI::hier::BasePatchHierarchy > hierarchy,
         int coarsest_ln,
         int finest_ln);
 
@@ -865,7 +865,7 @@ public:
      */
     void
     applyGradientDetector(
-        SAMRAI::tbox::Pointer<SAMRAI::hier::BasePatchHierarchy<NDIM> > hierarchy,
+        boost::shared_ptr<SAMRAI::hier::BasePatchHierarchy > hierarchy,
         int level_number,
         double error_data_time,
         int tag_index,
@@ -879,7 +879,7 @@ public:
      */
     void
     putToDatabase(
-        SAMRAI::tbox::Pointer<SAMRAI::tbox::Database> db);
+        boost::shared_ptr<SAMRAI::tbox::Database> db);
 
 protected:
     /*!
@@ -889,7 +889,7 @@ protected:
         const std::string& object_name,
         const std::string& default_interp_kernel_fcn,
         const std::string& default_spread_kernel_fcn,
-        const SAMRAI::hier::IntVector<NDIM>& ghost_width,
+        const SAMRAI::hier::IntVector& ghost_width,
         bool register_for_restart=true);
 
     /*!
@@ -1042,36 +1042,36 @@ private:
     /*
      * Grid hierarchy information.
      */
-    SAMRAI::tbox::Pointer<SAMRAI::hier::PatchHierarchy<NDIM> > d_hierarchy;
-    SAMRAI::tbox::Pointer<SAMRAI::geom::CartesianGridGeometry<NDIM> > d_grid_geom;
+    boost::shared_ptr<SAMRAI::hier::PatchHierarchy > d_hierarchy;
+    boost::shared_ptr<SAMRAI::geom::CartesianGridGeometry > d_grid_geom;
     int d_coarsest_ln, d_finest_ln;
 
     /*
      * We cache a pointer to the visualization data writers to register plot
      * variables.
      */
-    SAMRAI::tbox::Pointer<SAMRAI::appu::VisItDataWriter<NDIM> > d_visit_writer;
-    SAMRAI::tbox::Pointer<LSiloDataWriter> d_silo_writer;
+    boost::shared_ptr<SAMRAI::appu::VisItDataWriter > d_visit_writer;
+    boost::shared_ptr<LSiloDataWriter> d_silo_writer;
 
     /*
      * We cache a pointer to the load balancer.
      */
-    SAMRAI::tbox::Pointer<SAMRAI::mesh::LoadBalancer<NDIM> > d_load_balancer;
+    boost::shared_ptr<SAMRAI::mesh::LoadBalancer > d_load_balancer;
 
     /*
      * Objects used to specify and initialize the Lagrangian data on the patch
      * hierarchy.
      */
-    SAMRAI::tbox::Pointer<LInitStrategy> d_lag_init;
+    boost::shared_ptr<LInitStrategy> d_lag_init;
     std::vector<bool> d_level_contains_lag_data;
 
     /*
      * SAMRAI::hier::Variable pointer and patch data descriptor indices for the
      * LNodeData used to define the data distribution.
      */
-    SAMRAI::tbox::Pointer<LNodeSetVariable> d_lag_node_index_var;
+    boost::shared_ptr<LNodeSetVariable> d_lag_node_index_var;
     int d_lag_node_index_current_idx, d_lag_node_index_scratch_idx;
-    std::vector<SAMRAI::tbox::Pointer<std::vector<LNode> > > d_local_and_ghost_nodes;
+    std::vector<boost::shared_ptr<std::vector<LNode> > > d_local_and_ghost_nodes;
 
     /*
      * SAMRAI::hier::Variable pointer and patch data descriptor indices for the
@@ -1079,7 +1079,7 @@ private:
      * balancing.
      */
     double d_beta_work;
-    SAMRAI::tbox::Pointer<SAMRAI::pdat::CellVariable<NDIM,double> > d_workload_var;
+    boost::shared_ptr<SAMRAI::pdat::CellVariable<double> > d_workload_var;
     int d_workload_idx;
     bool d_output_workload;
 
@@ -1088,7 +1088,7 @@ private:
      * cell variable used to keep track of the count of the nodes in each cell
      * for visualization and tagging purposes.
      */
-    SAMRAI::tbox::Pointer<SAMRAI::pdat::CellVariable<NDIM,double> > d_node_count_var;
+    boost::shared_ptr<SAMRAI::pdat::CellVariable<double> > d_node_count_var;
     int d_node_count_idx;
     bool d_output_node_count;
 
@@ -1102,21 +1102,21 @@ private:
      * SAMRAI::hier::IntVector object that determines the ghost cell width of
      * the LNodeData SAMRAI::hier::PatchData objects.
      */
-    const SAMRAI::hier::IntVector<NDIM> d_ghost_width;
+    const SAMRAI::hier::IntVector d_ghost_width;
 
     /*
      * Communications algorithms and schedules.
      */
-    SAMRAI::tbox::Pointer<SAMRAI::xfer::RefineAlgorithm<NDIM> > d_lag_node_index_bdry_fill_alg;
-    std::vector<SAMRAI::tbox::Pointer<SAMRAI::xfer::RefineSchedule<NDIM> > > d_lag_node_index_bdry_fill_scheds;
+    boost::shared_ptr<SAMRAI::xfer::RefineAlgorithm > d_lag_node_index_bdry_fill_alg;
+    std::vector<boost::shared_ptr<SAMRAI::xfer::RefineSchedule > > d_lag_node_index_bdry_fill_scheds;
 
-    SAMRAI::tbox::Pointer<SAMRAI::xfer::CoarsenAlgorithm<NDIM> > d_node_count_coarsen_alg;
-    std::vector<SAMRAI::tbox::Pointer<SAMRAI::xfer::CoarsenSchedule<NDIM> > > d_node_count_coarsen_scheds;
+    boost::shared_ptr<SAMRAI::xfer::CoarsenAlgorithm > d_node_count_coarsen_alg;
+    std::vector<boost::shared_ptr<SAMRAI::xfer::CoarsenSchedule > > d_node_count_coarsen_scheds;
 
     /*
      * SAMRAI::hier::VariableContext objects are used for data management.
      */
-    SAMRAI::tbox::Pointer<SAMRAI::hier::VariableContext> d_current_context, d_scratch_context;
+    boost::shared_ptr<SAMRAI::hier::VariableContext> d_current_context, d_scratch_context;
 
     /*
      * ComponenetSelector object allow for the collective allocation and
@@ -1146,12 +1146,12 @@ private:
     /*!
      * Lagrangian mesh data.
      */
-    std::vector<SAMRAI::tbox::Pointer<LMesh> > d_lag_mesh;
+    std::vector<boost::shared_ptr<LMesh> > d_lag_mesh;
 
     /*!
      * The Lagrangian mesh data owned by the manager object.
      */
-    std::vector<std::map<std::string,SAMRAI::tbox::Pointer<LData> > > d_lag_mesh_data;
+    std::vector<std::map<std::string,boost::shared_ptr<LData> > > d_lag_mesh_data;
 
     /*!
      * Indicates whether the LData is in synch with the LNodeData.

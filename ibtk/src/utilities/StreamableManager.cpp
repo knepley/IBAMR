@@ -35,13 +35,13 @@
 #include <stddef.h>
 #include <ostream>
 
-#include "SAMRAI_config.h"
+#include "SAMRAI/SAMRAI_config.h"
 #include "StreamableManager.h"
 #include "ibtk/efficient_add_or_update.h"
 #include "ibtk/namespaces.h" // IWYU pragma: keep
-#include "tbox/SAMRAI_MPI.h"
-#include "tbox/ShutdownRegistry.h"
-#include "tbox/Utilities.h"
+#include "SAMRAI/tbox/SAMRAI_MPI.h"
+#include "SAMRAI/tbox/ShutdownRegistry.h"
+#include "SAMRAI/tbox/Utilities.h"
 
 /////////////////////////////// NAMESPACE ////////////////////////////////////
 
@@ -89,7 +89,7 @@ StreamableManager::getUnregisteredID()
 
 bool
 StreamableManager::checkFactoryRegistration(
-    Pointer<StreamableFactory> factory)
+    boost::shared_ptr<StreamableFactory> factory)
 {
 #if !defined(NDEBUG)
     TBOX_ASSERT(factory);
@@ -99,7 +99,7 @@ StreamableManager::checkFactoryRegistration(
 
 int
 StreamableManager::registerFactory(
-    Pointer<StreamableFactory> factory)
+    boost::shared_ptr<StreamableFactory> factory)
 {
 #if !defined(NDEBUG)
     TBOX_ASSERT(factory);

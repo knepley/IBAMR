@@ -32,11 +32,11 @@
 
 /////////////////////////////// INCLUDES /////////////////////////////////////
 
-#include "CartesianPatchGeometry.h"
-#include "CellIndex.h"
-#include "Index.h"
+#include "SAMRAI/geom/CartesianPatchGeometry.h"
+#include "SAMRAI/pdat/CellIndex.h"
+#include "SAMRAI/hier/Index.h"
 #include "LIndexSetData.h"
-#include "Patch.h"
+#include "SAMRAI/hier/Patch.h"
 #include "boost/array.hpp"
 #include "ibtk/LSet.h"
 #include "boost/array.hpp"
@@ -57,8 +57,8 @@ namespace IBTK
 
 template<class T>
 LIndexSetData<T>::LIndexSetData(
-    const Box<NDIM>& box,
-    const IntVector<NDIM>& ghosts)
+    const Box& box,
+    const IntVector& ghosts)
     : LSetData<T>(box,ghosts),
       d_lag_indices(),
       d_interior_lag_indices(),
@@ -87,8 +87,8 @@ LIndexSetData<T>::~LIndexSetData()
 template<class T>
 void
 LIndexSetData<T>::cacheLocalIndices(
-    Pointer<Patch<NDIM> > patch,
-    const IntVector<NDIM>& periodic_shift)
+    boost::shared_ptr<Patch > patch,
+    const IntVector& periodic_shift)
 {
     d_lag_indices                  .clear();
     d_interior_lag_indices         .clear();
@@ -103,11 +103,11 @@ LIndexSetData<T>::cacheLocalIndices(
     d_interior_periodic_shifts     .clear();
     d_ghost_periodic_shifts        .clear();
 
-    const Box<NDIM>& patch_box = patch->getBox();
-    const Index<NDIM>& ilower = patch_box.lower();
-    const Index<NDIM>& iupper = patch_box.upper();
+    const Box& patch_box = patch->getBox();
+    const Index& ilower = patch_box.lower();
+    const Index& iupper = patch_box.upper();
 
-    const Pointer<CartesianPatchGeometry<NDIM> > pgeom = patch->getPatchGeometry();
+    const auto pgeom = BOOST_CAST<CartesianPatchGeometry>(patch->getPatchGeometry())();
     const double* const dx = pgeom->getDx();
     boost::array<bool,NDIM> patch_touches_lower_periodic_bdry, patch_touches_upper_periodic_bdry;
     for (unsigned int axis = 0; axis < NDIM; ++axis)
@@ -118,7 +118,7 @@ LIndexSetData<T>::cacheLocalIndices(
 
     for (typename LSetData<T>::SetIterator it(*this); it; it++)
     {
-        const CellIndex<NDIM>& i = it.getIndex();
+        const CellIndex& i = it.getIndex();
         boost::array<int,NDIM> offset;
         for (unsigned int d = 0; d < NDIM; ++d)
         {
@@ -186,9 +186,9 @@ LIndexSetData<T>::cacheLocalIndices(
 /////////////////////////////// TEMPLATE INSTANTIATION ///////////////////////
 
 template class IBTK::LIndexSetData<IBTK::LNode>;
-template class Pointer<IBTK::LIndexSetData<IBTK::LNode> >;
+template class boost::shared_ptr<IBTK::LIndexSetData<IBTK::LNode> >;
 
 template class IBTK::LIndexSetData<IBTK::LNodeIndex>;
-template class Pointer<IBTK::LIndexSetData<IBTK::LNodeIndex> >;
+template class boost::shared_ptr<IBTK::LIndexSetData<IBTK::LNodeIndex> >;
 
 //////////////////////////////////////////////////////////////////////////////

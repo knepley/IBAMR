@@ -14,7 +14,7 @@ EXTRA_DIST += shell2d_radial_64.vertex shell2d_radial_128.vertex shell2d_radial_
 EXTRA_DIST += shell2d_radial_64.spring shell2d_radial_128.spring shell2d_radial_256.spring ##shell2d_radial_512.spring
 
 EXTRA_PROGRAMS =
-if SAMRAI2D_ENABLED
+if IBAMR2D_ENABLED
 EXTRA_PROGRAMS += main2d
 endif
 

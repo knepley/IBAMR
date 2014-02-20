@@ -143,14 +143,14 @@ GeneralSolver::getDt() const
 
 void
 GeneralSolver::setHierarchyMathOps(
-    Pointer<HierarchyMathOps> hier_math_ops)
+    boost::shared_ptr<HierarchyMathOps> hier_math_ops)
 {
     d_hier_math_ops = hier_math_ops;
     d_hier_math_ops_external = d_hier_math_ops;
     return;
 }// setHierarchyMathOps
 
-Pointer<HierarchyMathOps>
+boost::shared_ptr<HierarchyMathOps>
 GeneralSolver::getHierarchyMathOps() const
 {
     return d_hier_math_ops;
@@ -158,8 +158,8 @@ GeneralSolver::getHierarchyMathOps() const
 
 void
 GeneralSolver::initializeSolverState(
-    const SAMRAIVectorReal<NDIM,double>& /*u*/,
-    const SAMRAIVectorReal<NDIM,double>& /*r*/)
+    const SAMRAIVectorReal<double>& /*u*/,
+    const SAMRAIVectorReal<double>& /*r*/)
 {
     d_is_initialized = true;
     return;
@@ -257,7 +257,7 @@ GeneralSolver::printClassData(
            << "max_iterations = " << d_max_iterations << "\n"
            << "current_iterations = " << d_current_iterations << "\n"
            << "current_residual_norm = " << d_current_residual_norm << "\n"
-           << "hier_math_ops = " << d_hier_math_ops.getPointer() << "\n"
+           << "hier_math_ops = " << d_hier_math_ops.getboost::shared_ptr() << "\n"
            << "hier_math_ops_external = " << d_hier_math_ops_external << "\n"
            << "enable_logging = " << d_enable_logging << "\n";
     return;

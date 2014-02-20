@@ -12,10 +12,10 @@ EXTRA_DIST += curve2d_64.spring curve2d_128.spring curve2d_256.spring curve2d_51
 EXTRA_DIST += sphere3d.vertex sphere3d.spring
 
 EXTRA_PROGRAMS =
-if SAMRAI2D_ENABLED
+if IBAMR2D_ENABLED
 EXTRA_PROGRAMS += main2d
 endif
-if SAMRAI3D_ENABLED
+if IBAMR3D_ENABLED
 EXTRA_PROGRAMS += main3d
 endif
 

@@ -36,12 +36,12 @@
 #include <ostream>
 
 #include "LData.h"
-#include "SAMRAI_config.h"
+#include "SAMRAI/SAMRAI_config.h"
 #include "ibtk/IBTK_CHKERRQ.h"
 #include "ibtk/namespaces.h" // IWYU pragma: keep
 #include "petscsys.h"
-#include "tbox/Database.h"
-#include "tbox/Utilities.h"
+#include "SAMRAI/tbox/Database.h"
+#include "SAMRAI/tbox/Utilities.h"
 
 /////////////////////////////// NAMESPACE ////////////////////////////////////
 
@@ -155,7 +155,7 @@ LData::LData(
 }// LData
 
 LData::LData(
-    Pointer<Database> db)
+    boost::shared_ptr<Database> db)
     : d_name(db->getString("d_name")),
       d_global_node_count(0),
       d_local_node_count(0),
@@ -278,7 +278,7 @@ LData::resetData(
 
 void
 LData::putToDatabase(
-    Pointer<Database> db)
+    boost::shared_ptr<Database> db)
 {
 #if !defined(NDEBUG)
     TBOX_ASSERT(db);

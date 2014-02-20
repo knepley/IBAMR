@@ -38,20 +38,20 @@
 #include <string>
 
 #include "PETScSAMRAIVectorReal.h"
-#include "PatchHierarchy.h"
-#include "SAMRAI_config.h"
+#include "SAMRAI/hier/PatchHierarchy.h"
+#include "SAMRAI/SAMRAI_config.h"
 #include "ibtk/IBTK_CHKERRQ.h"
 #include "ibtk/NormOps.h"
 #include "ibtk/ibtk_utilities.h"
 #include "ibtk/namespaces.h" // IWYU pragma: keep
 #include "petscerror.h"
 #include "petscvec.h"
-#include "tbox/MathUtilities.h"
-#include "tbox/Pointer.h"
-#include "tbox/SAMRAI_MPI.h"
-#include "tbox/Timer.h"
-#include "tbox/TimerManager.h"
-#include "tbox/Utilities.h"
+#include "SAMRAI/tbox/MathUtilities.h"
+
+#include "SAMRAI/tbox/SAMRAI_MPI.h"
+#include "SAMRAI/tbox/Timer.h"
+#include "SAMRAI/tbox/TimerManager.h"
+#include "SAMRAI/tbox/Utilities.h"
 // IWYU pragma: no_include "petsc-private/petscimpl.h"
 // IWYU pragma: no_include "petsc-private/vecimpl.h"
 
@@ -64,37 +64,37 @@ namespace IBTK
 namespace
 {
 // Timers.
-static Timer* t_vec_duplicate;
-static Timer* t_vec_dot;
-static Timer* t_vec_m_dot;
-static Timer* t_vec_norm;
-static Timer* t_vec_t_dot;
-static Timer* t_vec_m_t_dot;
-static Timer* t_vec_scale;
-static Timer* t_vec_copy;
-static Timer* t_vec_set;
-static Timer* t_vec_swap;
-static Timer* t_vec_axpy;
-static Timer* t_vec_axpby;
-static Timer* t_vec_maxpy;
-static Timer* t_vec_aypx;
-static Timer* t_vec_waxpy;
-static Timer* t_vec_axpbypcz;
-static Timer* t_vec_pointwise_mult;
-static Timer* t_vec_pointwise_divide;
-static Timer* t_vec_get_size;
-static Timer* t_vec_get_local_size;
-static Timer* t_vec_max;
-static Timer* t_vec_min;
-static Timer* t_vec_set_random;
-static Timer* t_vec_destroy;
-static Timer* t_vec_dot_local;
-static Timer* t_vec_t_dot_local;
-static Timer* t_vec_norm_local;
-static Timer* t_vec_m_dot_local;
-static Timer* t_vec_m_t_dot_local;
-static Timer* t_vec_max_pointwise_divide;
-static Timer* t_vec_dot_norm2;
+static boost::shared_ptr<Timer> t_vec_duplicate;
+static boost::shared_ptr<Timer> t_vec_dot;
+static boost::shared_ptr<Timer> t_vec_m_dot;
+static boost::shared_ptr<Timer> t_vec_norm;
+static boost::shared_ptr<Timer> t_vec_t_dot;
+static boost::shared_ptr<Timer> t_vec_m_t_dot;
+static boost::shared_ptr<Timer> t_vec_scale;
+static boost::shared_ptr<Timer> t_vec_copy;
+static boost::shared_ptr<Timer> t_vec_set;
+static boost::shared_ptr<Timer> t_vec_swap;
+static boost::shared_ptr<Timer> t_vec_axpy;
+static boost::shared_ptr<Timer> t_vec_axpby;
+static boost::shared_ptr<Timer> t_vec_maxpy;
+static boost::shared_ptr<Timer> t_vec_aypx;
+static boost::shared_ptr<Timer> t_vec_waxpy;
+static boost::shared_ptr<Timer> t_vec_axpbypcz;
+static boost::shared_ptr<Timer> t_vec_pointwise_mult;
+static boost::shared_ptr<Timer> t_vec_pointwise_divide;
+static boost::shared_ptr<Timer> t_vec_get_size;
+static boost::shared_ptr<Timer> t_vec_get_local_size;
+static boost::shared_ptr<Timer> t_vec_max;
+static boost::shared_ptr<Timer> t_vec_min;
+static boost::shared_ptr<Timer> t_vec_set_random;
+static boost::shared_ptr<Timer> t_vec_destroy;
+static boost::shared_ptr<Timer> t_vec_dot_local;
+static boost::shared_ptr<Timer> t_vec_t_dot_local;
+static boost::shared_ptr<Timer> t_vec_norm_local;
+static boost::shared_ptr<Timer> t_vec_m_dot_local;
+static boost::shared_ptr<Timer> t_vec_m_t_dot_local;
+static boost::shared_ptr<Timer> t_vec_max_pointwise_divide;
+static boost::shared_ptr<Timer> t_vec_dot_norm2;
 
 // Static functions for linkage with PETSc solver package routines.  These
 // functions are intended to match those in the PETSc _VecOps structure.
@@ -748,7 +748,7 @@ VecDotNorm2_SAMRAI(
 /////////////////////////////// PROTECTED ////////////////////////////////////
 
 PETScSAMRAIVectorReal::PETScSAMRAIVectorReal(
-    Pointer<SAMRAIVectorReal<NDIM,PetscScalar> > samrai_vector,
+    boost::shared_ptr<SAMRAIVectorReal<PetscScalar> > samrai_vector,
     bool vector_created_via_duplicate,
     MPI_Comm comm)
     : d_samrai_vector(samrai_vector),
@@ -869,7 +869,7 @@ PETScSAMRAIVectorReal::VecDuplicate_SAMRAI(
 #if !defined(NDEBUG)
     TBOX_ASSERT(v);
 #endif
-    Pointer<SAMRAIVectorReal<NDIM,PetscScalar> > samrai_vec = PSVR_CAST2(v)->cloneVector(PSVR_CAST2(v)->getName());
+    boost::shared_ptr<SAMRAIVectorReal<PetscScalar> > samrai_vec = PSVR_CAST2(v)->cloneVector(PSVR_CAST2(v)->getName());
     samrai_vec->allocateVectorData();
     static const bool vector_created_via_duplicate = true;
     MPI_Comm comm;

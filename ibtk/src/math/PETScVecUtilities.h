@@ -38,14 +38,14 @@
 #include <vector>
 
 #include "petscvec.h"
-#include "tbox/Pointer.h"
+
 
 namespace SAMRAI {
 namespace hier {
-template <int DIM> class PatchLevel;
+class PatchLevel;
 }  // namespace hier
 namespace xfer {
-template <int DIM> class RefineSchedule;
+class RefineSchedule;
 }  // namespace xfer
 }  // namespace SAMRAI
 
@@ -75,7 +75,7 @@ public:
         Vec& vec,
         int data_idx,
         int dof_index_idx,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::PatchLevel<NDIM> > patch_level);
+        boost::shared_ptr<SAMRAI::hier::PatchLevel > patch_level);
 
     /*!
      * \brief Copy data from a parallel PETSc Vec on the provided
@@ -86,9 +86,9 @@ public:
         Vec& vec,
         int data_idx,
         int dof_index_idx,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::PatchLevel<NDIM> > patch_level,
-        SAMRAI::tbox::Pointer<SAMRAI::xfer::RefineSchedule<NDIM> > data_synch_sched,
-        SAMRAI::tbox::Pointer<SAMRAI::xfer::RefineSchedule<NDIM> > ghost_fill_sched);
+        boost::shared_ptr<SAMRAI::hier::PatchLevel > patch_level,
+        boost::shared_ptr<SAMRAI::xfer::RefineSchedule > data_synch_sched,
+        boost::shared_ptr<SAMRAI::xfer::RefineSchedule > ghost_fill_sched);
 
     /*!
      * \brief Construct a RefineSchedule to synchronize shared values that can
@@ -97,19 +97,19 @@ public:
      * \note Synchronization is not required for all data centerings.  For cases
      * in which it is not needed, this method will return a NULL pointer.
      */
-    static SAMRAI::tbox::Pointer<SAMRAI::xfer::RefineSchedule<NDIM> >
+    static boost::shared_ptr<SAMRAI::xfer::RefineSchedule >
     constructDataSynchSchedule(
         int data_idx,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::PatchLevel<NDIM> > patch_level);
+        boost::shared_ptr<SAMRAI::hier::PatchLevel > patch_level);
 
     /*!
      * \brief Construct a RefineSchedule to fill ghost cell values that can be
      * used in conjunction with copyFromPatchLevelVec().
      */
-    static SAMRAI::tbox::Pointer<SAMRAI::xfer::RefineSchedule<NDIM> >
+    static boost::shared_ptr<SAMRAI::xfer::RefineSchedule >
     constructGhostFillSchedule(
         int data_idx,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::PatchLevel<NDIM> > patch_level);
+        boost::shared_ptr<SAMRAI::hier::PatchLevel > patch_level);
 
     /*!
      * \brief Assign a DOF index to each unique degree of freedom on a
@@ -125,7 +125,7 @@ public:
     constructPatchLevelDOFIndices(
         std::vector<int>& num_dofs_per_proc,
         int dof_index_idx,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::PatchLevel<NDIM> > patch_level);
+        boost::shared_ptr<SAMRAI::hier::PatchLevel > patch_level);
 
     //\}
 
@@ -170,7 +170,7 @@ private:
         Vec& vec,
         int data_idx,
         int dof_index_idx,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::PatchLevel<NDIM> > patch_level);
+        boost::shared_ptr<SAMRAI::hier::PatchLevel > patch_level);
 
     /*!
      * \brief Implementation of copyToPatchLevelVec() for side-centered data.
@@ -180,7 +180,7 @@ private:
         Vec& vec,
         int data_idx,
         int dof_index_idx,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::PatchLevel<NDIM> > patch_level);
+        boost::shared_ptr<SAMRAI::hier::PatchLevel > patch_level);
 
     /*!
      * \brief Implementation of copyFromPatchLevelVec() for cell-centered data.
@@ -190,7 +190,7 @@ private:
         Vec& vec,
         int data_idx,
         int dof_index_idx,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::PatchLevel<NDIM> > patch_level);
+        boost::shared_ptr<SAMRAI::hier::PatchLevel > patch_level);
 
     /*!
      * \brief Implementation of copyFromPatchLevelVec() for side-centered data.
@@ -200,7 +200,7 @@ private:
         Vec& vec,
         int data_idx,
         int dof_index_idx,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::PatchLevel<NDIM> > patch_level);
+        boost::shared_ptr<SAMRAI::hier::PatchLevel > patch_level);
 
     /*!
      * \brief Implementation of constructPatchLevelDOFIndices() for
@@ -210,7 +210,7 @@ private:
     constructPatchLevelDOFIndices_cell(
         std::vector<int>& num_dofs_proc,
         int dof_index_idx,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::PatchLevel<NDIM> > patch_level);
+        boost::shared_ptr<SAMRAI::hier::PatchLevel > patch_level);
 
     /*!
      * \brief Implementation of constructPatchLevelDOFIndices() for
@@ -220,7 +220,7 @@ private:
     constructPatchLevelDOFIndices_side(
         std::vector<int>& num_dofs_proc,
         int dof_index_idx,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::PatchLevel<NDIM> > patch_level);
+        boost::shared_ptr<SAMRAI::hier::PatchLevel > patch_level);
 };
 }// namespace IBTK
 

@@ -36,17 +36,17 @@
 
 #include "CartSideDoubleSpecializedLinearRefine.h"
 #include "IBTK_config.h"
-#include "Index.h"
-#include "Patch.h"
-#include "SAMRAI_config.h"
-#include "SideData.h"
-#include "SideVariable.h"
+#include "SAMRAI/hier/Index.h"
+#include "SAMRAI/hier/Patch.h"
+#include "SAMRAI/SAMRAI_config.h"
+#include "SAMRAI/pdat/SideData.h"
+#include "SAMRAI/pdat/SideVariable.h"
 #include "ibtk/namespaces.h" // IWYU pragma: keep
-#include "tbox/Utilities.h"
+#include "SAMRAI/tbox/Utilities.h"
 
 namespace SAMRAI {
 namespace hier {
-template <int DIM> class Variable;
+class Variable;
 }  // namespace hier
 }  // namespace SAMRAI
 
@@ -121,10 +121,10 @@ CartSideDoubleSpecializedLinearRefine::~CartSideDoubleSpecializedLinearRefine()
 
 bool
 CartSideDoubleSpecializedLinearRefine::findRefineOperator(
-    const Pointer<Variable<NDIM> >& var,
+    const boost::shared_ptr<Variable >& var,
     const std::string& op_name) const
 {
-    const Pointer<SideVariable<NDIM,double> > sc_var = var;
+    const boost::shared_ptr<SideVariable<double> > sc_var = var;
     return (sc_var && op_name == s_op_name);
 }// findRefineOperator
 
@@ -140,7 +140,7 @@ CartSideDoubleSpecializedLinearRefine::getOperatorPriority() const
     return REFINE_OP_PRIORITY;
 }// getOperatorPriority
 
-IntVector<NDIM>
+IntVector
 CartSideDoubleSpecializedLinearRefine::getStencilWidth() const
 {
     return REFINE_OP_STENCIL_WIDTH;
@@ -148,16 +148,16 @@ CartSideDoubleSpecializedLinearRefine::getStencilWidth() const
 
 void
 CartSideDoubleSpecializedLinearRefine::refine(
-    Patch<NDIM>& fine,
-    const Patch<NDIM>& coarse,
+    Patch& fine,
+    const Patch& coarse,
     const int dst_component,
     const int src_component,
-    const Box<NDIM>& fine_box,
-    const IntVector<NDIM>& ratio) const
+    const Box& fine_box,
+    const IntVector& ratio) const
 {
     // Get the patch data.
-    Pointer<SideData<NDIM,double> > fdata = fine.getPatchData(dst_component);
-    Pointer<SideData<NDIM,double> > cdata = coarse.getPatchData(src_component);
+    boost::shared_ptr<SideData<double> > fdata = fine.getPatchData(dst_component);
+    boost::shared_ptr<SideData<double> > cdata = coarse.getPatchData(src_component);
 #if !defined(NDEBUG)
     TBOX_ASSERT(fdata);
     TBOX_ASSERT(cdata);
@@ -165,13 +165,13 @@ CartSideDoubleSpecializedLinearRefine::refine(
 #endif
     const int data_depth = fdata->getDepth();
 
-    const Box<NDIM>& fdata_box = fdata->getBox();
+    const Box& fdata_box = fdata->getBox();
     const int fdata_gcw = fdata->getGhostCellWidth().max();
 #if !defined(NDEBUG)
     TBOX_ASSERT(fdata_gcw == fdata->getGhostCellWidth().min());
 #endif
 
-    const Box<NDIM>& cdata_box = cdata->getBox();
+    const Box& cdata_box = cdata->getBox();
     const int cdata_gcw = cdata->getGhostCellWidth().max();
 #if !defined(NDEBUG)
     TBOX_ASSERT(cdata_gcw == cdata->getGhostCellWidth().min());
@@ -182,21 +182,21 @@ CartSideDoubleSpecializedLinearRefine::refine(
     {
         CART_SIDE_SPECIALIZED_LINEAR_REFINE_FC(
 #if (NDIM == 2)
-            fdata->getPointer(0,depth), fdata->getPointer(1,depth), fdata_gcw,
+            fdata->getboost::shared_ptr(0,depth), fdata->getboost::shared_ptr(1,depth), fdata_gcw,
             fdata_box.lower()(0), fdata_box.upper()(0),
             fdata_box.lower()(1), fdata_box.upper()(1),
-            cdata->getPointer(0,depth), cdata->getPointer(1,depth), cdata_gcw,
+            cdata->getboost::shared_ptr(0,depth), cdata->getboost::shared_ptr(1,depth), cdata_gcw,
             cdata_box.lower()(0), cdata_box.upper()(0),
             cdata_box.lower()(1), cdata_box.upper()(1),
             fine_box.lower()(0), fine_box.upper()(0),
             fine_box.lower()(1), fine_box.upper()(1),
 #endif
 #if (NDIM == 3)
-            fdata->getPointer(0,depth), fdata->getPointer(1,depth), fdata->getPointer(2,depth), fdata_gcw,
+            fdata->getboost::shared_ptr(0,depth), fdata->getboost::shared_ptr(1,depth), fdata->getboost::shared_ptr(2,depth), fdata_gcw,
             fdata_box.lower()(0), fdata_box.upper()(0),
             fdata_box.lower()(1), fdata_box.upper()(1),
             fdata_box.lower()(2), fdata_box.upper()(2),
-            cdata->getPointer(0,depth), cdata->getPointer(1,depth), cdata->getPointer(2,depth), cdata_gcw,
+            cdata->getboost::shared_ptr(0,depth), cdata->getboost::shared_ptr(1,depth), cdata->getboost::shared_ptr(2,depth), cdata_gcw,
             cdata_box.lower()(0), cdata_box.upper()(0),
             cdata_box.lower()(1), cdata_box.upper()(1),
             cdata_box.lower()(2), cdata_box.upper()(2),

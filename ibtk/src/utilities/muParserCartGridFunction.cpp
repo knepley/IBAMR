@@ -37,35 +37,35 @@
 #include <sstream>
 #include <utility>
 
-#include "Box.h"
-#include "CartesianPatchGeometry.h"
-#include "CellData.h"
-#include "CellIndex.h"
-#include "CellIterator.h"
-#include "FaceData.h"
-#include "FaceIndex.h"
-#include "FaceIterator.h"
-#include "Index.h"
-#include "IntVector.h"
-#include "NodeData.h"
-#include "NodeIndex.h"
-#include "NodeIterator.h"
-#include "Patch.h"
-#include "PatchData.h"
-#include "SAMRAI_config.h"
-#include "SideData.h"
-#include "SideIndex.h"
-#include "SideIterator.h"
+#include "SAMRAI/hier/Box.h"
+#include "SAMRAI/geom/CartesianPatchGeometry.h"
+#include "SAMRAI/pdat/CellData.h"
+#include "SAMRAI/pdat/CellIndex.h"
+#include "SAMRAI/pdat/CellIterator.h"
+#include "SAMRAI/pdat/FaceData.h"
+#include "SAMRAI/pdat/FaceIndex.h"
+#include "SAMRAI/pdat/FaceIterator.h"
+#include "SAMRAI/hier/Index.h"
+#include "SAMRAI/hier/IntVector.h"
+#include "SAMRAI/pdat/NodeData.h"
+#include "SAMRAI/pdat/NodeIndex.h"
+#include "SAMRAI/pdat/NodeIterator.h"
+#include "SAMRAI/hier/Patch.h"
+#include "SAMRAI/hier/PatchData.h"
+#include "SAMRAI/SAMRAI_config.h"
+#include "SAMRAI/pdat/SideData.h"
+#include "SAMRAI/pdat/SideIndex.h"
+#include "SAMRAI/pdat/SideIterator.h"
 #include "boost/array.hpp"
 #include "ibtk/namespaces.h" // IWYU pragma: keep
 #include "ibtk/muParserCartGridFunction.h"
-#include "tbox/Array.h"
-#include "tbox/Database.h"
-#include "tbox/Utilities.h"
+#include "SAMRAI/tbox/Array.h"
+#include "SAMRAI/tbox/Database.h"
+#include "SAMRAI/tbox/Utilities.h"
 
 namespace SAMRAI {
 namespace hier {
-template <int DIM> class Variable;
+class Variable;
 }  // namespace hier
 }  // namespace SAMRAI
 
@@ -79,8 +79,8 @@ namespace IBTK
 
 muParserCartGridFunction::muParserCartGridFunction(
     const std::string& object_name,
-    Pointer<Database> input_db,
-    Pointer<CartesianGridGeometry<NDIM> > grid_geom)
+    boost::shared_ptr<Database> input_db,
+    boost::shared_ptr<CartesianGridGeometry > grid_geom)
     : CartGridFunction(object_name),
       d_grid_geom(grid_geom),
       d_constants(),
@@ -282,30 +282,30 @@ muParserCartGridFunction::isTimeDependent() const
 void
 muParserCartGridFunction::setDataOnPatch(
     const int data_idx,
-    Pointer<Variable<NDIM> > /*var*/,
-    Pointer<Patch<NDIM> > patch,
+    boost::shared_ptr<Variable > /*var*/,
+    boost::shared_ptr<Patch > patch,
     const double data_time,
     const bool /*initial_time*/,
-    Pointer<PatchLevel<NDIM> > /*level*/)
+    boost::shared_ptr<PatchLevel > /*level*/)
 {
     d_parser_time = data_time;
 
-    const Box<NDIM>& patch_box = patch->getBox();
-    const Index<NDIM>& patch_lower = patch_box.lower();
-    Pointer<CartesianPatchGeometry<NDIM> > pgeom = patch->getPatchGeometry();
+    const Box& patch_box = patch->getBox();
+    const Index& patch_lower = patch_box.lower();
+    auto pgeom = BOOST_CAST<CartesianPatchGeometry>(patch->getPatchGeometry())();
 
     const double* const XLower = pgeom->getXLower();
     const double* const dx = pgeom->getDx();
 
     // Set the data in the patch.
-    Pointer<PatchData<NDIM> > data = patch->getPatchData(data_idx);
+    boost::shared_ptr<PatchData > data = patch->getPatchData(data_idx);
 #if !defined(NDEBUG)
     TBOX_ASSERT(data);
 #endif
-    Pointer<CellData<NDIM,double> > cc_data = data;
-    Pointer<FaceData<NDIM,double> > fc_data = data;
-    Pointer<NodeData<NDIM,double> > nc_data = data;
-    Pointer<SideData<NDIM,double> > sc_data = data;
+    boost::shared_ptr<CellData<double> > cc_data = data;
+    boost::shared_ptr<FaceData<double> > fc_data = data;
+    boost::shared_ptr<NodeData<double> > nc_data = data;
+    boost::shared_ptr<SideData<double> > sc_data = data;
     if (cc_data)
     {
 #if !defined(NDEBUG)
@@ -314,9 +314,9 @@ muParserCartGridFunction::setDataOnPatch(
         for (int data_depth = 0; data_depth < cc_data->getDepth(); ++data_depth)
         {
             const int function_depth = (d_parsers.size() == 1 ? 0 : data_depth);
-            for (CellIterator<NDIM> ic(patch_box); ic; ic++)
+            for (CellIterator ic(patch_box); ic; ic++)
             {
-                const CellIndex<NDIM>& i = ic();
+                const CellIndex& i = ic();
                 for (unsigned int d = 0; d < NDIM; ++d)
                 {
                     d_parser_posn[d] = XLower[d] + dx[d]*(static_cast<double>(i(d)-patch_lower(d))+0.5);
@@ -368,10 +368,10 @@ muParserCartGridFunction::setDataOnPatch(
                     function_depth = NDIM*data_depth + axis;
                 }
 
-                for (FaceIterator<NDIM> ic(patch_box,axis); ic; ic++)
+                for (FaceIterator ic(patch_box,axis); ic; ic++)
                 {
-                    const FaceIndex<NDIM>& i = ic();
-                    const Index<NDIM>& cell_idx = i.toCell(1);
+                    const FaceIndex& i = ic();
+                    const Index& cell_idx = i.toCell(1);
                     for (unsigned int d = 0; d < NDIM; ++d)
                     {
                         if (d == axis)
@@ -410,9 +410,9 @@ muParserCartGridFunction::setDataOnPatch(
         for (int data_depth = 0; data_depth < nc_data->getDepth(); ++data_depth)
         {
             const int function_depth = (d_parsers.size() == 1 ? 0 : data_depth);
-            for (NodeIterator<NDIM> ic(patch_box); ic; ic++)
+            for (NodeIterator ic(patch_box); ic; ic++)
             {
-                const NodeIndex<NDIM>& i = ic();
+                const NodeIndex& i = ic();
                 for (unsigned int d = 0; d < NDIM; ++d)
                 {
                     d_parser_posn[d] = XLower[d] + dx[d]*(static_cast<double>(i(d)-patch_lower(d)));
@@ -464,9 +464,9 @@ muParserCartGridFunction::setDataOnPatch(
                     function_depth = NDIM*data_depth + axis;
                 }
 
-                for (SideIterator<NDIM> ic(patch_box,axis); ic; ic++)
+                for (SideIterator ic(patch_box,axis); ic; ic++)
                 {
-                    const SideIndex<NDIM>& i = ic();
+                    const SideIndex& i = ic();
                     for (unsigned int d = 0; d < NDIM; ++d)
                     {
                         if (d == axis)

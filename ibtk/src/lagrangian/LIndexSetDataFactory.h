@@ -37,17 +37,17 @@
 
 #include <stddef.h>
 
-#include "Box.h"
-#include "IntVector.h"
+#include "SAMRAI/hier/Box.h"
+#include "SAMRAI/hier/IntVector.h"
 #include "ibtk/LSetDataFactory.h"
-#include "tbox/Arena.h"
-#include "tbox/Pointer.h"
+#include "SAMRAI/tbox/Arena.h"
+
 
 namespace SAMRAI {
 namespace hier {
-template <int DIM> class Patch;
-template <int DIM> class PatchData;
-template <int DIM> class PatchDataFactory;
+class Patch;
+class PatchData;
+class PatchDataFactory;
 }  // namespace hier
 }  // namespace SAMRAI
 
@@ -71,7 +71,7 @@ public:
      * with this factory.
      */
     LIndexSetDataFactory(
-        const SAMRAI::hier::IntVector<NDIM>& ghosts);
+        const SAMRAI::hier::IntVector& ghosts);
 
     /*!
      * Virtual destructor for the data factory class.
@@ -85,10 +85,10 @@ public:
      * factory.  If no memory pool is provided, the allocation routine assumes
      * some default memory pool.
      */
-    SAMRAI::tbox::Pointer<SAMRAI::hier::PatchData<NDIM> >
+    boost::shared_ptr<SAMRAI::hier::PatchData >
     allocate(
-        const SAMRAI::hier::Box<NDIM>& box,
-        SAMRAI::tbox::Pointer<SAMRAI::tbox::Arena> pool=NULL) const;
+        const SAMRAI::hier::Box& box,
+        boost::shared_ptr<SAMRAI::tbox::Arena> pool=NULL) const;
 
     /*!
      * Virtual factory function to allocate a concrete data object.  The default
@@ -96,10 +96,10 @@ public:
      * factory.  If no memory pool is provided, the allocation routine assumes
      * some default memory pool.
      */
-    SAMRAI::tbox::Pointer<SAMRAI::hier::PatchData<NDIM> >
+    boost::shared_ptr<SAMRAI::hier::PatchData >
     allocate(
-        const SAMRAI::hier::Patch<NDIM>& patch,
-        SAMRAI::tbox::Pointer<SAMRAI::tbox::Arena> pool=NULL) const;
+        const SAMRAI::hier::Patch& patch,
+        boost::shared_ptr<SAMRAI::tbox::Arena> pool=NULL) const;
 
     /*!
      * Calculate the amount of memory needed to store the data object, including
@@ -107,7 +107,7 @@ public:
      */
     size_t
     getSizeOfMemory(
-        const SAMRAI::hier::Box<NDIM>& box) const;
+        const SAMRAI::hier::Box& box) const;
 
     /*!
      * Virtual function to clone the data factory.  This will return a new
@@ -115,9 +115,9 @@ public:
      * The properties of the cloned factory can then be changed without
      * modifying the original.
      */
-    SAMRAI::tbox::Pointer<SAMRAI::hier::PatchDataFactory<NDIM> >
+    boost::shared_ptr<SAMRAI::hier::PatchDataFactory >
     cloneFactory(
-        const SAMRAI::hier::IntVector<NDIM>& ghosts);
+        const SAMRAI::hier::IntVector& ghosts);
 
     /*!
      * Return whether it is valid to copy this LIndexSetDataFactory to the
@@ -126,7 +126,7 @@ public:
      */
     bool
     validCopyTo(
-        const SAMRAI::tbox::Pointer<SAMRAI::hier::PatchDataFactory<NDIM> >& dst_pdf) const;
+        const boost::shared_ptr<SAMRAI::hier::PatchDataFactory >& dst_pdf) const;
 
 private:
     /*!

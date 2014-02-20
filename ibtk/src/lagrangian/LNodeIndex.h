@@ -39,18 +39,18 @@
 #include <functional>
 #include <ostream>
 
-#include "IntVector.h"
-#include "SAMRAI_config.h"
+#include "SAMRAI/hier/IntVector.h"
+#include "SAMRAI/SAMRAI_config.h"
 #include "ibtk/ibtk_utilities.h"
 #include "boost/array.hpp"
 #include "boost/multi_array.hpp"
-#include "tbox/DescribedClass.h"
-#include "tbox/MathUtilities.h"
-#include "tbox/Utilities.h"
+
+#include "SAMRAI/tbox/MathUtilities.h"
+#include "SAMRAI/tbox/Utilities.h"
 
 namespace SAMRAI {
 namespace hier {
-template <int DIM> class Index;
+class Index;
 }  // namespace hier
 namespace tbox {
 class AbstractStream;
@@ -67,7 +67,7 @@ namespace IBTK
  * single node of a Lagrangian mesh.
  */
 class LNodeIndex
-    : public SAMRAI::tbox::DescribedClass
+    
 {
 public:
     /*!
@@ -77,7 +77,7 @@ public:
         int lagrangian_nidx=-1,
         int global_petsc_nidx=-1,
         int local_petsc_nidx=-1,
-        const SAMRAI::hier::IntVector<NDIM>& periodic_offset=SAMRAI::hier::IntVector<NDIM>(0),
+        const SAMRAI::hier::IntVector& periodic_offset=SAMRAI::hier::IntVector(0),
         const Vector& periodic_displacement=Vector::Zero());
 
     /*!
@@ -93,7 +93,7 @@ public:
      */
     LNodeIndex(
         SAMRAI::tbox::AbstractStream& stream,
-        const SAMRAI::hier::IntVector<NDIM>& offset);
+        const SAMRAI::hier::IntVector& offset);
 
     /*!
      * \brief Virtual destructor.
@@ -157,13 +157,13 @@ public:
      */
     virtual void
     registerPeriodicShift(
-        const SAMRAI::hier::IntVector<NDIM>& offset,
+        const SAMRAI::hier::IntVector& offset,
         const Vector& displacement);
 
     /*!
      * \brief Get the periodic offset.
      */
-    virtual const SAMRAI::hier::IntVector<NDIM>&
+    virtual const SAMRAI::hier::IntVector&
     getPeriodicOffset() const;
 
     /*!
@@ -179,8 +179,8 @@ public:
      */
     virtual void
     copySourceItem(
-        const SAMRAI::hier::Index<NDIM>& src_index,
-        const SAMRAI::hier::IntVector<NDIM>& src_offset,
+        const SAMRAI::hier::Index& src_index,
+        const SAMRAI::hier::IntVector& src_offset,
         const LNodeIndex& src_item);
 
     /*!
@@ -203,7 +203,7 @@ public:
     virtual void
     unpackStream(
         SAMRAI::tbox::AbstractStream& stream,
-        const SAMRAI::hier::IntVector<NDIM>& offset);
+        const SAMRAI::hier::IntVector& offset);
 
 private:
     /*!
@@ -218,7 +218,7 @@ private:
     int d_local_petsc_nidx;  // the local PETSc index
 
     // the periodic offset and displacement
-    SAMRAI::hier::IntVector<NDIM> d_offset;
+    SAMRAI::hier::IntVector d_offset;
     Vector d_displacement;
 };
 

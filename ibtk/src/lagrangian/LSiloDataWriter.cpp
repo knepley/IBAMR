@@ -47,7 +47,7 @@
 
 #include "IBTK_config.h"
 #include "LSiloDataWriter.h"
-#include "SAMRAI_config.h"
+#include "SAMRAI/SAMRAI_config.h"
 #include "ibtk/IBTK_CHKERRQ.h"
 #include "ibtk/LData.h"
 #include "ibtk/LData-inl.h"
@@ -57,10 +57,10 @@
 #include "petsclog.h"
 #include "petscsys.h"
 #include "petscvec.h"
-#include "tbox/Database.h"
-#include "tbox/RestartManager.h"
-#include "tbox/SAMRAI_MPI.h"
-#include "tbox/Utilities.h"
+#include "SAMRAI/tbox/Database.h"
+#include "SAMRAI/tbox/RestartManager.h"
+#include "SAMRAI/tbox/SAMRAI_MPI.h"
+#include "SAMRAI/tbox/Utilities.h"
 // IWYU pragma: no_include "petsc-private/vecimpl.h"
 
 #if defined(IBTK_HAVE_SILO)
@@ -212,8 +212,8 @@ void
 build_local_curv_block(
     DBfile* dbfile,
     std::string& dirname,
-    const IntVector<NDIM>& nelem_in,
-    const IntVector<NDIM>& periodic,
+    const IntVector& nelem_in,
+    const IntVector& periodic,
     const double* const X,
     const int nvars,
     const std::vector<std::string>& varnames,
@@ -225,7 +225,7 @@ build_local_curv_block(
     const double simulation_time)
 {
     // Check for co-dimension 1 or 2 data.
-    IntVector<NDIM> nelem, degenerate;
+    IntVector nelem, degenerate;
     for (unsigned int d = 0; d < NDIM; ++d)
     {
         if (nelem_in(d) == 1)
@@ -616,7 +616,7 @@ LSiloDataWriter::LSiloDataWriter(
       d_ucd_mesh_names(d_finest_ln+1),
       d_ucd_mesh_vertices(d_finest_ln+1),
       d_ucd_mesh_edge_maps(d_finest_ln+1),
-      d_coords_data(d_finest_ln+1,Pointer<LData>(NULL)),
+      d_coords_data(d_finest_ln+1,boost::shared_ptr<LData>(NULL)),
       d_nvars(d_finest_ln+1,0),
       d_var_names(d_finest_ln+1),
       d_var_start_depths(d_finest_ln+1),
@@ -684,7 +684,7 @@ LSiloDataWriter::~LSiloDataWriter()
 
 void
 LSiloDataWriter::setPatchHierarchy(
-    Pointer<PatchHierarchy<NDIM> > hierarchy)
+    boost::shared_ptr<PatchHierarchy > hierarchy)
 {
 #if !defined(NDEBUG)
     TBOX_ASSERT(hierarchy);
@@ -858,8 +858,8 @@ LSiloDataWriter::registerMarkerCloud(
 void
 LSiloDataWriter::registerLogicallyCartesianBlock(
     const std::string& name,
-    const IntVector<NDIM>& nelem,
-    const IntVector<NDIM>& periodic,
+    const IntVector& nelem,
+    const IntVector& periodic,
     const int first_lag_idx,
     const int level_number)
 {
@@ -927,8 +927,8 @@ LSiloDataWriter::registerLogicallyCartesianBlock(
 void
 LSiloDataWriter::registerLogicallyCartesianMultiblock(
     const std::string& name,
-    const std::vector<IntVector<NDIM> >& nelem,
-    const std::vector<IntVector<NDIM> >& periodic,
+    const std::vector<IntVector >& nelem,
+    const std::vector<IntVector >& periodic,
     const std::vector<int>& first_lag_idx,
     const int level_number)
 {
@@ -1073,7 +1073,7 @@ LSiloDataWriter::registerUnstructuredMesh(
 
 void
 LSiloDataWriter::registerCoordsData(
-    Pointer<LData> coords_data,
+    boost::shared_ptr<LData> coords_data,
     const int level_number)
 {
     if (level_number < d_coarsest_ln || level_number > d_finest_ln)
@@ -1093,7 +1093,7 @@ LSiloDataWriter::registerCoordsData(
 void
 LSiloDataWriter::registerVariableData(
     const std::string& var_name,
-    Pointer<LData> var_data,
+    boost::shared_ptr<LData> var_data,
     const int level_number)
 {
     const int start_depth = 0;
@@ -1105,7 +1105,7 @@ LSiloDataWriter::registerVariableData(
 void
 LSiloDataWriter::registerVariableData(
     const std::string& var_name,
-    Pointer<LData> var_data,
+    boost::shared_ptr<LData> var_data,
     const int start_depth,
     const int var_depth,
     const int level_number)
@@ -1334,8 +1334,8 @@ LSiloDataWriter::writePlotData(
             // Add the local blocks to the local DBfile.
             for (int block = 0; block < d_nblocks[ln]; ++block)
             {
-                const IntVector<NDIM>& nelem    = d_block_nelems  [ln][block];
-                const IntVector<NDIM>& periodic = d_block_periodic[ln][block];
+                const IntVector& nelem    = d_block_nelems  [ln][block];
+                const IntVector& periodic = d_block_periodic[ln][block];
                 const int ntot = nelem.getProduct();
 
                 std::ostringstream stream;
@@ -1372,8 +1372,8 @@ LSiloDataWriter::writePlotData(
             {
                 for (int block = 0; block < d_mb_nblocks[ln][mb]; ++block)
                 {
-                    const IntVector<NDIM>& nelem    = d_mb_nelems  [ln][mb][block];
-                    const IntVector<NDIM>& periodic = d_mb_periodic[ln][mb][block];
+                    const IntVector& nelem    = d_mb_nelems  [ln][mb][block];
+                    const IntVector& periodic = d_mb_periodic[ln][mb][block];
                     const int ntot = nelem.getProduct();
 
                     std::ostringstream stream;
@@ -1977,7 +1977,7 @@ LSiloDataWriter::writePlotData(
 
 void
 LSiloDataWriter::putToDatabase(
-    Pointer<Database> db)
+    boost::shared_ptr<Database> db)
 {
 #if !defined(NDEBUG)
     TBOX_ASSERT(db);
@@ -2009,7 +2009,7 @@ LSiloDataWriter::putToDatabase(
 
             std::vector<int> flattened_block_nelems;
             flattened_block_nelems.reserve(NDIM*d_block_nelems.size());
-            for (std::vector<IntVector<NDIM> >::const_iterator cit = d_block_nelems[ln].begin(); cit != d_block_nelems[ln].end(); ++cit)
+            for (std::vector<IntVector >::const_iterator cit = d_block_nelems[ln].begin(); cit != d_block_nelems[ln].end(); ++cit)
             {
                 flattened_block_nelems.insert(flattened_block_nelems.end(), &(*cit)[0], &(*cit)[0]+NDIM);
             }
@@ -2017,7 +2017,7 @@ LSiloDataWriter::putToDatabase(
 
             std::vector<int> flattened_block_periodic;
             flattened_block_periodic.reserve(NDIM*d_block_periodic.size());
-            for (std::vector<IntVector<NDIM> >::const_iterator cit = d_block_periodic[ln].begin(); cit != d_block_periodic[ln].end(); ++cit)
+            for (std::vector<IntVector >::const_iterator cit = d_block_periodic[ln].begin(); cit != d_block_periodic[ln].end(); ++cit)
             {
                 flattened_block_periodic.insert(flattened_block_periodic.end(), &(*cit)[0], &(*cit)[0]+NDIM);
             }
@@ -2042,7 +2042,7 @@ LSiloDataWriter::putToDatabase(
                 {
                     std::vector<int> flattened_mb_nelems;
                     flattened_mb_nelems.reserve(NDIM*d_mb_nelems.size());
-                    for (std::vector<IntVector<NDIM> >::const_iterator cit = d_mb_nelems[ln][mb].begin(); cit != d_mb_nelems[ln][mb].end(); ++cit)
+                    for (std::vector<IntVector >::const_iterator cit = d_mb_nelems[ln][mb].begin(); cit != d_mb_nelems[ln][mb].end(); ++cit)
                     {
                         flattened_mb_nelems.insert(flattened_mb_nelems.end(), &(*cit)[0], &(*cit)[0]+NDIM);
                     }
@@ -2050,7 +2050,7 @@ LSiloDataWriter::putToDatabase(
 
                     std::vector<int> flattened_mb_periodic;
                     flattened_mb_periodic.reserve(NDIM*d_mb_periodic.size());
-                    for (std::vector<IntVector<NDIM> >::const_iterator cit = d_mb_periodic[ln][mb].begin(); cit != d_mb_periodic[ln][mb].end(); ++cit)
+                    for (std::vector<IntVector >::const_iterator cit = d_mb_periodic[ln][mb].begin(); cit != d_mb_periodic[ln][mb].end(); ++cit)
                     {
                         flattened_mb_periodic.insert(flattened_mb_periodic.end(), &(*cit)[0], &(*cit)[0]+NDIM);
                     }
@@ -2130,7 +2130,7 @@ LSiloDataWriter::buildVecScatters(
 
     for (int block = 0; block < d_nblocks[level_number]; ++block)
     {
-        const IntVector<NDIM>& nelem = d_block_nelems[level_number][block];
+        const IntVector& nelem = d_block_nelems[level_number][block];
         const int ntot = nelem.getProduct();
         const int first_lag_idx = d_block_first_lag_idx[level_number][block];
         ref_is_idxs.reserve(ref_is_idxs.size()+ntot);
@@ -2145,7 +2145,7 @@ LSiloDataWriter::buildVecScatters(
     {
         for (int block = 0; block < d_mb_nblocks[level_number][mb]; ++block)
         {
-            const IntVector<NDIM>& nelem = d_mb_nelems[level_number][mb][block];
+            const IntVector& nelem = d_mb_nelems[level_number][mb][block];
             const int ntot = nelem.getProduct();
             const int first_lag_idx = d_mb_first_lag_idx[level_number][mb][block];
             ref_is_idxs.reserve(ref_is_idxs.size()+ntot);
@@ -2232,8 +2232,8 @@ LSiloDataWriter::buildVecScatters(
 void
 LSiloDataWriter::getFromRestart()
 {
-    Pointer<Database> restart_db = RestartManager::getManager()->getRootDatabase();
-    Pointer<Database> db;
+    boost::shared_ptr<Database> restart_db = RestartManager::getManager()->getRootDatabase();
+    boost::shared_ptr<Database> db;
     if (restart_db->isDatabase(d_object_name))
     {
         db = restart_db->getDatabase(d_object_name);

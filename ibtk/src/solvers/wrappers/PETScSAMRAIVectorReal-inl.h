@@ -48,7 +48,7 @@ namespace IBTK
 
 inline Vec
 PETScSAMRAIVectorReal::createPETScVector(
-    SAMRAI::tbox::Pointer<SAMRAI::solv::SAMRAIVectorReal<NDIM,PetscScalar> > samrai_vec,
+    boost::shared_ptr<SAMRAI::solv::SAMRAIVectorReal<PetscScalar> > samrai_vec,
     MPI_Comm comm)
 {
 #if !defined(NDEBUG)
@@ -74,7 +74,7 @@ PETScSAMRAIVectorReal::destroyPETScVector(
     return;
 }// destroyPETScVector
 
-inline SAMRAI::tbox::Pointer<SAMRAI::solv::SAMRAIVectorReal<NDIM,PetscScalar> >
+inline boost::shared_ptr<SAMRAI::solv::SAMRAIVectorReal<PetscScalar> >
 PETScSAMRAIVectorReal::getSAMRAIVector(
     Vec petsc_vec)
 {
@@ -91,7 +91,7 @@ PETScSAMRAIVectorReal::getSAMRAIVector(
 inline void
 PETScSAMRAIVectorReal::replaceSAMRAIVector(
     Vec petsc_vec,
-    SAMRAI::tbox::Pointer<SAMRAI::solv::SAMRAIVectorReal<NDIM,PetscScalar> > samrai_vec)
+    boost::shared_ptr<SAMRAI::solv::SAMRAIVectorReal<PetscScalar> > samrai_vec)
 {
 #if !defined(NDEBUG)
     TBOX_ASSERT(petsc_vec);

@@ -6,7 +6,7 @@ SOURCES = main.cpp BoussinesqForcing.cpp BoussinesqForcing.h
 EXTRA_DIST = input2d
 
 EXTRA_PROGRAMS =
-if SAMRAI2D_ENABLED
+if IBAMR2D_ENABLED
 EXTRA_PROGRAMS += main2d
 endif
 

@@ -44,8 +44,8 @@
 #include "petscsnes.h"
 #include "petscsys.h"
 #include "petscvec.h"
-#include "tbox/Database.h"
-#include "tbox/Pointer.h"
+#include "SAMRAI/tbox/Database.h"
+
 
 namespace IBTK {
 class GeneralOperator;
@@ -110,7 +110,7 @@ public:
      */
     PETScNewtonKrylovSolver(
         const std::string& object_name,
-        SAMRAI::tbox::Pointer<SAMRAI::tbox::Database> input_db,
+        boost::shared_ptr<SAMRAI::tbox::Database> input_db,
         const std::string& default_options_prefix,
         MPI_Comm petsc_comm=PETSC_COMM_WORLD);
 
@@ -137,10 +137,10 @@ public:
     /*!
      * \brief Static function to construct a PETScNewtonKrylovSolver.
      */
-    static SAMRAI::tbox::Pointer<NewtonKrylovSolver>
+    static boost::shared_ptr<NewtonKrylovSolver>
     allocate_solver(
         const std::string& object_name,
-        SAMRAI::tbox::Pointer<SAMRAI::tbox::Database> input_db,
+        boost::shared_ptr<SAMRAI::tbox::Database> input_db,
         const std::string& default_options_prefix)
         {
             return new PETScNewtonKrylovSolver(object_name, input_db, default_options_prefix);
@@ -176,19 +176,19 @@ public:
      */
     void
     setOperator(
-        SAMRAI::tbox::Pointer<GeneralOperator> op);
+        boost::shared_ptr<GeneralOperator> op);
 
     /*!
      * \brief Return the vector in which the approximate solution is stored.
      */
-    SAMRAI::tbox::Pointer<SAMRAI::solv::SAMRAIVectorReal<NDIM,double> >
+    boost::shared_ptr<SAMRAI::solv::SAMRAIVectorReal<double> >
     getSolutionVector() const;
 
     /*!
      * \brief Return the vector in which the nonlinear function evaluation is
      * stored.
      */
-    SAMRAI::tbox::Pointer<SAMRAI::solv::SAMRAIVectorReal<NDIM,double> >
+    boost::shared_ptr<SAMRAI::solv::SAMRAIVectorReal<double> >
     getFunctionVector() const;
 
     /*!
@@ -200,7 +200,7 @@ public:
      */
     void
     setJacobian(
-        SAMRAI::tbox::Pointer<JacobianOperator> J);
+        boost::shared_ptr<JacobianOperator> J);
 
     /*!
      * \brief Solve the system \f$F[x]=b\f$ for \f$x\f$.
@@ -241,8 +241,8 @@ public:
      */
     bool
     solveSystem(
-        SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& x,
-        SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& b);
+        SAMRAI::solv::SAMRAIVectorReal<double>& x,
+        SAMRAI::solv::SAMRAIVectorReal<double>& b);
 
     /*!
      * \brief Compute hierarchy dependent data required for solving
@@ -288,8 +288,8 @@ public:
      */
     void
     initializeSolverState(
-        const SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& x,
-        const SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& b);
+        const SAMRAI::solv::SAMRAIVectorReal<double>& x,
+        const SAMRAI::solv::SAMRAIVectorReal<double>& b);
 
     /*!
      * \brief Remove all hierarchy dependent data allocated by

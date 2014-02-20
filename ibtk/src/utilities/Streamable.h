@@ -38,11 +38,11 @@
 #include <unistd.h>
 
 #include "ibtk/ibtk_utilities.h"
-#include "tbox/DescribedClass.h"
+
 
 namespace SAMRAI {
 namespace hier {
-template <int DIM> class IntVector;
+class IntVector;
 }  // namespace hier
 namespace tbox {
 class AbstractStream;
@@ -118,7 +118,7 @@ public:
      */
     virtual void
     registerPeriodicShift(
-        const SAMRAI::hier::IntVector<NDIM>& offset,
+        const SAMRAI::hier::IntVector& offset,
         const Vector& displacement);
 
 private:

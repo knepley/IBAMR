@@ -38,16 +38,16 @@
 #include <string>
 #include <vector>
 
-#include "Box.h"
+#include "SAMRAI/hier/Box.h"
 #include "HYPRE_sstruct_ls.h"
 #include "HYPRE_sstruct_mv.h"
-#include "Index.h"
-#include "PatchHierarchy.h"
+#include "SAMRAI/hier/Index.h"
+#include "SAMRAI/hier/PatchHierarchy.h"
 #include "_hypre_sstruct_mv.h"
 #include "ibtk/LinearSolver.h"
 #include "ibtk/PoissonSolver.h"
-#include "tbox/Database.h"
-#include "tbox/Pointer.h"
+#include "SAMRAI/tbox/Database.h"
+
 
 namespace SAMRAI {
 namespace pdat {
@@ -124,7 +124,7 @@ public:
      */
     SCPoissonHypreLevelSolver(
         const std::string& object_name,
-        SAMRAI::tbox::Pointer<SAMRAI::tbox::Database> input_db,
+        boost::shared_ptr<SAMRAI::tbox::Database> input_db,
         const std::string& default_options_prefix);
 
     /*!
@@ -135,10 +135,10 @@ public:
     /*!
      * \brief Static function to construct a SCPoissonHypreLevelSolver.
      */
-    static SAMRAI::tbox::Pointer<PoissonSolver>
+    static boost::shared_ptr<PoissonSolver>
     allocate_solver(
         const std::string& object_name,
-        SAMRAI::tbox::Pointer<SAMRAI::tbox::Database> input_db,
+        boost::shared_ptr<SAMRAI::tbox::Database> input_db,
         const std::string& default_options_prefix)
         {
             return new SCPoissonHypreLevelSolver(object_name, input_db, default_options_prefix);
@@ -188,8 +188,8 @@ public:
      */
     bool
     solveSystem(
-        SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& x,
-        SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& b);
+        SAMRAI::solv::SAMRAIVectorReal<double>& x,
+        SAMRAI::solv::SAMRAIVectorReal<double>& b);
 
     /*!
      * \brief Compute hierarchy dependent data required for solving \f$Ax=b\f$.
@@ -230,8 +230,8 @@ public:
      */
     void
     initializeSolverState(
-        const SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& x,
-        const SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& b);
+        const SAMRAI::solv::SAMRAIVectorReal<double>& x,
+        const SAMRAI::solv::SAMRAIVectorReal<double>& b);
 
     /*!
      * \brief Remove all hierarchy dependent data allocated by
@@ -295,13 +295,13 @@ private:
     void
     copyToHypre(
         HYPRE_SStructVector vector,
-        SAMRAI::tbox::Pointer<SAMRAI::pdat::SideData<NDIM,double> > src_data,
-        const SAMRAI::hier::Box<NDIM>& box);
+        boost::shared_ptr<SAMRAI::pdat::SideData<double> > src_data,
+        const SAMRAI::hier::Box& box);
     void
     copyFromHypre(
-        SAMRAI::tbox::Pointer<SAMRAI::pdat::SideData<NDIM,double> > dst_data,
+        boost::shared_ptr<SAMRAI::pdat::SideData<double> > dst_data,
         HYPRE_SStructVector vector,
-        const SAMRAI::hier::Box<NDIM>& box);
+        const SAMRAI::hier::Box& box);
     void
     destroyHypreSolver();
     void
@@ -310,7 +310,7 @@ private:
     /*!
      * \brief Associated hierarchy.
      */
-    SAMRAI::tbox::Pointer<SAMRAI::hier::PatchHierarchy<NDIM> > d_hierarchy;
+    boost::shared_ptr<SAMRAI::hier::PatchHierarchy > d_hierarchy;
 
     /*!
      * \brief Associated level number.
@@ -336,7 +336,7 @@ private:
     HYPRE_SStructMatrix  d_matrix;
     HYPRE_SStructVector  d_rhs_vec, d_sol_vec;
     HYPRE_SStructSolver  d_solver, d_precond;
-    std::vector<SAMRAI::hier::Index<NDIM> > d_stencil_offsets;
+    std::vector<SAMRAI::hier::Index > d_stencil_offsets;
 
     std::string d_solver_type, d_precond_type, d_split_solver_type;
     int d_rel_change;

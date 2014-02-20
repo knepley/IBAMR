@@ -38,16 +38,16 @@
 #include <set>
 #include <vector>
 
-#include "ComponentSelector.h"
-#include "IntVector.h"
+#include "SAMRAI/hier/ComponentSelector.h"
+#include "SAMRAI/hier/IntVector.h"
 #include "ibtk/RobinPhysBdryPatchStrategy.h"
 
 namespace SAMRAI {
 namespace hier {
-template <int DIM> class Patch;
+class Patch;
 }  // namespace hier
 namespace solv {
-template <int DIM> class RobinBcCoefStrategy;
+class RobinBcCoefStrategy;
 }  // namespace solv
 }  // namespace SAMRAI
 
@@ -95,7 +95,7 @@ public:
      */
     CartCellRobinPhysBdryOp(
         int patch_data_index,
-        SAMRAI::solv::RobinBcCoefStrategy<NDIM>* bc_coef,
+        const boost::shared_ptr<SAMRAI::solv::RobinBcCoefStrategy>& bc_coef,
         bool homogeneous_bc=false);
 
     /*!
@@ -108,7 +108,7 @@ public:
      */
     CartCellRobinPhysBdryOp(
         const std::set<int>& patch_data_indices,
-        SAMRAI::solv::RobinBcCoefStrategy<NDIM>* bc_coef,
+        const boost::shared_ptr<SAMRAI::solv::RobinBcCoefStrategy>& bc_coef,
         bool homogeneous_bc=false);
 
     /*!
@@ -121,7 +121,7 @@ public:
      */
     CartCellRobinPhysBdryOp(
         const SAMRAI::hier::ComponentSelector& patch_data_indices,
-        SAMRAI::solv::RobinBcCoefStrategy<NDIM>* bc_coef,
+        const boost::shared_ptr<SAMRAI::solv::RobinBcCoefStrategy>& bc_coef,
         bool homogeneous_bc=false);
 
     /*!
@@ -135,7 +135,7 @@ public:
      */
     CartCellRobinPhysBdryOp(
         int patch_data_index,
-        const std::vector<SAMRAI::solv::RobinBcCoefStrategy<NDIM>*>& bc_coefs,
+        const std::vector<boost::shared_ptr<SAMRAI::solv::RobinBcCoefStrategy> >& bc_coefs,
         bool homogeneous_bc=false);
 
     /*!
@@ -148,7 +148,7 @@ public:
      */
     CartCellRobinPhysBdryOp(
         const std::set<int>& patch_data_indices,
-        const std::vector<SAMRAI::solv::RobinBcCoefStrategy<NDIM>*>& bc_coefs,
+        const std::vector<boost::shared_ptr<SAMRAI::solv::RobinBcCoefStrategy> >& bc_coefs,
         bool homogeneous_bc=false);
 
     /*!
@@ -161,7 +161,7 @@ public:
      */
     CartCellRobinPhysBdryOp(
         const SAMRAI::hier::ComponentSelector& patch_data_indices,
-        const std::vector<SAMRAI::solv::RobinBcCoefStrategy<NDIM>*>& bc_coefs,
+        const std::vector<boost::shared_ptr<SAMRAI::solv::RobinBcCoefStrategy> >& bc_coefs,
         bool homogeneous_bc=false);
 
     /*!
@@ -187,17 +187,18 @@ public:
      */
     void
     setPhysicalBoundaryConditions(
-        SAMRAI::hier::Patch<NDIM>& patch,
+        SAMRAI::hier::Patch& patch,
         double fill_time,
-        const SAMRAI::hier::IntVector<NDIM>& ghost_width_to_fill);
+        const SAMRAI::hier::IntVector& ghost_width_to_fill);
 
     /*!
      * Function to return maximum stencil width needed over user-defined data
      * interpolation operations.  This is needed to determine the correct
      * interpolation data dependencies.
      */
-    SAMRAI::hier::IntVector<NDIM>
-    getRefineOpStencilWidth() const;
+    SAMRAI::hier::IntVector
+    getRefineOpStencilWidth(
+        const SAMRAI::tbox::Dimension& dim) const;
 
     //\}
 
@@ -213,9 +214,9 @@ public:
      */
     void
     accumulateFromPhysicalBoundaryData(
-        SAMRAI::hier::Patch<NDIM>& patch,
+        SAMRAI::hier::Patch& patch,
         double fill_time,
-        const SAMRAI::hier::IntVector<NDIM>& ghost_width_to_fill);
+        const SAMRAI::hier::IntVector& ghost_width_to_fill);
 
 protected:
 
@@ -249,10 +250,10 @@ private:
     void
     fillGhostCellValuesCodim1(
         int patch_data_idx,
-        const SAMRAI::tbox::Array<SAMRAI::hier::BoundaryBox<NDIM> >& physical_codim1_boxes,
+        const std::vector<SAMRAI::hier::BoundaryBox >& physical_codim1_boxes,
         double fill_time,
-        const SAMRAI::hier::IntVector<NDIM>& ghost_width_to_fill,
-        SAMRAI::hier::Patch<NDIM>& patch,
+        const SAMRAI::hier::IntVector& ghost_width_to_fill,
+        SAMRAI::hier::Patch& patch,
         bool adjoint_op);
 
     /*!
@@ -261,9 +262,9 @@ private:
     void
     fillGhostCellValuesCodim2(
         int patch_data_idx,
-        const SAMRAI::tbox::Array<SAMRAI::hier::BoundaryBox<NDIM> >& physical_codim2_boxes,
-        const SAMRAI::hier::IntVector<NDIM>& ghost_width_to_fill,
-        const SAMRAI::hier::Patch<NDIM>& patch,
+        const std::vector<SAMRAI::hier::BoundaryBox >& physical_codim2_boxes,
+        const SAMRAI::hier::IntVector& ghost_width_to_fill,
+        const SAMRAI::hier::Patch& patch,
         bool adjoint_op);
 
 #if (NDIM > 2)
@@ -273,9 +274,9 @@ private:
     void
     fillGhostCellValuesCodim3(
         int patch_data_idx,
-        const SAMRAI::tbox::Array<SAMRAI::hier::BoundaryBox<NDIM> >& physical_codim3_boxes,
-        const SAMRAI::hier::IntVector<NDIM>& ghost_width_to_fill,
-        const SAMRAI::hier::Patch<NDIM>& patch,
+        const std::vector<SAMRAI::hier::BoundaryBox >& physical_codim3_boxes,
+        const SAMRAI::hier::IntVector& ghost_width_to_fill,
+        const SAMRAI::hier::Patch& patch,
         bool adjoint_op);
 #endif
 };

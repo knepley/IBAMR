@@ -38,11 +38,11 @@
 #include <string>
 #include <vector>
 
-#include "VisItDataWriter.h"
+#include "SAMRAI/appu/VisItDataWriter.h"
 #include "ibtk/LSiloDataWriter.h"
-#include "tbox/Database.h"
-#include "tbox/DescribedClass.h"
-#include "tbox/Pointer.h"
+#include "SAMRAI/tbox/Database.h"
+
+
 
 /////////////////////////////// CLASS DEFINITION /////////////////////////////
 
@@ -53,7 +53,7 @@ namespace IBTK
  * initialization code in an application code.
  */
 class AppInitializer
-    : public SAMRAI::tbox::DescribedClass
+    
 {
 public:
     /*!
@@ -74,7 +74,7 @@ public:
     /*!
      * Return a pointer to the input database.
      */
-    SAMRAI::tbox::Pointer<SAMRAI::tbox::Database>
+    boost::shared_ptr<SAMRAI::tbox::Database>
     getInputDatabase();
 
     /*!
@@ -88,7 +88,7 @@ public:
      * database for the application, this method emits a warning message and
      * returns a NullDatabse.
      */
-    SAMRAI::tbox::Pointer<SAMRAI::tbox::Database>
+    boost::shared_ptr<SAMRAI::tbox::Database>
     getRestartDatabase(
         bool suppress_warning=false);
 
@@ -100,7 +100,7 @@ public:
      * If the requested component is not found in the input database, this
      * method emits a warning message and returns a NullDatabse.
      */
-    SAMRAI::tbox::Pointer<SAMRAI::tbox::Database>
+    boost::shared_ptr<SAMRAI::tbox::Database>
     getComponentDatabase(
         const std::string& component_name,
         bool suppress_warning=false);
@@ -136,7 +136,7 @@ public:
      * If the application is not configured to use VisIt, a NULL pointer will be
      * returned.
      */
-    SAMRAI::tbox::Pointer<SAMRAI::appu::VisItDataWriter<NDIM> >
+    boost::shared_ptr<SAMRAI::appu::VisItDataWriter >
     getVisItDataWriter() const;
 
     /*!
@@ -145,7 +145,7 @@ public:
      * If the application is not configured to use VisIt, a NULL pointer will be
      * returned.
      */
-    SAMRAI::tbox::Pointer<LSiloDataWriter>
+    boost::shared_ptr<LSiloDataWriter>
     getLSiloDataWriter() const;
 
     /*!
@@ -233,7 +233,7 @@ private:
     /*!
      * The input database.
      */
-    SAMRAI::tbox::Pointer<SAMRAI::tbox::Database> d_input_db;
+    boost::shared_ptr<SAMRAI::tbox::Database> d_input_db;
 
     /*!
      * Boolean value indicating whether this is a restarted run.
@@ -246,8 +246,8 @@ private:
     int d_viz_dump_interval;
     std::string d_viz_dump_dirname;
     std::vector<std::string> d_viz_writers;
-    SAMRAI::tbox::Pointer<SAMRAI::appu::VisItDataWriter<NDIM> > d_visit_data_writer;
-    SAMRAI::tbox::Pointer<LSiloDataWriter> d_silo_data_writer;
+    boost::shared_ptr<SAMRAI::appu::VisItDataWriter > d_visit_data_writer;
+    boost::shared_ptr<LSiloDataWriter> d_silo_data_writer;
     std::string d_exodus_filename;
 
     /*!

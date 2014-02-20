@@ -40,7 +40,7 @@
 #include <vector>
 
 #include "ibtk/LMarkerSetData.h"
-#include "tbox/Pointer.h"
+
 
 namespace boost {
 template <class T, std::size_t N> class array;
@@ -48,11 +48,11 @@ template <class T, std::size_t N> class array;
 
 namespace SAMRAI {
 namespace geom {
-template <int DIM> class CartesianGridGeometry;
+class CartesianGridGeometry;
 }  // namespace geom
 namespace hier {
-template <int DIM> class BasePatchLevel;
-template <int DIM> class PatchHierarchy;
+class BasePatchLevel;
+class PatchHierarchy;
 }  // namespace hier
 }  // namespace SAMRAI
 
@@ -75,7 +75,7 @@ public:
     readMarkerPositions(
         std::vector<Point>& mark_init_posns,
         const std::string& mark_input_file_name,
-        SAMRAI::tbox::Pointer<SAMRAI::geom::CartesianGridGeometry<NDIM> > grid_geom);
+        boost::shared_ptr<SAMRAI::geom::CartesianGridGeometry > grid_geom);
 
     /*!
      * Advect all markers by the specified advection velocity using forward
@@ -88,7 +88,7 @@ public:
         int u_current_idx,
         double dt,
         const std::string& weighting_fcn,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy,
+        boost::shared_ptr<SAMRAI::hier::PatchHierarchy > hierarchy,
         int coarsest_ln=-1,
         int finest_ln=-1);
 
@@ -106,7 +106,7 @@ public:
         int u_half_idx,
         double dt,
         const std::string& weighting_fcn,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy,
+        boost::shared_ptr<SAMRAI::hier::PatchHierarchy > hierarchy,
         int coarsest_ln=-1,
         int finest_ln=-1);
 
@@ -124,7 +124,7 @@ public:
         int u_new_idx,
         double dt,
         const std::string& weighting_fcn,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy,
+        boost::shared_ptr<SAMRAI::hier::PatchHierarchy > hierarchy,
         int coarsest_ln=-1,
         int finest_ln=-1);
 
@@ -135,7 +135,7 @@ public:
     static void
     collectMarkersOnPatchHierarchy(
         int mark_idx,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy);
+        boost::shared_ptr<SAMRAI::hier::PatchHierarchy > hierarchy);
 
     /*!
      * Initialize marker data on the specified level of the patch hierarchy by
@@ -146,10 +146,10 @@ public:
     initializeMarkersOnLevel(
         int mark_idx,
         const std::vector<Point>& mark_init_posns,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy,
+        boost::shared_ptr<SAMRAI::hier::PatchHierarchy > hierarchy,
         int level_number,
         bool initial_time,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::BasePatchLevel<NDIM> > old_level);
+        boost::shared_ptr<SAMRAI::hier::BasePatchLevel > old_level);
 
     /*!
      * Prune marker data in refined regions of the specified levels of the patch
@@ -158,7 +158,7 @@ public:
     static void
     pruneInvalidMarkers(
         int mark_idx,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy,
+        boost::shared_ptr<SAMRAI::hier::PatchHierarchy > hierarchy,
         int coarsest_ln=-1,
         int finest_ln=-1);
 
@@ -168,7 +168,7 @@ public:
     static unsigned int
     countMarkers(
         int mark_idx,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy,
+        boost::shared_ptr<SAMRAI::hier::PatchHierarchy > hierarchy,
         int coarsest_ln=-1,
         int finest_ln=-1);
 
@@ -214,7 +214,7 @@ private:
      */
     static unsigned int
     countMarkersOnPatch(
-        SAMRAI::tbox::Pointer<LMarkerSetData> mark_data);
+        boost::shared_ptr<LMarkerSetData> mark_data);
 
     /*!
      * Collect marker positions into a single vector.
@@ -222,7 +222,7 @@ private:
     static void
     collectMarkerPositionsOnPatch(
         std::vector<double>& X_mark,
-        SAMRAI::tbox::Pointer<LMarkerSetData> mark_data);
+        boost::shared_ptr<LMarkerSetData> mark_data);
 
     /*!
      * Reset marker positions from a single vector.
@@ -230,7 +230,7 @@ private:
     static void
     resetMarkerPositionsOnPatch(
         const std::vector<double>& X_mark,
-        SAMRAI::tbox::Pointer<LMarkerSetData> mark_data);
+        boost::shared_ptr<LMarkerSetData> mark_data);
 
     /*!
      * Collect marker velocities into a single vector.
@@ -238,7 +238,7 @@ private:
     static void
     collectMarkerVelocitiesOnPatch(
         std::vector<double>& U_mark,
-        SAMRAI::tbox::Pointer<LMarkerSetData> mark_data);
+        boost::shared_ptr<LMarkerSetData> mark_data);
 
     /*!
      * Reset marker velocities from a single vector.
@@ -246,7 +246,7 @@ private:
     static void
     resetMarkerVelocitiesOnPatch(
         const std::vector<double>& U_mark,
-        SAMRAI::tbox::Pointer<LMarkerSetData> mark_data);
+        boost::shared_ptr<LMarkerSetData> mark_data);
 
     /*!
      * Prevent markers from leaving the computational domain through physical
@@ -255,7 +255,7 @@ private:
     static void
     preventMarkerEscape(
         std::vector<double>& X_mark,
-        SAMRAI::tbox::Pointer<SAMRAI::geom::CartesianGridGeometry<NDIM> > grid_geom);
+        boost::shared_ptr<SAMRAI::geom::CartesianGridGeometry > grid_geom);
 };
 }// namespace IBTK
 

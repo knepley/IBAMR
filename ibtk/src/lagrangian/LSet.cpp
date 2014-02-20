@@ -53,12 +53,12 @@ namespace IBTK
 
 
 template class IBTK::LSet<IBTK::LMarker>;
-template class Pointer<IBTK::LSet<IBTK::LMarker> >;
+template class boost::shared_ptr<IBTK::LSet<IBTK::LMarker> >;
 
 template class IBTK::LSet<IBTK::LNode>;
-template class Pointer<IBTK::LSet<IBTK::LNode> >;
+template class boost::shared_ptr<IBTK::LSet<IBTK::LNode> >;
 
 template class IBTK::LSet<IBTK::LNodeIndex>;
-template class Pointer<IBTK::LSet<IBTK::LNodeIndex> >;
+template class boost::shared_ptr<IBTK::LSet<IBTK::LNodeIndex> >;
 
 //////////////////////////////////////////////////////////////////////////////

@@ -37,10 +37,10 @@
 
 #include <iosfwd>
 
-#include "PatchData.h"
-#include "PatchLevel.h"
-#include "tbox/Pointer.h"
-#include "tbox/Transaction.h"
+#include "SAMRAI/hier/PatchData.h"
+#include "SAMRAI/hier/PatchLevel.h"
+
+#include "SAMRAI/tbox/Transaction.h"
 
 namespace SAMRAI {
 namespace tbox {
@@ -69,9 +69,9 @@ public:
     CopyToRootTransaction(
         int src_proc,
         int dst_proc,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::PatchLevel<NDIM> > patch_level,
+        boost::shared_ptr<SAMRAI::hier::PatchLevel > patch_level,
         int src_patch_data_idx,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::PatchData<NDIM> > dst_patch_data);
+        boost::shared_ptr<SAMRAI::hier::PatchData > dst_patch_data);
 
     /*!
      * \brief Destructor
@@ -81,7 +81,7 @@ public:
     /*!
      * Return a pointer to the data on the root process.
      */
-    SAMRAI::tbox::Pointer<SAMRAI::hier::PatchData<NDIM> >
+    boost::shared_ptr<SAMRAI::hier::PatchData >
     getRootPatchData() const;
 
     /*!
@@ -176,9 +176,9 @@ private:
         const CopyToRootTransaction& that);
 
     const int d_src_proc, d_dst_proc;
-    SAMRAI::tbox::Pointer<SAMRAI::hier::PatchLevel<NDIM> > d_patch_level;
+    boost::shared_ptr<SAMRAI::hier::PatchLevel > d_patch_level;
     const int d_src_patch_data_idx;
-    SAMRAI::tbox::Pointer<SAMRAI::hier::PatchData<NDIM> > d_dst_patch_data;
+    boost::shared_ptr<SAMRAI::hier::PatchData > d_dst_patch_data;
 };
 }// namespace IBTK
 

@@ -37,13 +37,13 @@
 
 #include <vector>
 
-#include "PatchLevel.h"
-#include "tbox/Pointer.h"
-#include "tbox/Schedule.h"
+#include "SAMRAI/hier/PatchLevel.h"
+
+#include "SAMRAI/tbox/Schedule.h"
 
 namespace SAMRAI {
 namespace hier {
-template <int DIM> class PatchData;
+class PatchData;
 }  // namespace hier
 }  // namespace SAMRAI
 
@@ -65,7 +65,7 @@ public:
      */
     CopyToRootSchedule(
         int root_proc,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::PatchLevel<NDIM> > patch_level,
+        boost::shared_ptr<SAMRAI::hier::PatchLevel > patch_level,
         int src_patch_data_idx);
 
     /*!
@@ -73,7 +73,7 @@ public:
      */
     CopyToRootSchedule(
         int root_proc,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::PatchLevel<NDIM> > patch_level,
+        boost::shared_ptr<SAMRAI::hier::PatchLevel > patch_level,
         const std::vector<int>& src_patch_data_idxs);
 
     /*!
@@ -92,7 +92,7 @@ public:
      *
      * \note Patch data objects are allocated only on the root MPI process.
      */
-    const std::vector<SAMRAI::tbox::Pointer<SAMRAI::hier::PatchData<NDIM> > >&
+    const std::vector<boost::shared_ptr<SAMRAI::hier::PatchData > >&
     getRootPatchData() const;
 
 private:
@@ -130,9 +130,9 @@ private:
     commonClassCtor();
 
     const int d_root_proc;
-    SAMRAI::tbox::Pointer<SAMRAI::hier::PatchLevel<NDIM> > d_patch_level;
+    boost::shared_ptr<SAMRAI::hier::PatchLevel > d_patch_level;
     const std::vector<int> d_src_patch_data_idxs;
-    std::vector<SAMRAI::tbox::Pointer<SAMRAI::hier::PatchData<NDIM> > > d_root_patch_data;
+    std::vector<boost::shared_ptr<SAMRAI::hier::PatchData > > d_root_patch_data;
     SAMRAI::tbox::Schedule d_schedule;
 };
 }// namespace IBTK

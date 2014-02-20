@@ -39,15 +39,15 @@
 #include <utility>
 
 #include "BGaussSeidelPreconditioner.h"
-#include "PatchHierarchy.h"
-#include "SAMRAIVectorReal.h"
-#include "SAMRAI_config.h"
+#include "SAMRAI/hier/PatchHierarchy.h"
+#include "SAMRAI/solv/SAMRAIVectorReal.h"
+#include "SAMRAI/SAMRAI_config.h"
 #include "ibtk/GeneralSolver.h"
 #include "ibtk/LinearOperator.h"
 #include "ibtk/ibtk_utilities.h"
 #include "ibtk/namespaces.h" // IWYU pragma: keep
-#include "tbox/Database.h"
-#include "tbox/Utilities.h"
+#include "SAMRAI/tbox/Database.h"
+#include "SAMRAI/tbox/Utilities.h"
 
 /////////////////////////////// NAMESPACE ////////////////////////////////////
 
@@ -59,7 +59,7 @@ namespace IBTK
 
 BGaussSeidelPreconditioner::BGaussSeidelPreconditioner(
     const std::string& object_name,
-    Pointer<Database> input_db,
+    boost::shared_ptr<Database> input_db,
     const std::string& /*default_options_prefix*/)
     : d_pc_map(),
       d_linear_ops_map(),
@@ -95,7 +95,7 @@ BGaussSeidelPreconditioner::~BGaussSeidelPreconditioner()
 
 void
 BGaussSeidelPreconditioner::setComponentPreconditioner(
-    Pointer<LinearSolver> preconditioner,
+    boost::shared_ptr<LinearSolver> preconditioner,
     const unsigned int component)
 {
 #if !defined(NDEBUG)
@@ -107,7 +107,7 @@ BGaussSeidelPreconditioner::setComponentPreconditioner(
 
 void
 BGaussSeidelPreconditioner::setComponentOperators(
-    const std::vector<Pointer<LinearOperator> >& linear_ops,
+    const std::vector<boost::shared_ptr<LinearOperator> >& linear_ops,
     const unsigned int component)
 {
 #if !defined(NDEBUG)
@@ -138,15 +138,15 @@ BGaussSeidelPreconditioner::setReversedOrder(
 
 bool
 BGaussSeidelPreconditioner::solveSystem(
-    SAMRAIVectorReal<NDIM,double>& x,
-    SAMRAIVectorReal<NDIM,double>& b)
+    SAMRAIVectorReal<double>& x,
+    SAMRAIVectorReal<double>& b)
 {
     // Initialize the preconditioner, when necessary.
     const bool deallocate_after_solve = !d_is_initialized;
     if (deallocate_after_solve) initializeSolverState(x,b);
 
 #if !defined(NDEBUG)
-    Pointer<PatchHierarchy<NDIM> > hierarchy = x.getPatchHierarchy();
+    boost::shared_ptr<PatchHierarchy > hierarchy = x.getPatchHierarchy();
     const int coarsest_ln = x.getCoarsestLevelNumber();
     const int   finest_ln = x.getFinestLevelNumber()  ;
     TBOX_ASSERT(x.getNumberOfComponents() == b.getNumberOfComponents());
@@ -164,15 +164,15 @@ BGaussSeidelPreconditioner::solveSystem(
 
     // Setup SAMRAIVectorReal objects to correspond to the individual vector
     // components.
-    std::vector<Pointer<SAMRAIVectorReal<NDIM,double> > > x_comps = getComponentVectors(Pointer<SAMRAIVectorReal<NDIM,double> >(&x,false));
-    std::vector<Pointer<SAMRAIVectorReal<NDIM,double> > > b_comps = getComponentVectors(Pointer<SAMRAIVectorReal<NDIM,double> >(&b,false));
+    std::vector<boost::shared_ptr<SAMRAIVectorReal<double> > > x_comps = getComponentVectors(boost::shared_ptr<SAMRAIVectorReal<NDIM,double> >(&x,false));
+    std::vector<boost::shared_ptr<SAMRAIVectorReal<double> > > b_comps = getComponentVectors(boost::shared_ptr<SAMRAIVectorReal<NDIM,double> >(&b,false));
 
     // Clone the right-hand-side vector to avoid modifying it during the
     // preconditioning operation.
-    Pointer<SAMRAIVectorReal<NDIM,double> > f = b.cloneVector(b.getName());
+    boost::shared_ptr<SAMRAIVectorReal<double> > f = b.cloneVector(b.getName());
     f->allocateVectorData();
-    f->copyVector(Pointer<SAMRAIVectorReal<NDIM,double> >(&b,false), false);
-    std::vector<Pointer<SAMRAIVectorReal<NDIM,double> > > f_comps = getComponentVectors(f);
+    f->copyVector(boost::shared_ptr<SAMRAIVectorReal<double> >(&b,false), false);
+    std::vector<boost::shared_ptr<SAMRAIVectorReal<double> > > f_comps = getComponentVectors(f);
 
     // Setup the order in which the component preconditioner are to be applied.
     const int ncomps = x.getNumberOfComponents();
@@ -215,9 +215,9 @@ BGaussSeidelPreconditioner::solveSystem(
     {
         const int comp = (*it);
 
-        Pointer<SAMRAIVectorReal<NDIM,double> > x_comp = x_comps[comp];
-        Pointer<SAMRAIVectorReal<NDIM,double> > b_comp = b_comps[comp];
-        Pointer<SAMRAIVectorReal<NDIM,double> > f_comp = f_comps[comp];
+        boost::shared_ptr<SAMRAIVectorReal<double> > x_comp = x_comps[comp];
+        boost::shared_ptr<SAMRAIVectorReal<double> > b_comp = b_comps[comp];
+        boost::shared_ptr<SAMRAIVectorReal<double> > f_comp = f_comps[comp];
 
         // Update the right-hand-side vector.
         f_comp->setToScalar(0.0);
@@ -229,7 +229,7 @@ BGaussSeidelPreconditioner::solveSystem(
         f_comp->subtract(b_comp, f_comp);
 
         // Configure the component preconditioner.
-        Pointer<LinearSolver> pc_comp = d_pc_map[comp];
+        boost::shared_ptr<LinearSolver> pc_comp = d_pc_map[comp];
         pc_comp->setInitialGuessNonzero(count >= ncomps);
         pc_comp->setMaxIterations(d_max_iterations);
         pc_comp->setAbsoluteTolerance(d_abs_residual_tol);
@@ -250,11 +250,11 @@ BGaussSeidelPreconditioner::solveSystem(
 
 void
 BGaussSeidelPreconditioner::initializeSolverState(
-    const SAMRAIVectorReal<NDIM,double>& x,
-    const SAMRAIVectorReal<NDIM,double>& b)
+    const SAMRAIVectorReal<double>& x,
+    const SAMRAIVectorReal<double>& b)
 {
 #if !defined(NDEBUG)
-    Pointer<PatchHierarchy<NDIM> > hierarchy = x.getPatchHierarchy();
+    boost::shared_ptr<PatchHierarchy > hierarchy = x.getPatchHierarchy();
     const int coarsest_ln = x.getCoarsestLevelNumber();
     const int finest_ln = x.getFinestLevelNumber();
     TBOX_ASSERT(hierarchy == b.getPatchHierarchy());
@@ -264,8 +264,8 @@ BGaussSeidelPreconditioner::initializeSolverState(
 #endif
     // Setup SAMRAIVectorReal objects to correspond to the individual vector
     // components.
-    std::vector<Pointer<SAMRAIVectorReal<NDIM,double> > > x_comps = getComponentVectors(ConstPointer<SAMRAIVectorReal<NDIM,double> >(&x,false));
-    std::vector<Pointer<SAMRAIVectorReal<NDIM,double> > > b_comps = getComponentVectors(ConstPointer<SAMRAIVectorReal<NDIM,double> >(&b,false));
+    std::vector<boost::shared_ptr<SAMRAIVectorReal<double> > > x_comps = getComponentVectors(Constboost::shared_ptr<SAMRAIVectorReal<NDIM,double> >(&x,false));
+    std::vector<boost::shared_ptr<SAMRAIVectorReal<double> > > b_comps = getComponentVectors(Constboost::shared_ptr<SAMRAIVectorReal<NDIM,double> >(&b,false));
 
     // Initialize the component operators and preconditioners.
     const int ncomps = x.getNumberOfComponents();
@@ -291,16 +291,16 @@ BGaussSeidelPreconditioner::deallocateSolverState()
     if (!d_is_initialized) return;
 
     // Deallocate the component preconditioners.
-    for (std::map<unsigned int,Pointer<LinearSolver> >::iterator it = d_pc_map.begin(); it != d_pc_map.end(); ++it)
+    for (std::map<unsigned int,boost::shared_ptr<LinearSolver> >::iterator it = d_pc_map.begin(); it != d_pc_map.end(); ++it)
     {
         it->second->deallocateSolverState();
     }
 
     // Deallocate the component operators.
-    for (std::map<unsigned int,std::vector<Pointer<LinearOperator> > >::iterator it = d_linear_ops_map.begin(); it != d_linear_ops_map.end(); ++it)
+    for (std::map<unsigned int,std::vector<boost::shared_ptr<LinearOperator> > >::iterator it = d_linear_ops_map.begin(); it != d_linear_ops_map.end(); ++it)
     {
-        std::vector<Pointer<LinearOperator> >& comp_linear_ops = it->second;
-        for (std::vector<Pointer<LinearOperator> >::iterator comp_it = comp_linear_ops.begin(); comp_it != comp_linear_ops.end(); ++comp_it)
+        std::vector<boost::shared_ptr<LinearOperator> >& comp_linear_ops = it->second;
+        for (std::vector<boost::shared_ptr<LinearOperator> >::iterator comp_it = comp_linear_ops.begin(); comp_it != comp_linear_ops.end(); ++comp_it)
         {
             if (*comp_it) (*comp_it)->deallocateOperatorState();
         }
@@ -357,11 +357,11 @@ BGaussSeidelPreconditioner::getResidualNorm() const
 
 /////////////////////////////// PRIVATE //////////////////////////////////////
 
-std::vector<Pointer<SAMRAIVectorReal<NDIM,double> > >
+std::vector<boost::shared_ptr<SAMRAIVectorReal<double> > >
 BGaussSeidelPreconditioner::getComponentVectors(
-    const ConstPointer<SAMRAIVectorReal<NDIM,double> > x)
+    const Constboost::shared_ptr<SAMRAIVectorReal<double> > x)
 {
-    Pointer<PatchHierarchy<NDIM> > hierarchy = x->getPatchHierarchy();
+    boost::shared_ptr<PatchHierarchy > hierarchy = x->getPatchHierarchy();
     const int coarsest_ln = x->getCoarsestLevelNumber();
     const int finest_ln = x->getFinestLevelNumber();
     const std::string& x_name = x->getName();
@@ -369,12 +369,12 @@ BGaussSeidelPreconditioner::getComponentVectors(
 
     // Setup SAMRAIVectorReal objects to correspond to the individual vector
     // components.
-    std::vector<Pointer<SAMRAIVectorReal<NDIM,double> > > x_comps(ncomps);
+    std::vector<boost::shared_ptr<SAMRAIVectorReal<double> > > x_comps(ncomps);
     for (int comp = 0; comp < ncomps; ++comp)
     {
         std::ostringstream str;
         str << comp;
-        x_comps[comp] = new SAMRAIVectorReal<NDIM,double>(x_name+"_component_"+str.str(), hierarchy, coarsest_ln, finest_ln);
+        x_comps[comp] = new SAMRAIVectorReal<double>(x_name+"_component_"+str.str(), hierarchy, coarsest_ln, finest_ln);
         x_comps[comp]->addComponent(x->getComponentVariable(comp), x->getComponentDescriptorIndex(comp), x->getControlVolumeIndex(comp));
     }
     return x_comps;

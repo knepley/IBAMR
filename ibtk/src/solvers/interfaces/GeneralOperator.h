@@ -40,8 +40,8 @@
 #include <utility>
 
 #include "ibtk/HierarchyMathOps.h"
-#include "tbox/DescribedClass.h"
-#include "tbox/Pointer.h"
+
+
 
 namespace SAMRAI {
 namespace solv {
@@ -145,12 +145,12 @@ public:
      */
     virtual void
     setHierarchyMathOps(
-        SAMRAI::tbox::Pointer<HierarchyMathOps> hier_math_ops);
+        boost::shared_ptr<HierarchyMathOps> hier_math_ops);
 
     /*!
      * \brief Get the HierarchyMathOps object used by the operator.
      */
-    virtual SAMRAI::tbox::Pointer<HierarchyMathOps>
+    virtual boost::shared_ptr<HierarchyMathOps>
     getHierarchyMathOps() const;
 
     /*!
@@ -179,8 +179,8 @@ public:
      */
     virtual void
     apply(
-        SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& x,
-        SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& y) = 0;
+        SAMRAI::solv::SAMRAIVectorReal<double>& x,
+        SAMRAI::solv::SAMRAIVectorReal<double>& y) = 0;
 
     /*!
      * \brief Compute \f$z=F[x]+y\f$.
@@ -212,9 +212,9 @@ public:
      */
     virtual void
     applyAdd(
-        SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& x,
-        SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& y,
-        SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& z);
+        SAMRAI::solv::SAMRAIVectorReal<double>& x,
+        SAMRAI::solv::SAMRAIVectorReal<double>& y,
+        SAMRAI::solv::SAMRAIVectorReal<double>& z);
 
     /*!
      * \brief Compute hierarchy dependent data required for computing y=F[x] and
@@ -248,8 +248,8 @@ public:
      */
     virtual void
     initializeOperatorState(
-        const SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& in,
-        const SAMRAI::solv::SAMRAIVectorReal<NDIM,double>& out);
+        const SAMRAI::solv::SAMRAIVectorReal<double>& in,
+        const SAMRAI::solv::SAMRAIVectorReal<double>& out);
 
     /*!
      * \brief Remove all hierarchy dependent data allocated by
@@ -306,7 +306,7 @@ protected:
     double d_solution_time, d_current_time, d_new_time;
 
     // Mathematical operators.
-    SAMRAI::tbox::Pointer<HierarchyMathOps> d_hier_math_ops;
+    boost::shared_ptr<HierarchyMathOps> d_hier_math_ops;
     bool d_hier_math_ops_external;
 
     // Logging configuration.

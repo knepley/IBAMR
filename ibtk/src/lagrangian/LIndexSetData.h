@@ -37,14 +37,14 @@
 
 #include <vector>
 
-#include "Box.h"
-#include "IntVector.h"
+#include "SAMRAI/hier/Box.h"
+#include "SAMRAI/hier/IntVector.h"
 #include "ibtk/LSetData.h"
-#include "tbox/Pointer.h"
+
 
 namespace SAMRAI {
 namespace hier {
-template <int DIM> class Patch;
+class Patch;
 }  // namespace hier
 }  // namespace SAMRAI
 
@@ -71,8 +71,8 @@ public:
      * nodes in each coordinate direction.
      */
     LIndexSetData(
-        const SAMRAI::hier::Box<NDIM>& box,
-        const SAMRAI::hier::IntVector<NDIM>& ghosts);
+        const SAMRAI::hier::Box& box,
+        const SAMRAI::hier::IntVector& ghosts);
 
     /*!
      * The virtual destructor for an LIndexSetData object.
@@ -85,8 +85,8 @@ public:
      */
     void
     cacheLocalIndices(
-        SAMRAI::tbox::Pointer<SAMRAI::hier::Patch<NDIM> > patch,
-        const SAMRAI::hier::IntVector<NDIM>& periodic_shift);
+        boost::shared_ptr<SAMRAI::hier::Patch > patch,
+        const SAMRAI::hier::IntVector& periodic_shift);
 
     /*!
      * \return A constant reference to the set of Lagrangian data indices that

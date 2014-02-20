@@ -37,17 +37,17 @@
 
 #include <string>
 
-#include "Box.h"
-#include "CartesianCellDoubleConservativeLinearRefine.h"
-#include "CellDoubleConstantRefine.h"
-#include "IntVector.h"
-#include "RefineOperator.h"
-#include "tbox/Pointer.h"
+#include "SAMRAI/hier/Box.h"
+#include "SAMRAI/geom/CartesianCellDoubleConservativeLinearRefine.h"
+#include "SAMRAI/pdat/CellDoubleConstantRefine.h"
+#include "SAMRAI/hier/IntVector.h"
+#include "SAMRAI/hier/RefineOperator.h"
+
 
 namespace SAMRAI {
 namespace hier {
-template <int DIM> class Patch;
-template <int DIM> class Variable;
+class Patch;
+class Variable;
 }  // namespace hier
 }  // namespace SAMRAI
 
@@ -57,12 +57,12 @@ namespace IBTK
 {
 /*!
  * \brief Class CartCellDoubleBoundsPreservingConservativeLinearRefine is a
- * concrete SAMRAI::xfer::RefineOperator object which prolongs cell-centered
+ * concrete SAMRAI::hier::RefineOperator object which prolongs cell-centered
  * double precision patch data via conservative linear interpolation with an
  * additional bounds preservation repair step.
  */
 class CartCellDoubleBoundsPreservingConservativeLinearRefine
-    : public SAMRAI::xfer::RefineOperator<NDIM>
+    : public SAMRAI::hier::RefineOperator
 {
 public:
     /*!
@@ -76,7 +76,7 @@ public:
     ~CartCellDoubleBoundsPreservingConservativeLinearRefine();
 
     /*!
-     * \name Implementation of SAMRAI::xfer::RefineOperator interface.
+     * \name Implementation of SAMRAI::hier::RefineOperator interface.
      */
     //\{
 
@@ -86,7 +86,7 @@ public:
      */
     bool
     findRefineOperator(
-        const SAMRAI::tbox::Pointer<SAMRAI::hier::Variable<NDIM> >& var,
+        const boost::shared_ptr<SAMRAI::hier::Variable >& var,
         const std::string& op_name) const;
 
     /*!
@@ -110,7 +110,7 @@ public:
      * sufficient ghost cell data surrounding the interior to satisfy the
      * stencil width requirements for each refining operator.
      */
-    SAMRAI::hier::IntVector<NDIM>
+    SAMRAI::hier::IntVector
     getStencilWidth() const;
 
     /*!
@@ -122,12 +122,12 @@ public:
      */
     void
     refine(
-        SAMRAI::hier::Patch<NDIM>& fine,
-        const SAMRAI::hier::Patch<NDIM>& coarse,
+        SAMRAI::hier::Patch& fine,
+        const SAMRAI::hier::Patch& coarse,
         int dst_component,
         int src_component,
-        const SAMRAI::hier::Box<NDIM>& fine_box,
-        const SAMRAI::hier::IntVector<NDIM>& ratio) const;
+        const SAMRAI::hier::Box& fine_box,
+        const SAMRAI::hier::IntVector& ratio) const;
 
     //\}
 
@@ -165,12 +165,12 @@ private:
     /*!
      * The basic, non-bounds preserving conservative linear refine operator.
      */
-    SAMRAI::geom::CartesianCellDoubleConservativeLinearRefine<NDIM> d_conservative_linear_refine_op;
+    SAMRAI::geom::CartesianCellDoubleConservativeLinearRefine d_conservative_linear_refine_op;
 
     /*!
      * The constant refine operator.
      */
-    SAMRAI::pdat::CellDoubleConstantRefine<NDIM> d_constant_refine_op;
+    SAMRAI::pdat::CellDoubleConstantRefine d_constant_refine_op;
 };
 }// namespace IBTK
 

@@ -35,26 +35,26 @@
 #include <stddef.h>
 #include <ostream>
 
-#include "CoarsenOperator.h"
-#include "CoarsenSchedule.h"
+#include "SAMRAI/hier/CoarsenOperator.h"
+#include "SAMRAI/xfer/CoarsenSchedule.h"
 #include "EdgeDataSynchronization.h"
-#include "EdgeVariable.h"
-#include "PatchLevel.h"
-#include "RefineAlgorithm.h"
-#include "RefineOperator.h"
-#include "RefineSchedule.h"
-#include "SAMRAI_config.h"
-#include "Variable.h"
-#include "VariableDatabase.h"
-#include "VariableFillPattern.h"
+#include "SAMRAI/pdat/EdgeVariable.h"
+#include "SAMRAI/hier/PatchLevel.h"
+#include "SAMRAI/xfer/RefineAlgorithm.h"
+#include "SAMRAI/hier/RefineOperator.h"
+#include "SAMRAI/xfer/RefineSchedule.h"
+#include "SAMRAI/SAMRAI_config.h"
+#include "SAMRAI/hier/Variable.h"
+#include "SAMRAI/hier/VariableDatabase.h"
+#include "SAMRAI/xfer/VariableFillPattern.h"
 #include "boost/array.hpp"
 #include "ibtk/EdgeSynchCopyFillPattern.h"
 #include "ibtk/namespaces.h" // IWYU pragma: keep
-#include "tbox/Utilities.h"
+#include "SAMRAI/tbox/Utilities.h"
 
 namespace SAMRAI {
 namespace xfer {
-template <int DIM> class CoarsenPatchStrategy;
+class CoarsenPatchStrategy;
 }  // namespace xfer
 }  // namespace SAMRAI
 
@@ -89,7 +89,7 @@ EdgeDataSynchronization::~EdgeDataSynchronization()
 void
 EdgeDataSynchronization::initializeOperatorState(
     const SynchronizationTransactionComponent& transaction_comp,
-    Pointer<PatchHierarchy<NDIM> > hierarchy)
+    boost::shared_ptr<PatchHierarchy > hierarchy)
 {
     initializeOperatorState(std::vector<SynchronizationTransactionComponent>(1,transaction_comp), hierarchy);
     return;
@@ -98,7 +98,7 @@ EdgeDataSynchronization::initializeOperatorState(
 void
 EdgeDataSynchronization::initializeOperatorState(
     const std::vector<SynchronizationTransactionComponent>& transaction_comps,
-    Pointer<PatchHierarchy<NDIM> > hierarchy)
+    boost::shared_ptr<PatchHierarchy > hierarchy)
 {
     // Deallocate the operator state if the operator is already initialized.
     if (d_is_initialized) deallocateOperatorState();
@@ -113,21 +113,21 @@ EdgeDataSynchronization::initializeOperatorState(
     d_finest_ln   = d_hierarchy->getFinestLevelNumber();
 
     // Setup cached coarsen algorithms and schedules.
-    VariableDatabase<NDIM>* var_db = VariableDatabase<NDIM>::getDatabase();
+    VariableDatabase* var_db = VariableDatabase::getDatabase();
     bool registered_coarsen_op = false;
-    d_coarsen_alg = new CoarsenAlgorithm<NDIM>();
+    d_coarsen_alg = new CoarsenAlgorithm();
     for (unsigned int comp_idx = 0; comp_idx < d_transaction_comps.size(); ++comp_idx)
     {
         const std::string& coarsen_op_name = d_transaction_comps[comp_idx].d_coarsen_op_name;
         if (coarsen_op_name != "NONE")
         {
             const int data_idx = d_transaction_comps[comp_idx].d_data_idx;
-            Pointer<Variable<NDIM> > var;
+            boost::shared_ptr<Variable > var;
             var_db->mapIndexToVariable(data_idx, var);
 #if !defined(NDEBUG)
             TBOX_ASSERT(var);
 #endif
-            Pointer<CoarsenOperator<NDIM> > coarsen_op =
+            boost::shared_ptr<CoarsenOperator > coarsen_op =
                 d_grid_geom->lookupCoarsenOperator(var, coarsen_op_name);
 #if !defined(NDEBUG)
             TBOX_ASSERT(coarsen_op);
@@ -139,14 +139,14 @@ EdgeDataSynchronization::initializeOperatorState(
         }
     }
 
-    CoarsenPatchStrategy<NDIM>* coarsen_strategy = NULL;
+    CoarsenPatchStrategy* coarsen_strategy = NULL;
     d_coarsen_scheds.resize(d_finest_ln+1);
     if (registered_coarsen_op)
     {
         for (int ln = d_coarsest_ln+1; ln <= d_finest_ln; ++ln)
         {
-            Pointer<PatchLevel<NDIM> > level = d_hierarchy->getPatchLevel(ln);
-            Pointer<PatchLevel<NDIM> > coarser_level = d_hierarchy->getPatchLevel(ln-1);
+            boost::shared_ptr<PatchLevel > level = d_hierarchy->getPatchLevel(ln);
+            boost::shared_ptr<PatchLevel > coarser_level = d_hierarchy->getPatchLevel(ln-1);
             d_coarsen_scheds[ln] = d_coarsen_alg->createSchedule(coarser_level, level, coarsen_strategy);
         }
     }
@@ -154,20 +154,20 @@ EdgeDataSynchronization::initializeOperatorState(
     // Setup cached refine algorithms and schedules.
     for (unsigned int axis = 0; axis < NDIM; ++axis)
     {
-        d_refine_alg[axis] = new RefineAlgorithm<NDIM>();
+        d_refine_alg[axis] = new RefineAlgorithm();
         for (unsigned int comp_idx = 0; comp_idx < d_transaction_comps.size(); ++comp_idx)
         {
             const int data_idx = d_transaction_comps[comp_idx].d_data_idx;
-            Pointer<Variable<NDIM> > var;
+            boost::shared_ptr<Variable > var;
             var_db->mapIndexToVariable(data_idx, var);
-            Pointer<EdgeVariable<NDIM,double> > ec_var = var;
+            boost::shared_ptr<EdgeVariable<double> > ec_var = var;
             if (!ec_var)
             {
                 TBOX_ERROR("EdgeDataSynchronization::initializeOperatorState():\n"
                            << "  only double-precision edge-centered data is supported." << std::endl);
             }
-            Pointer<RefineOperator<NDIM> > refine_op = NULL;
-            Pointer<VariableFillPattern<NDIM> > fill_pattern = new EdgeSynchCopyFillPattern(axis);
+            boost::shared_ptr<RefineOperator > refine_op = NULL;
+            boost::shared_ptr<VariableFillPattern > fill_pattern = new EdgeSynchCopyFillPattern(axis);
             d_refine_alg[axis]->registerRefine(data_idx,  // destination
                                                data_idx,  // source
                                                data_idx,  // temporary work space
@@ -178,7 +178,7 @@ EdgeDataSynchronization::initializeOperatorState(
         d_refine_scheds[axis].resize(d_finest_ln+1);
         for (int ln = d_coarsest_ln; ln <= d_finest_ln; ++ln)
         {
-            Pointer<PatchLevel<NDIM> > level = d_hierarchy->getPatchLevel(ln);
+            boost::shared_ptr<PatchLevel > level = d_hierarchy->getPatchLevel(ln);
             d_refine_scheds[axis][ln] = d_refine_alg[axis]->createSchedule(level);
         }
     }
@@ -221,21 +221,21 @@ EdgeDataSynchronization::resetTransactionComponents(
     d_transaction_comps = transaction_comps;
 
     // Reset cached coarsen algorithms and schedules.
-    VariableDatabase<NDIM>* var_db = VariableDatabase<NDIM>::getDatabase();
+    VariableDatabase* var_db = VariableDatabase::getDatabase();
     bool registered_coarsen_op = false;
-    d_coarsen_alg = new CoarsenAlgorithm<NDIM>();
+    d_coarsen_alg = new CoarsenAlgorithm();
     for (unsigned int comp_idx = 0; comp_idx < d_transaction_comps.size(); ++comp_idx)
     {
         const std::string& coarsen_op_name = d_transaction_comps[comp_idx].d_coarsen_op_name;
         if (coarsen_op_name != "NONE")
         {
             const int data_idx = d_transaction_comps[comp_idx].d_data_idx;
-            Pointer<Variable<NDIM> > var;
+            boost::shared_ptr<Variable > var;
             var_db->mapIndexToVariable(data_idx, var);
 #if !defined(NDEBUG)
             TBOX_ASSERT(var);
 #endif
-            Pointer<CoarsenOperator<NDIM> > coarsen_op =
+            boost::shared_ptr<CoarsenOperator > coarsen_op =
                 d_grid_geom->lookupCoarsenOperator(var, coarsen_op_name);
 #if !defined(NDEBUG)
             TBOX_ASSERT(coarsen_op);
@@ -258,20 +258,20 @@ EdgeDataSynchronization::resetTransactionComponents(
     // Reset cached refine algorithms and schedules.
     for (unsigned int axis = 0; axis < NDIM; ++axis)
     {
-        d_refine_alg[axis] = new RefineAlgorithm<NDIM>();
+        d_refine_alg[axis] = new RefineAlgorithm();
         for (unsigned int comp_idx = 0; comp_idx < d_transaction_comps.size(); ++comp_idx)
         {
             const int data_idx = d_transaction_comps[comp_idx].d_data_idx;
-            Pointer<Variable<NDIM> > var;
+            boost::shared_ptr<Variable > var;
             var_db->mapIndexToVariable(data_idx, var);
-            Pointer<EdgeVariable<NDIM,double> > ec_var = var;
+            boost::shared_ptr<EdgeVariable<double> > ec_var = var;
             if (!ec_var)
             {
                 TBOX_ERROR("EdgeDataSynchronization::resetTransactionComponents():\n"
                            << "  only double-precision edge-centered data is supported." << std::endl);
             }
-            Pointer<RefineOperator<NDIM> > refine_op = NULL;
-            Pointer<VariableFillPattern<NDIM> > fill_pattern = new EdgeSynchCopyFillPattern(axis);
+            boost::shared_ptr<RefineOperator > refine_op = NULL;
+            boost::shared_ptr<VariableFillPattern > fill_pattern = new EdgeSynchCopyFillPattern(axis);
             d_refine_alg[axis]->registerRefine(data_idx,  // destination
                                                data_idx,  // source
                                                data_idx,  // temporary work space
@@ -316,7 +316,7 @@ EdgeDataSynchronization::synchronizeData(
 #endif
     for (int ln = d_finest_ln; ln >= d_coarsest_ln; --ln)
     {
-        Pointer<PatchLevel<NDIM> > level = d_hierarchy->getPatchLevel(ln);
+        boost::shared_ptr<PatchLevel > level = d_hierarchy->getPatchLevel(ln);
 
         // Synchronize data on the current level.
         for (unsigned int axis = 0; axis < NDIM; ++axis)

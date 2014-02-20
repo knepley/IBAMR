@@ -2,10 +2,10 @@
 include $(top_srcdir)/config/Make-rules
 
 lib_LIBRARIES = libIBTK.a
-if SAMRAI2D_ENABLED
+if IBTK2D_ENABLED
 lib_LIBRARIES += libIBTK2d.a
 endif
-if SAMRAI3D_ENABLED
+if IBTK3D_ENABLED
 lib_LIBRARIES += libIBTK3d.a
 endif
 

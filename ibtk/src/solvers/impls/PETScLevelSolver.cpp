@@ -39,18 +39,18 @@
 
 #include "IBTK_config.h"
 #include "PETScLevelSolver.h"
-#include "PatchLevel.h"
-#include "SAMRAIVectorReal.h"
-#include "SAMRAI_config.h"
+#include "SAMRAI/hier/PatchLevel.h"
+#include "SAMRAI/solv/SAMRAIVectorReal.h"
+#include "SAMRAI/SAMRAI_config.h"
 #include "ibtk/IBTK_CHKERRQ.h"
 #include "ibtk/ibtk_utilities.h"
 #include "ibtk/namespaces.h" // IWYU pragma: keep
 #include "petscsys.h"
-#include "tbox/Database.h"
-#include "tbox/PIO.h"
-#include "tbox/Timer.h"
-#include "tbox/TimerManager.h"
-#include "tbox/Utilities.h"
+#include "SAMRAI/tbox/Database.h"
+#include "SAMRAI/tbox/PIO.h"
+#include "SAMRAI/tbox/Timer.h"
+#include "SAMRAI/tbox/TimerManager.h"
+#include "SAMRAI/tbox/Utilities.h"
 
 /////////////////////////////// NAMESPACE ////////////////////////////////////
 
@@ -61,9 +61,9 @@ namespace IBTK
 namespace
 {
 // Timers.
-static Timer* t_solve_system;
-static Timer* t_initialize_solver_state;
-static Timer* t_deallocate_solver_state;
+static boost::shared_ptr<Timer> t_solve_system;
+static boost::shared_ptr<Timer> t_initialize_solver_state;
+static boost::shared_ptr<Timer> t_deallocate_solver_state;
 
 // Number of ghosts cells used for each variable quantity.
 static const int CELLG = 1;
@@ -127,7 +127,7 @@ PETScLevelSolver::setOptionsPrefix(
 void
 PETScLevelSolver::setNullspace(
     bool contains_constant_vec,
-    const std::vector<Pointer<SAMRAIVectorReal<NDIM,double> > >& nullspace_basis_vecs)
+    const std::vector<boost::shared_ptr<SAMRAIVectorReal<double> > >& nullspace_basis_vecs)
 {
     LinearSolver::setNullspace(contains_constant_vec, nullspace_basis_vecs);
     if (d_is_initialized) setupNullspace();
@@ -136,8 +136,8 @@ PETScLevelSolver::setNullspace(
 
 bool
 PETScLevelSolver::solveSystem(
-    SAMRAIVectorReal<NDIM,double>& x,
-    SAMRAIVectorReal<NDIM,double>& b)
+    SAMRAIVectorReal<double>& x,
+    SAMRAIVectorReal<double>& b)
 {
     IBTK_TIMER_START(t_solve_system);
 
@@ -154,7 +154,7 @@ PETScLevelSolver::solveSystem(
     ierr = KSPSetInitialGuessNonzero(d_petsc_ksp, d_initial_guess_nonzero ? PETSC_TRUE : PETSC_FALSE); IBTK_CHKERRQ(ierr);
 
     // Solve the system.
-    Pointer<PatchLevel<NDIM> > patch_level = d_hierarchy->getPatchLevel(d_level_num);
+    boost::shared_ptr<PatchLevel > patch_level = d_hierarchy->getPatchLevel(d_level_num);
     setupKSPVecs(d_petsc_x, d_petsc_b, x, b, patch_level);
     ierr = KSPSolve(d_petsc_ksp, d_petsc_b, d_petsc_x); IBTK_CHKERRQ(ierr);
     copyFromPETScVec(d_petsc_x, x, patch_level);
@@ -179,8 +179,8 @@ PETScLevelSolver::solveSystem(
 
 void
 PETScLevelSolver::initializeSolverState(
-    const SAMRAIVectorReal<NDIM,double>& x,
-    const SAMRAIVectorReal<NDIM,double>& b)
+    const SAMRAIVectorReal<double>& x,
+    const SAMRAIVectorReal<double>& b)
 {
     IBTK_TIMER_START(t_initialize_solver_state);
 
@@ -192,7 +192,7 @@ PETScLevelSolver::initializeSolverState(
                    << "  vectors must have the same number of components" << std::endl);
     }
 
-    const Pointer<PatchHierarchy<NDIM> >& patch_hierarchy = x.getPatchHierarchy();
+    const boost::shared_ptr<PatchHierarchy >& patch_hierarchy = x.getPatchHierarchy();
     if (patch_hierarchy != b.getPatchHierarchy())
     {
         TBOX_ERROR(d_object_name << "::initializeSolverState()\n"
@@ -311,7 +311,7 @@ PETScLevelSolver::deallocateSolverState()
 
 void
 PETScLevelSolver::init(
-    Pointer<Database> input_db,
+    boost::shared_ptr<Database> input_db,
     const std::string& default_options_prefix)
 {
     d_options_prefix = default_options_prefix;
@@ -332,7 +332,7 @@ void
 PETScLevelSolver::setupNullspace()
 {
     int ierr;
-    Pointer<PatchLevel<NDIM> > patch_level = d_hierarchy->getPatchLevel(d_level_num);
+    boost::shared_ptr<PatchLevel > patch_level = d_hierarchy->getPatchLevel(d_level_num);
     std::vector<Vec> petsc_nullspace_basis_vecs(d_nullspace_basis_vecs.size());
     for (unsigned k = 0; k < d_nullspace_basis_vecs.size(); ++k)
     {

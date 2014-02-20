@@ -36,18 +36,18 @@
 
 #include "CartSideDoubleCubicCoarsen.h"
 #include "IBTK_config.h"
-#include "Index.h"
-#include "Patch.h"
-#include "SAMRAI_config.h"
-#include "SideData.h"
-#include "SideVariable.h"
+#include "SAMRAI/hier/Index.h"
+#include "SAMRAI/hier/Patch.h"
+#include "SAMRAI/SAMRAI_config.h"
+#include "SAMRAI/pdat/SideData.h"
+#include "SAMRAI/pdat/SideVariable.h"
 #include "ibtk/ibtk_utilities.h"
 #include "ibtk/namespaces.h" // IWYU pragma: keep
-#include "tbox/Utilities.h"
+#include "SAMRAI/tbox/Utilities.h"
 
 namespace SAMRAI {
 namespace hier {
-template <int DIM> class Variable;
+class Variable;
 }  // namespace hier
 }  // namespace SAMRAI
 
@@ -118,10 +118,10 @@ CartSideDoubleCubicCoarsen::~CartSideDoubleCubicCoarsen()
 
 bool
 CartSideDoubleCubicCoarsen::findCoarsenOperator(
-    const Pointer<Variable<NDIM> >& var,
+    const boost::shared_ptr<Variable >& var,
     const std::string &op_name) const
 {
-    Pointer<SideVariable<NDIM,double> > sc_var = var;
+    boost::shared_ptr<SideVariable<double> > sc_var = var;
     return (sc_var && op_name == s_op_name);
 }// findCoarsenOperator
 
@@ -137,7 +137,7 @@ CartSideDoubleCubicCoarsen::getOperatorPriority() const
     return COARSEN_OP_PRIORITY;
 }// getOperatorPriority
 
-IntVector<NDIM>
+IntVector
 CartSideDoubleCubicCoarsen::getStencilWidth() const
 {
     return d_weighted_average_coarsen_op.getStencilWidth();
@@ -145,12 +145,12 @@ CartSideDoubleCubicCoarsen::getStencilWidth() const
 
 void
 CartSideDoubleCubicCoarsen::coarsen(
-    Patch<NDIM>& coarse,
-    const Patch<NDIM>& fine,
+    Patch& coarse,
+    const Patch& fine,
     const int dst_component,
     const int src_component,
-    const Box<NDIM>& coarse_box,
-    const IntVector<NDIM>& ratio) const
+    const Box& coarse_box,
+    const IntVector& ratio) const
 {
     if (ratio.min() < 4)
     {
@@ -162,8 +162,8 @@ CartSideDoubleCubicCoarsen::coarsen(
         d_weighted_average_coarsen_op.coarsen(coarse, fine, dst_component, src_component, coarse_box, ratio);
         return;
     }
-    Pointer<SideData<NDIM,double> > cdata = coarse.getPatchData(dst_component);
-    Pointer<SideData<NDIM,double> > fdata = fine  .getPatchData(src_component);
+    boost::shared_ptr<SideData<double> > cdata = coarse.getPatchData(dst_component);
+    boost::shared_ptr<SideData<double> > fdata = fine  .getPatchData(src_component);
     const int U_fine_ghosts = (fdata->getGhostCellWidth()).max();
     const int U_crse_ghosts = (cdata->getGhostCellWidth()).max();
 #if !defined(NDEBUG)
@@ -190,19 +190,19 @@ CartSideDoubleCubicCoarsen::coarsen(
 #if !defined(NDEBUG)
     TBOX_ASSERT(data_depth == fdata->getDepth());
 #endif
-    const Box<NDIM>& patch_box_fine = fine.getBox();
-    const Box<NDIM>& patch_box_crse = coarse.getBox();
+    const Box& patch_box_fine = fine.getBox();
+    const Box& patch_box_crse = coarse.getBox();
     for (int depth = 0; depth < data_depth; ++depth)
     {
-        double* const U_crse0 = cdata->getPointer(0,depth);
-        double* const U_crse1 = cdata->getPointer(1,depth);
+        double* const U_crse0 = cdata->getboost::shared_ptr(0,depth);
+        double* const U_crse1 = cdata->getboost::shared_ptr(1,depth);
 #if (NDIM == 3)
-        double* const U_crse2 = cdata->getPointer(2,depth);
+        double* const U_crse2 = cdata->getboost::shared_ptr(2,depth);
 #endif
-        const double* const U_fine0 = fdata->getPointer(0,depth);
-        const double* const U_fine1 = fdata->getPointer(1,depth);
+        const double* const U_fine0 = fdata->getboost::shared_ptr(0,depth);
+        const double* const U_fine1 = fdata->getboost::shared_ptr(1,depth);
 #if (NDIM == 3)
-        const double* const U_fine2 = fdata->getPointer(2,depth);
+        const double* const U_fine2 = fdata->getboost::shared_ptr(2,depth);
 #endif
         SC_CUBIC_COARSEN_FC(
             U_crse0, U_crse1,

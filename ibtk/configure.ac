@@ -52,6 +52,27 @@ CONFIGURE_DOXYGEN
 CONFIGURE_DOT
 
 ###########################################################################
+# Whether to build 2D and/or 3D libraries.
+###########################################################################
+AC_ARG_ENABLE([2d],
+  AS_HELP_STRING(--enable-2d,enable optional support for two-dimensional IBTK objects @<:@default=yes@:>@),
+                 [case "$enableval" in
+                    yes)  IBTK2D_ENABLED=yes ;;
+                    no)   IBTK2D_ENABLED=no ;;
+                    *)    AC_MSG_ERROR(--enable-2d=$enableval is invalid; choices are "yes" and "no") ;;
+                  esac],[IBTK2D_ENABLED=yes])
+AM_CONDITIONAL([IBTK2D_ENABLED],[test "$IBTK2D_ENABLED" = yes])
+
+AC_ARG_ENABLE([3d],
+  AS_HELP_STRING(--enable-3d,enable optional support for two-dimensional IBTK objects @<:@default=yes@:>@),
+                 [case "$enableval" in
+                    yes)  IBTK3D_ENABLED=yes ;;
+                    no)   IBTK3D_ENABLED=no ;;
+                    *)    AC_MSG_ERROR(--enable-3d=$enableval is invalid; choices are "yes" and "no") ;;
+                  esac],[IBTK3D_ENABLED=yes])
+AM_CONDITIONAL([IBTK3D_ENABLED],[test "$IBTK3D_ENABLED" = yes])
+
+###########################################################################
 # Checks for optional and required third-party libraries.
 ###########################################################################
 PACKAGE_INITIALIZE_ENVIRONMENT

@@ -35,12 +35,12 @@
 
 /////////////////////////////// INCLUDES /////////////////////////////////////
 
-#include "SAMRAIVectorReal.h"
+#include "SAMRAI/solv/SAMRAIVectorReal.h"
 #include "ibtk/GeneralOperator.h"
 #include "ibtk/GeneralSolver.h"
 #include "ibtk/JacobianOperator.h"
 #include "ibtk/KrylovLinearSolver.h"
-#include "tbox/Pointer.h"
+
 
 namespace IBTK {
 class HierarchyMathOps;
@@ -75,7 +75,7 @@ public:
      */
     void
     setHierarchyMathOps(
-        SAMRAI::tbox::Pointer<HierarchyMathOps> hier_math_ops);
+        boost::shared_ptr<HierarchyMathOps> hier_math_ops);
 
     /*!
      * \name General-purpose solver functionality.
@@ -116,12 +116,12 @@ public:
      */
     virtual void
     setOperator(
-        SAMRAI::tbox::Pointer<GeneralOperator> op);
+        boost::shared_ptr<GeneralOperator> op);
 
     /*!
      * \brief Retrieve the nonlinear operator \f$F[x]\f$ used by the solver.
      */
-    virtual SAMRAI::tbox::Pointer<GeneralOperator>
+    virtual boost::shared_ptr<GeneralOperator>
     getOperator() const;
 
     /*!
@@ -130,7 +130,7 @@ public:
      * \note Implementations of this member function are permitted to return a
      * NULL pointer if the solver is not initialized.
      */
-    virtual SAMRAI::tbox::Pointer<SAMRAI::solv::SAMRAIVectorReal<NDIM,double> >
+    virtual boost::shared_ptr<SAMRAI::solv::SAMRAIVectorReal<double> >
     getSolutionVector() const = 0;
 
     /*!
@@ -140,7 +140,7 @@ public:
      * \note Implementations of this member function are permitted to return a
      * NULL pointer if the solver is not initialized.
      */
-    virtual SAMRAI::tbox::Pointer<SAMRAI::solv::SAMRAIVectorReal<NDIM,double> >
+    virtual boost::shared_ptr<SAMRAI::solv::SAMRAIVectorReal<double> >
     getFunctionVector() const = 0;
 
     /*!
@@ -153,20 +153,20 @@ public:
      */
     virtual void
     setJacobian(
-        SAMRAI::tbox::Pointer<JacobianOperator> J);
+        boost::shared_ptr<JacobianOperator> J);
 
     /*!
      * \brief Retrieve the Jacobian operator \f$J[x] = F'[x]\f$ used by the
      * solver.
      */
-    virtual SAMRAI::tbox::Pointer<JacobianOperator>
+    virtual boost::shared_ptr<JacobianOperator>
     getJacobian() const;
 
     /*!
      * \brief Retrieve the Krylov linear solver used in computing Newton step
      * directions.
      */
-    virtual SAMRAI::tbox::Pointer<KrylovLinearSolver>
+    virtual boost::shared_ptr<KrylovLinearSolver>
     getLinearSolver() const;
 
     //\}
@@ -222,10 +222,10 @@ public:
 
 protected:
     // Solver components.
-    SAMRAI::tbox::Pointer<GeneralOperator>    d_F;
-    SAMRAI::tbox::Pointer<JacobianOperator>   d_J;
-    SAMRAI::tbox::Pointer<KrylovLinearSolver> d_krylov_solver;
-    SAMRAI::tbox::Pointer<SAMRAI::solv::SAMRAIVectorReal<NDIM,double> > d_x, d_b, d_r;
+    boost::shared_ptr<GeneralOperator>    d_F;
+    boost::shared_ptr<JacobianOperator>   d_J;
+    boost::shared_ptr<KrylovLinearSolver> d_krylov_solver;
+    boost::shared_ptr<SAMRAI::solv::SAMRAIVectorReal<double> > d_x, d_b, d_r;
 
     // Solver parameters.
     int d_max_evaluations;

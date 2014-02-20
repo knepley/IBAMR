@@ -35,12 +35,12 @@
 #include <ostream>
 
 #include "CartGridFunction.h"
-#include "Patch.h"
-#include "PatchHierarchy.h"
-#include "SAMRAI_config.h"
-#include "Variable.h"
+#include "SAMRAI/hier/Patch.h"
+#include "SAMRAI/hier/PatchHierarchy.h"
+#include "SAMRAI/SAMRAI_config.h"
+#include "SAMRAI/hier/Variable.h"
 #include "ibtk/namespaces.h" // IWYU pragma: keep
-#include "tbox/Utilities.h"
+#include "SAMRAI/tbox/Utilities.h"
 
 /////////////////////////////// NAMESPACE ////////////////////////////////////
 
@@ -67,8 +67,8 @@ CartGridFunction::~CartGridFunction()
 void
 CartGridFunction::setDataOnPatchHierarchy(
     const int data_idx,
-    Pointer<Variable<NDIM> > var,
-    Pointer<PatchHierarchy<NDIM> > hierarchy,
+    boost::shared_ptr<Variable > var,
+    boost::shared_ptr<PatchHierarchy > hierarchy,
     const double data_time,
     const bool initial_time,
     const int coarsest_ln_in,
@@ -97,15 +97,15 @@ CartGridFunction::setDataOnPatchHierarchy(
 void
 CartGridFunction::setDataOnPatchLevel(
     const int data_idx,
-    Pointer<Variable<NDIM> > var,
-    Pointer<PatchLevel<NDIM> > level,
+    boost::shared_ptr<Variable > var,
+    boost::shared_ptr<PatchLevel > level,
     const double data_time,
     const bool initial_time)
 {
 #if !defined(NDEBUG)
     TBOX_ASSERT(level);
 #endif
-    for (PatchLevel<NDIM>::Iterator p(level); p; p++)
+    for (PatchLevel::Iterator p(level); p; p++)
     {
         setDataOnPatch(
             data_idx, var, level->getPatch(p()), data_time, initial_time, level);

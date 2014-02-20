@@ -34,7 +34,7 @@
 
 #include "LSetDataIterator.h"
 #include "ibtk/namespaces.h" // IWYU pragma: keep
-#include "tbox/Pointer.h"
+
 
 namespace IBTK {
 class LMarker;
@@ -61,10 +61,10 @@ namespace IBTK
 /////////////////////////////// TEMPLATE INSTANTIATION ///////////////////////
 
 
-template class Pointer<IBTK::LSetDataIterator<IBTK::LMarker> >;
+template class boost::shared_ptr<IBTK::LSetDataIterator<IBTK::LMarker> >;
 
-template class Pointer<IBTK::LSetDataIterator<IBTK::LNode> >;
+template class boost::shared_ptr<IBTK::LSetDataIterator<IBTK::LNode> >;
 
-template class Pointer<IBTK::LSetDataIterator<IBTK::LNodeIndex> >;
+template class boost::shared_ptr<IBTK::LSetDataIterator<IBTK::LNodeIndex> >;
 
 //////////////////////////////////////////////////////////////////////////////

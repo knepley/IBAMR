@@ -36,18 +36,18 @@
 #include <utility>
 #include <vector>
 
-#include "IntVector.h"
+#include "SAMRAI/hier/IntVector.h"
 #include "ParallelMap.h"
-#include "SAMRAI_config.h"
+#include "SAMRAI/SAMRAI_config.h"
 #include "ibtk/FixedSizedStream.h"
 #include "ibtk/FixedSizedStream-inl.h"
 #include "ibtk/Streamable.h"
 #include "ibtk/StreamableManager.h"
 #include "ibtk/StreamableManager-inl.h"
 #include "ibtk/namespaces.h" // IWYU pragma: keep
-#include "tbox/AbstractStream.h"
-#include "tbox/SAMRAI_MPI.h"
-#include "tbox/Utilities.h"
+#include "SAMRAI/tbox/AbstractStream.h"
+#include "SAMRAI/tbox/SAMRAI_MPI.h"
+#include "SAMRAI/tbox/Utilities.h"
 
 /////////////////////////////// NAMESPACE ////////////////////////////////////
 
@@ -98,7 +98,7 @@ ParallelMap::operator=(
 void
 ParallelMap::addItem(
     const int key,
-    const tbox::Pointer<Streamable> item)
+    const boost::shared_ptr<Streamable> item)
 {
     d_pending_additions.insert(std::make_pair(key,item));
     return;
@@ -132,8 +132,8 @@ ParallelMap::communicateData()
         // Get the local values to send and determine the amount of data to be
         // broadcast by each process.
         std::vector<int> keys_to_send;
-        std::vector<tbox::Pointer<Streamable> > data_items_to_send;
-        for (std::map<int,tbox::Pointer<Streamable> >::const_iterator cit = d_pending_additions.begin(); cit != d_pending_additions.end(); ++cit)
+        std::vector<boost::shared_ptr<Streamable> > data_items_to_send;
+        for (std::map<int,boost::shared_ptr<Streamable> >::const_iterator cit = d_pending_additions.begin(); cit != d_pending_additions.end(); ++cit)
         {
             keys_to_send.push_back(cit->first);
             data_items_to_send.push_back(cit->second);
@@ -176,8 +176,8 @@ ParallelMap::communicateData()
                 FixedSizedStream stream(&buffer[0], data_size);
                 std::vector<int> keys_received(num_keys);
                 stream.unpack(&keys_received[0], num_keys);
-                std::vector<tbox::Pointer<Streamable> > data_items_received;
-                hier::IntVector<NDIM> offset = 0;
+                std::vector<boost::shared_ptr<Streamable> > data_items_received;
+                hier::IntVector offset = 0;
                 streamable_manager->unpackStream(stream, offset, data_items_received);
 #if !defined(NDEBUG)
                 TBOX_ASSERT(keys_received.size() == data_items_received.size());
@@ -237,7 +237,7 @@ ParallelMap::communicateData()
     return;
 }// communicateData
 
-const std::map<int,SAMRAI::tbox::Pointer<Streamable> >&
+const std::map<int,boost::shared_ptr<Streamable> >&
 ParallelMap::getMap() const
 {
     return d_map;

@@ -37,7 +37,7 @@
 
 #include <string>
 
-#include "Variable.h"
+#include "SAMRAI/hier/Variable.h"
 
 /////////////////////////////// CLASS DEFINITION /////////////////////////////
 
@@ -49,7 +49,7 @@ namespace IBTK
  */
 template<class T>
 class LSetVariable
-    : public SAMRAI::hier::Variable<NDIM>
+    : public SAMRAI::hier::Variable
 {
 public:
     /*!

@@ -35,16 +35,16 @@
 #include <ostream>
 
 #include "RobinPhysBdryPatchStrategy.h"
-#include "SAMRAI_config.h"
+#include "SAMRAI/SAMRAI_config.h"
 #include "ibtk/namespaces.h" // IWYU pragma: keep
-#include "tbox/Utilities.h"
+#include "SAMRAI/tbox/Utilities.h"
 
 namespace SAMRAI {
 namespace hier {
-template <int DIM> class Patch;
+class Patch;
 }  // namespace hier
 namespace solv {
-template <int DIM> class RobinBcCoefStrategy;
+class RobinBcCoefStrategy;
 }  // namespace solv
 }  // namespace SAMRAI
 
@@ -109,15 +109,15 @@ RobinPhysBdryPatchStrategy::setPatchDataIndices(
 
 void
 RobinPhysBdryPatchStrategy::setPhysicalBcCoef(
-    RobinBcCoefStrategy<NDIM>* const bc_coef)
+    boost::shared_ptr<RobinBcCoefStrategy> const bc_coef)
 {
-    setPhysicalBcCoefs(std::vector<RobinBcCoefStrategy<NDIM>*>(1,bc_coef));
+    setPhysicalBcCoefs(std::vector<boost::shared_ptr<RobinBcCoefStrategy> >(1,bc_coef));
     return;
 }// setPhysicalBcCoef
 
 void
 RobinPhysBdryPatchStrategy::setPhysicalBcCoefs(
-    const std::vector<RobinBcCoefStrategy<NDIM>*>& bc_coefs)
+    const std::vector<boost::shared_ptr<RobinBcCoefStrategy> >& bc_coefs)
 {
 #if !defined(NDEBUG)
     for (unsigned int l = 0; l < bc_coefs.size(); ++l)
@@ -145,10 +145,10 @@ RobinPhysBdryPatchStrategy::getHomogeneousBc() const
 
 void
 RobinPhysBdryPatchStrategy::preprocessRefine(
-    Patch<NDIM>& /*fine*/,
-    const Patch<NDIM>& /*coarse*/,
-    const Box<NDIM>& /*fine_box*/,
-    const IntVector<NDIM>& /*ratio*/)
+    Patch& /*fine*/,
+    const Patch& /*coarse*/,
+    const Box& /*fine_box*/,
+    const IntVector& /*ratio*/)
 {
     // intentionally blank
     return;
@@ -156,10 +156,10 @@ RobinPhysBdryPatchStrategy::preprocessRefine(
 
 void
 RobinPhysBdryPatchStrategy::postprocessRefine(
-    Patch<NDIM>& /*fine*/,
-    const Patch<NDIM>& /*coarse*/,
-    const Box<NDIM>& /*fine_box*/,
-    const IntVector<NDIM>& /*ratio*/)
+    Patch& /*fine*/,
+    const Patch& /*coarse*/,
+    const Box& /*fine_box*/,
+    const IntVector& /*ratio*/)
 {
     // intentionally blank
     return;
@@ -167,9 +167,9 @@ RobinPhysBdryPatchStrategy::postprocessRefine(
 
 void
 RobinPhysBdryPatchStrategy::accumulateFromPhysicalBoundaryData(
-    Patch<NDIM>& /*patch*/,
+    Patch& /*patch*/,
     double /*fill_time*/,
-    const IntVector<NDIM>& /*ghost_width_to_fill*/)
+    const IntVector& /*ghost_width_to_fill*/)
 {
     TBOX_ERROR("RobinPhysBdryPatchStrategy::accumulateFromPhysicalBoundaryData(): unimplemented\n");
     return;

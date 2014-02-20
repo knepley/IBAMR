@@ -37,14 +37,14 @@
 
 #include <string>
 
-#include "tbox/Pointer.h"
+
 
 namespace IBTK {
 class LData;
 }  // namespace IBTK
 namespace SAMRAI {
 namespace hier {
-template <int DIM> class PatchHierarchy;
+class PatchHierarchy;
 }  // namespace hier
 }  // namespace SAMRAI
 
@@ -64,7 +64,7 @@ public:
     static bool
     checkCellDataForNaNs(
         int patch_data_idx,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy,
+        boost::shared_ptr<SAMRAI::hier::PatchHierarchy > hierarchy,
         bool interior_only=true,
         int coarsest_ln=-1,
         int finest_ln=-1);
@@ -75,7 +75,7 @@ public:
     static bool
     checkFaceDataForNaNs(
         int patch_data_idx,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy,
+        boost::shared_ptr<SAMRAI::hier::PatchHierarchy > hierarchy,
         bool interior_only=true,
         int coarsest_ln=-1,
         int finest_ln=-1);
@@ -86,7 +86,7 @@ public:
     static bool
     checkNodeDataForNaNs(
         int patch_data_idx,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy,
+        boost::shared_ptr<SAMRAI::hier::PatchHierarchy > hierarchy,
         bool interior_only=true,
         int coarsest_ln=-1,
         int finest_ln=-1);
@@ -97,7 +97,7 @@ public:
     static bool
     checkSideDataForNaNs(
         int patch_data_idx,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy,
+        boost::shared_ptr<SAMRAI::hier::PatchHierarchy > hierarchy,
         bool interior_only=true,
         int coarsest_ln=-1,
         int finest_ln=-1);
@@ -108,7 +108,7 @@ public:
     static void
     saveCellData(
         int patch_data_idx,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy,
+        boost::shared_ptr<SAMRAI::hier::PatchHierarchy > hierarchy,
         const std::string& filename,
         const std::string& dirname);
 
@@ -118,7 +118,7 @@ public:
     static void
     saveFaceData(
         int patch_data_idx,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy,
+        boost::shared_ptr<SAMRAI::hier::PatchHierarchy > hierarchy,
         const std::string& filename,
         const std::string& dirname);
 
@@ -128,7 +128,7 @@ public:
     static void
     saveNodeData(
         int patch_data_idx,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy,
+        boost::shared_ptr<SAMRAI::hier::PatchHierarchy > hierarchy,
         const std::string& filename,
         const std::string& dirname);
 
@@ -138,7 +138,7 @@ public:
     static void
     saveSideData(
         int patch_data_idx,
-        SAMRAI::tbox::Pointer<SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy,
+        boost::shared_ptr<SAMRAI::hier::PatchHierarchy > hierarchy,
         const std::string& filename,
         const std::string& dirname);
 
@@ -147,7 +147,7 @@ public:
      */
     static void
     saveLagrangianData(
-        SAMRAI::tbox::Pointer<LData> lag_data,
+        boost::shared_ptr<LData> lag_data,
         bool save_ghost_nodes,
         const std::string& filename,
         const std::string& dirname);

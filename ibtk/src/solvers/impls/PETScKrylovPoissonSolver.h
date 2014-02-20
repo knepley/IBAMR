@@ -39,7 +39,7 @@
 
 #include "ibtk/KrylovLinearSolverPoissonSolverInterface.h"
 #include "ibtk/PETScKrylovLinearSolver.h"
-#include "tbox/Pointer.h"
+
 
 namespace SAMRAI {
 namespace tbox {
@@ -66,7 +66,7 @@ public:
      */
     PETScKrylovPoissonSolver(
         const std::string& object_name,
-        SAMRAI::tbox::Pointer<SAMRAI::tbox::Database> input_db,
+        boost::shared_ptr<SAMRAI::tbox::Database> input_db,
         const std::string& default_options_prefix);
 
     /*!

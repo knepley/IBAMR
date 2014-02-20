@@ -36,7 +36,7 @@
 /////////////////////////////// INCLUDES /////////////////////////////////////
 
 #include "ibtk/LNodeIndex.h"
-#include "tbox/AbstractStream.h"
+#include "SAMRAI/tbox/AbstractStream.h"
 
 /////////////////////////////// NAMESPACE ////////////////////////////////////
 
@@ -49,7 +49,7 @@ LNodeIndex::LNodeIndex(
     const int lagrangian_nidx,
     const int global_petsc_nidx,
     const int local_petsc_nidx,
-    const SAMRAI::hier::IntVector<NDIM>& periodic_offset,
+    const SAMRAI::hier::IntVector& periodic_offset,
     const Vector& periodic_displacement)
     : d_lagrangian_nidx(lagrangian_nidx),
       d_global_petsc_nidx(global_petsc_nidx),
@@ -77,7 +77,7 @@ LNodeIndex::LNodeIndex(
 inline
 LNodeIndex::LNodeIndex(
     SAMRAI::tbox::AbstractStream& stream,
-    const SAMRAI::hier::IntVector<NDIM>& offset)
+    const SAMRAI::hier::IntVector& offset)
     : d_lagrangian_nidx(-1),
       d_global_petsc_nidx(-1),
       d_local_petsc_nidx(-1),
@@ -150,7 +150,7 @@ LNodeIndex::setLocalPETScIndex(
 
 inline void
 LNodeIndex::registerPeriodicShift(
-    const SAMRAI::hier::IntVector<NDIM>& offset,
+    const SAMRAI::hier::IntVector& offset,
     const Vector& displacement)
 {
     d_offset += offset;
@@ -158,7 +158,7 @@ LNodeIndex::registerPeriodicShift(
     return;
 }// registerPeriodicShift
 
-inline const SAMRAI::hier::IntVector<NDIM>&
+inline const SAMRAI::hier::IntVector&
 LNodeIndex::getPeriodicOffset() const
 {
     return d_offset;
@@ -172,8 +172,8 @@ LNodeIndex::getPeriodicDisplacement() const
 
 inline void
 LNodeIndex::copySourceItem(
-    const SAMRAI::hier::Index<NDIM>& /*src_index*/,
-    const SAMRAI::hier::IntVector<NDIM>& /*src_offset*/,
+    const SAMRAI::hier::Index& /*src_index*/,
+    const SAMRAI::hier::IntVector& /*src_offset*/,
     const LNodeIndex& src_item)
 {
     assignThatToThis(src_item);
@@ -201,7 +201,7 @@ LNodeIndex::packStream(
 inline void
 LNodeIndex::unpackStream(
     SAMRAI::tbox::AbstractStream& stream,
-    const SAMRAI::hier::IntVector<NDIM>& /*offset*/)
+    const SAMRAI::hier::IntVector& /*offset*/)
 {
     stream.unpack(&d_lagrangian_nidx, 1);
     stream.unpack(&d_global_petsc_nidx, 1);

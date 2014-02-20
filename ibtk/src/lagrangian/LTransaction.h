@@ -47,7 +47,7 @@
 #include "ibtk/LNodeIndex-inl.h"
 #include "ibtk/LNode-inl.h"
 #include "ibtk/LSet.h"
-#include "tbox/Transaction.h"
+#include "SAMRAI/tbox/Transaction.h"
 
 namespace SAMRAI {
 namespace tbox {

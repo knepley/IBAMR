@@ -35,15 +35,15 @@
 
 /////////////////////////////// INCLUDES /////////////////////////////////////
 
-#include "tbox/DescribedClass.h"
-#include "tbox/Pointer.h"
+
+
 
 namespace IBTK {
 class Streamable;
 }  // namespace IBTK
 namespace SAMRAI {
 namespace hier {
-template <int DIM> class IntVector;
+class IntVector;
 }  // namespace hier
 namespace tbox {
 class AbstractStream;
@@ -106,10 +106,10 @@ public:
     /*!
      * \brief Build a Streamable object by unpacking data from the data stream.
      */
-    virtual SAMRAI::tbox::Pointer<Streamable>
+    virtual boost::shared_ptr<Streamable>
     unpackStream(
         SAMRAI::tbox::AbstractStream& stream,
-        const SAMRAI::hier::IntVector<NDIM>& offset) = 0;
+        const SAMRAI::hier::IntVector& offset) = 0;
 
 private:
     /*!

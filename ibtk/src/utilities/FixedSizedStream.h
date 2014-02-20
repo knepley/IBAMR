@@ -37,8 +37,8 @@
 
 #include <vector>
 
-#include "tbox/AbstractStream.h"
-#include "tbox/Complex.h"
+#include "SAMRAI/tbox/AbstractStream.h"
+#include "SAMRAI/tbox/Complex.h"
 
 /////////////////////////////// CLASS DEFINITION /////////////////////////////
 
@@ -390,7 +390,7 @@ private:
      * reflect the allocated buffers space.
      */
     void*
-    getPointerAndAdvanceCursor(
+    getboost::shared_ptrAndAdvanceCursor(
         int bytes);
 
     /*!
