@@ -83,12 +83,9 @@ muParserRobinBcCoefs::muParserRobinBcCoefs(
       d_parser_time(new double),
       d_parser_posn(new Point)
 {
-#if !defined(NDEBUG)
     TBOX_ASSERT(!object_name.empty());
     TBOX_ASSERT(input_db);
-#else
-    NULL_USE(object_name);
-#endif
+
     // Read in user-provided constants.
     std::vector<std::string> db_key_names = input_db->getAllKeys();
     for (const auto& name : db_key_names)

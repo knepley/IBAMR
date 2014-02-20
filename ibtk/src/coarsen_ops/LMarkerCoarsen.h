@@ -78,21 +78,6 @@ public:
     //\{
 
     /*!
-     * Return true if the coarsening operation matches the variable and name
-     * string identifier request; false, otherwise.
-     */
-    bool
-    findCoarsenOperator(
-        const boost::shared_ptr<SAMRAI::hier::Variable >& var,
-        const std::string& op_name) const;
-
-    /*!
-     * Return name string identifier of the coarsening operation.
-     */
-    const std::string&
-    getOperatorName() const;
-
-    /*!
      * Return the priority of this operator relative to other coarsening
      * operators.  The SAMRAI transfer routines guarantee that coarsening using
      * operators with lower priority will be performed before those with higher
@@ -108,7 +93,8 @@ public:
      * stencil width requirements for each coarsening operator.
      */
     SAMRAI::hier::IntVector
-    getStencilWidth() const;
+    getStencilWidth(
+        const SAMRAI::tbox::Dimension& dim) const;
 
     /*!
      * Coarsen the source component on the fine patch to the destination

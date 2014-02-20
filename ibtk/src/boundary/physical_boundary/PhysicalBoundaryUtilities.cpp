@@ -132,7 +132,6 @@ PhysicalBoundaryUtilities::isLower(
         return false;
     }
 
-#if (NDIM == 3)
     if (codim == 2)
     {
         if (direction == 0) // x direction
@@ -148,14 +147,8 @@ PhysicalBoundaryUtilities::isLower(
             return (loc == 0 || loc == 1 || loc == 4 || loc == 6);
         }
     }
-    else if (codim == 2)
-    {
-        return false;
-    }
-#endif
 
     TBOX_ERROR("this statement should not be reached!\n");
-
     return false;
 }// isLower
 
@@ -178,7 +171,6 @@ PhysicalBoundaryUtilities::isUpper(
         return false;
     }
 
-#if (NDIM == 3)
     if (codim == 2)
     {
         if (direction == 0) // x direction
@@ -194,14 +186,8 @@ PhysicalBoundaryUtilities::isUpper(
             return (loc == 2 || loc == 3 || loc == 5 || loc == 7);
         }
     }
-    else if (codim == 2)
-    {
-        return false;
-    }
-#endif
 
     TBOX_ERROR("this statement should not be reached!\n");
-
     return false;
 }// isUpper
 
@@ -231,9 +217,8 @@ PhysicalBoundaryUtilities::trimBoundaryCodim1Box(
     const BoundaryBox& bdry_box,
     const Patch& patch)
 {
-#if !defined(NDEBUG)
     TBOX_ASSERT(bdry_box.getBoundaryType() == 1);
-#endif
+
     // Trim a boundary box so it does not stick out past the corners of a patch.
     const Box&     b_box = bdry_box.getBox();
     const Box& patch_box = patch.getBox();
@@ -256,9 +241,8 @@ Box
 PhysicalBoundaryUtilities::makeSideBoundaryCodim1Box(
     const BoundaryBox& bdry_box)
 {
-#if !defined(NDEBUG)
     TBOX_ASSERT(bdry_box.getBoundaryType() == 1);
-#endif
+
     // Make surface box on boundary.
     Box side_bdry_box = bdry_box.getBox();
     const unsigned int location_index = bdry_box.getLocationIndex();

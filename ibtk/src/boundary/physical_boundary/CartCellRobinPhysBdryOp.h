@@ -267,7 +267,6 @@ private:
         const SAMRAI::hier::Patch& patch,
         bool adjoint_op);
 
-#if (NDIM > 2)
     /*!
      * \brief Set the boundary conditions along the co-dimension three boundary.
      */
@@ -278,7 +277,6 @@ private:
         const SAMRAI::hier::IntVector& ghost_width_to_fill,
         const SAMRAI::hier::Patch& patch,
         bool adjoint_op);
-#endif
 };
 }// namespace IBTK
 

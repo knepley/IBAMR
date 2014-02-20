@@ -96,7 +96,8 @@ static const int COARSEN_OP_PRIORITY = 0;
 /////////////////////////////// PUBLIC ///////////////////////////////////////
 
 CartCellDoubleCubicCoarsen::CartCellDoubleCubicCoarsen()
-    : d_weighted_average_coarsen_op()
+    : CoarsenOperator(s_op_name),
+      d_weighted_average_coarsen_op()
 {
     // intentionally blank
     return;
@@ -108,21 +109,6 @@ CartCellDoubleCubicCoarsen::~CartCellDoubleCubicCoarsen()
     return;
 }// ~CartCellDoubleCubicCoarsen
 
-bool
-CartCellDoubleCubicCoarsen::findCoarsenOperator(
-    const boost::shared_ptr<Variable >& var,
-    const std::string &op_name) const
-{
-    boost::shared_ptr<CellVariable<double> > cc_var = var;
-    return (cc_var && op_name == s_op_name);
-}// findCoarsenOperator
-
-const std::string&
-CartCellDoubleCubicCoarsen::getOperatorName() const
-{
-    return s_op_name;
-}// getOperatorName
-
 int
 CartCellDoubleCubicCoarsen::getOperatorPriority() const
 {
@@ -130,9 +116,10 @@ CartCellDoubleCubicCoarsen::getOperatorPriority() const
 }// getOperatorPriority
 
 IntVector
-CartCellDoubleCubicCoarsen::getStencilWidth() const
+CartCellDoubleCubicCoarsen::getStencilWidth(
+    const Dimension& dim) const
 {
-    return d_weighted_average_coarsen_op.getStencilWidth();
+    return d_weighted_average_coarsen_op.getStencilWidth(dim);
 }// getStencilWidth
 
 void
@@ -154,8 +141,8 @@ CartCellDoubleCubicCoarsen::coarsen(
         d_weighted_average_coarsen_op.coarsen(coarse, fine, dst_component, src_component, coarse_box, ratio);
         return;
     }
-    boost::shared_ptr<CellData<double> > cdata = coarse.getPatchData(dst_component);
-    boost::shared_ptr<CellData<double> > fdata = fine  .getPatchData(src_component);
+    auto cdata = BOOST_CAST<CellData<double> >(coarse.getPatchData(dst_component));
+    auto fdata = BOOST_CAST<CellData<double> >(fine  .getPatchData(src_component));
     const int U_fine_ghosts = (fdata->getGhostCellWidth()).max();
     const int U_crse_ghosts = (cdata->getGhostCellWidth()).max();
 #if !defined(NDEBUG)
@@ -179,15 +166,13 @@ CartCellDoubleCubicCoarsen::coarsen(
     }
 #endif
     const int data_depth = cdata->getDepth();
-#if !defined(NDEBUG)
     TBOX_ASSERT(data_depth == fdata->getDepth());
-#endif
     const Box& patch_box_fine = fine.getBox();
     const Box& patch_box_crse = coarse.getBox();
     for (int depth = 0; depth < data_depth; ++depth)
     {
-        double* const U_crse = cdata->getboost::shared_ptr(depth);
-        const double* const U_fine = fdata->getboost::shared_ptr(depth);
+        double* const U_crse = cdata->getPointer(depth);
+        const double* const U_fine = fdata->getPointer(depth);
         CC_CUBIC_COARSEN_FC(
             U_crse, U_crse_ghosts,
             U_fine, U_fine_ghosts,
@@ -201,8 +186,8 @@ CartCellDoubleCubicCoarsen::coarsen(
 #if (NDIM == 3)
             patch_box_fine.lower(2), patch_box_fine.upper(2),
 #endif
-            ratio,
-            coarse_box.lower(), coarse_box.upper());
+            &ratio(0),
+            &coarse_box.lower(0), &coarse_box.upper(0));
     }
     return;
 }// coarsen

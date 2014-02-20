@@ -374,7 +374,7 @@ CartSideDoubleQuadraticCFInterpolation::setPatchHierarchy(
         d_cf_boundary[ln] = boost::make_shared<CoarseFineBoundary>(*d_hierarchy, ln, max_ghost_width);
     }
 
-    boost::shared_ptr<RefineAlgorithm> refine_alg = boost::make_shared<RefineAlgorithm>();
+    boost::shared_ptr<RefineAlgorithm> refine_alg;
     boost::shared_ptr<RefineOperator > refine_op;
     refine_alg->registerRefine(d_sc_indicator_idx, d_sc_indicator_idx, d_sc_indicator_idx, refine_op);
     for (int ln = 0; ln <= finest_level_number; ++ln)
