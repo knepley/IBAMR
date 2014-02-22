@@ -41,14 +41,14 @@
 #include <utility>
 #include <vector>
 
-#include "BasePatchLevel.h"
+#include "SAMRAI/hier/PatchLevel.h"
 #include "SAMRAI/geom/CartesianGridGeometry.h"
 #include "SAMRAI/pdat/CellVariable.h"
 #include "SAMRAI/xfer/CoarsenAlgorithm.h"
 #include "SAMRAI/xfer/CoarsenSchedule.h"
 #include "SAMRAI/hier/ComponentSelector.h"
 #include "SAMRAI/hier/IntVector.h"
-#include "LoadBalancer.h"
+#include "SAMRAI/mesh/LoadBalanceStrategy.h"
 #include "SAMRAI/hier/PatchHierarchy.h"
 #include "SAMRAI/xfer/RefineAlgorithm.h"
 #include "SAMRAI/xfer/RefineSchedule.h"
@@ -142,7 +142,7 @@ public:
         const std::string& name,
         const std::string& default_interp_kernel_fcn,
         const std::string& default_spread_kernel_fcn,
-        const SAMRAI::hier::IntVector& min_ghost_cell_width=SAMRAI::hier::IntVector(0),
+        const SAMRAI::hier::IntVector& min_ghost_cell_width=SAMRAI::hier::IntVector::getZero(SAMRAI::tbox::Dimension(NDIM)),
         bool register_for_restart=true);
 
     /*!
@@ -381,8 +381,8 @@ public:
      * \brief Register a load balancer for non-uniform load balancing.
      */
     void
-    registerLoadBalancer(
-        boost::shared_ptr<SAMRAI::mesh::LoadBalancer > load_balancer,
+    registerLoadBalanceStrategy(
+        boost::shared_ptr<SAMRAI::mesh::LoadBalanceStrategy > load_balancer,
         int workload_data_idx);
 
     /*!
@@ -816,12 +816,12 @@ public:
      */
     void
     initializeLevelData(
-        boost::shared_ptr<SAMRAI::hier::BasePatchHierarchy > hierarchy,
+        const boost::shared_ptr<SAMRAI::hier::PatchHierarchy>& hierarchy,
         int level_number,
         double init_data_time,
         bool can_be_refined,
         bool initial_time,
-        boost::shared_ptr<SAMRAI::hier::BasePatchLevel > old_level=boost::shared_ptr<SAMRAI::hier::BasePatchLevel >(NULL),
+        const boost::shared_ptr<SAMRAI::hier::PatchLevel>& old_level=NULL,
         bool allocate_data=true);
 
     /*!
@@ -841,7 +841,7 @@ public:
      */
     void
     resetHierarchyConfiguration(
-        boost::shared_ptr<SAMRAI::hier::BasePatchHierarchy > hierarchy,
+        const boost::shared_ptr<SAMRAI::hier::PatchHierarchy>& hierarchy,
         int coarsest_ln,
         int finest_ln);
 
@@ -865,7 +865,7 @@ public:
      */
     void
     applyGradientDetector(
-        boost::shared_ptr<SAMRAI::hier::BasePatchHierarchy > hierarchy,
+        const boost::shared_ptr<SAMRAI::hier::PatchHierarchy>& hierarchy,
         int level_number,
         double error_data_time,
         int tag_index,
@@ -878,8 +878,8 @@ public:
      * When assertion checking is active, database pointer must be non-null.
      */
     void
-    putToDatabase(
-        boost::shared_ptr<SAMRAI::tbox::Database> db);
+    putToRestart(
+        const boost::shared_ptr<SAMRAI::tbox::Database>& db);
 
 protected:
     /*!
@@ -1056,7 +1056,7 @@ private:
     /*
      * We cache a pointer to the load balancer.
      */
-    boost::shared_ptr<SAMRAI::mesh::LoadBalancer > d_load_balancer;
+    boost::shared_ptr<SAMRAI::mesh::LoadBalanceStrategy > d_load_balancer;
 
     /*
      * Objects used to specify and initialize the Lagrangian data on the patch

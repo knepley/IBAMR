@@ -601,10 +601,10 @@ public:
      *
      * \note Subclasses should not override the implementation of this function
      * provided by class HierarchyIntegrator.  Instead, they should override the
-     * protected virtual member function putToDatabaseSpecialized().
+     * protected virtual member function putToRestartSpecialized().
      */
     void
-    putToDatabase(
+    putToRestart(
         boost::shared_ptr<SAMRAI::tbox::Database> db);
 
 protected:
@@ -722,7 +722,7 @@ protected:
      * An empty default implementation is provided.
      */
     virtual void
-    putToDatabaseSpecialized(
+    putToRestartSpecialized(
         boost::shared_ptr<SAMRAI::tbox::Database> db);
 
     /*!

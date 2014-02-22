@@ -1976,7 +1976,7 @@ LSiloDataWriter::writePlotData(
 }// writePlotData
 
 void
-LSiloDataWriter::putToDatabase(
+LSiloDataWriter::putToRestart(
     boost::shared_ptr<Database> db)
 {
 #if !defined(NDEBUG)
@@ -2097,7 +2097,7 @@ LSiloDataWriter::putToDatabase(
         }
     }
     return;
-}// putToDatabase
+}// putToRestart
 
 /////////////////////////////// PROTECTED ////////////////////////////////////
 

@@ -920,7 +920,7 @@ HierarchyIntegrator::getHierarchyMathOps() const
 }// HierarchyMathOps
 
 void
-HierarchyIntegrator::putToDatabase(
+HierarchyIntegrator::putToRestart(
     boost::shared_ptr<Database> db)
 {
     db->putInteger("HIERARCHY_INTEGRATOR_VERSION",HIERARCHY_INTEGRATOR_VERSION);
@@ -944,9 +944,9 @@ HierarchyIntegrator::putToDatabase(
     db->putBool("d_enable_logging",d_enable_logging);
     db->putIntegerArray("d_tag_buffer",d_tag_buffer);
     db->putString("d_bdry_extrap_type",d_bdry_extrap_type);
-    putToDatabaseSpecialized(db);
+    putToRestartSpecialized(db);
     return;
-}// putToDatabase
+}// putToRestart
 
 /////////////////////////////// PROTECTED ////////////////////////////////////
 
@@ -1108,12 +1108,12 @@ HierarchyIntegrator::applyGradientDetectorSpecialized(
 }// applyGradientDetectorSpecialized
 
 void
-HierarchyIntegrator::putToDatabaseSpecialized(
+HierarchyIntegrator::putToRestartSpecialized(
     boost::shared_ptr<Database> /*db*/)
 {
     // intentionally blank
     return;
-}// putToDatabaseSpecialized
+}// putToRestartSpecialized
 
 void
 HierarchyIntegrator::executePreprocessIntegrateHierarchyCallbackFcns(

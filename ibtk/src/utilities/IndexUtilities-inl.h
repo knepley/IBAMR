@@ -50,8 +50,9 @@ IndexUtilities::coarsen(
     const SAMRAI::hier::Index& i_fine,
     const SAMRAI::hier::Index& ratio)
 {
-    SAMRAI::hier::Index i_coarse;
-    for (unsigned int d = 0; d < NDIM; ++d)
+    const Dimension& dim = i_fine.getDim();
+    SAMRAI::hier::Index i_coarse(dim);
+    for (unsigned int d = 0; d < dim.getValue(); ++d)
     {
         i_coarse(d) = i_fine(d) < 0 ? (i_fine(d)+1)/ratio(d)-1 : i_fine(d)/ratio(d);
     }

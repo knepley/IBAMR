@@ -277,8 +277,8 @@ LData::resetData(
 }// resetData
 
 void
-LData::putToDatabase(
-    boost::shared_ptr<Database> db)
+LData::putToRestart(
+    const boost::shared_ptr<Database>& db) const
 {
 #if !defined(NDEBUG)
     TBOX_ASSERT(db);
@@ -293,14 +293,30 @@ LData::putToDatabase(
     {
         db->putIntegerArray("d_nonlocal_petsc_indices", &d_nonlocal_petsc_indices[0], num_ghost_nodes);
     }
-    const double* const ghosted_local_vec_array = getGhostedLocalFormVecArray()->data();
     if (num_local_nodes + num_ghost_nodes > 0)
     {
-        db->putDoubleArray("vals", ghosted_local_vec_array, d_depth*(num_local_nodes+num_ghost_nodes));
+        Vec ghosted_local_vec = d_ghosted_local_vec;
+        if (!d_ghosted_local_vec)
+        {
+            int ierr = VecGhostGetLocalForm(d_global_vec, &ghosted_local_vec);  IBTK_CHKERRQ(ierr);
+        }
+        double* ghosted_local_array = d_ghosted_local_array;
+        if (!d_ghosted_local_array)
+        {
+            int ierr = VecGetArray(ghosted_local_vec, &ghosted_local_array);  IBTK_CHKERRQ(ierr);
+        }
+        db->putDoubleArray("vals", ghosted_local_array, d_depth*(num_local_nodes+num_ghost_nodes));
+        if (!d_ghosted_local_array)
+        {
+            int ierr = VecRestoreArray(ghosted_local_vec, &ghosted_local_array);  IBTK_CHKERRQ(ierr);
+        }
+        if (!d_ghosted_local_vec)
+        {
+            int ierr = VecGhostRestoreLocalForm(d_global_vec, &ghosted_local_vec);  IBTK_CHKERRQ(ierr);
+        }        
     }
-    restoreArrays();
     return;
-}// putToDatabase
+}// putToRestart
 
 /////////////////////////////// PROTECTED ////////////////////////////////////
 

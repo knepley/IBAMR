@@ -311,8 +311,8 @@ public:
      * \brief Write out object state to the given database.
      */
     void
-    putToDatabase(
-        boost::shared_ptr<SAMRAI::tbox::Database> db);
+    putToRestart(
+        const boost::shared_ptr<SAMRAI::tbox::Database>& db) const;
 
 private:
     /*!

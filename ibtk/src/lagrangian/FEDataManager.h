@@ -578,7 +578,7 @@ public:
      * When assertion checking is active, database pointer must be non-null.
      */
     void
-    putToDatabase(
+    putToRestart(
         boost::shared_ptr<SAMRAI::tbox::Database> db);
 
 protected:

@@ -282,7 +282,7 @@ LSet<T>::unpackStream(
 
 template<class T>
 inline void
-LSet<T>::putToDatabase(
+LSet<T>::putToRestart(
     boost::shared_ptr<SAMRAI::tbox::Database> database)
 {
     const size_t data_sz = getDataStreamSize();
@@ -292,7 +292,7 @@ LSet<T>::putToDatabase(
     database->putCharArray("data", static_cast<const char*>(stream.getBufferStart()), data_sz);
     database->putIntegerArray("d_offset", d_offset, NDIM);
     return;
-}// putToDatabase
+}// putToRestart
 
 template<class T>
 inline void

@@ -53,10 +53,10 @@ namespace hier {
 class Patch;
 }  // namespace hier
 namespace pdat {
-template <int DIM, class TYPE> class CellData;
-template <int DIM, class TYPE> class NodeData;
-template <int DIM, class TYPE> class SideData;
-template <int DIM, class TYPE> class EdgeData;
+template <class TYPE> class CellData;
+template <class TYPE> class NodeData;
+template <class TYPE> class SideData;
+template <class TYPE> class EdgeData;
 }  // namespace pdat
 namespace tbox {
 class Database;

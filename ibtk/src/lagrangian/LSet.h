@@ -304,7 +304,7 @@ public:
      * \brief Pack data into a database.
      */
     void
-    putToDatabase(
+    putToRestart(
         boost::shared_ptr<SAMRAI::tbox::Database> database);
 
     /*!

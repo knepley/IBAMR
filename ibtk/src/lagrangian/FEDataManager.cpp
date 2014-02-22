@@ -1987,7 +1987,7 @@ FEDataManager::applyGradientDetector(
 }// applyGradientDetector
 
 void
-FEDataManager::putToDatabase(
+FEDataManager::putToRestart(
     boost::shared_ptr<Database> db)
 {
     IBTK_TIMER_START(t_put_to_database);
@@ -1999,7 +1999,7 @@ FEDataManager::putToDatabase(
 
     IBTK_TIMER_STOP(t_put_to_database);
     return;
-}// putToDatabase
+}// putToRestart
 
 /////////////////////////////// PROTECTED ////////////////////////////////////
 
@@ -2064,7 +2064,7 @@ FEDataManager::FEDataManager(
         t_initialize_level_data = TimerManager::getManager()->getTimer("IBTK::FEDataManager::initializeLevelData()");
         t_reset_hierarchy_configuration = TimerManager::getManager()->getTimer("IBTK::FEDataManager::resetHierarchyConfiguration()");
         t_apply_gradient_detector = TimerManager::getManager()->getTimer("IBTK::FEDataManager::applyGradientDetector()");
-        t_put_to_database = TimerManager::getManager()->getTimer("IBTK::FEDataManager::putToDatabase()");
+        t_put_to_database = TimerManager::getManager()->getTimer("IBTK::FEDataManager::putToRestart()");
                  );
     return;
 }// FEDataManager

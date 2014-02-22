@@ -46,8 +46,6 @@
 
 #include "SAMRAI/hier/PatchHierarchy.h"
 #include "SAMRAI/hier/Box.h"
-#include "BoxArray.h"
-#include "BoxList.h"
 #include "SAMRAI/hier/BoxTree.h"
 #include "SAMRAI/geom/CartesianCellDoubleWeightedAverage.h"
 #include "SAMRAI/geom/CartesianPatchGeometry.h"
@@ -2276,7 +2274,7 @@ LDataManager::applyGradientDetector(
 }// applyGradientDetector
 
 void
-LDataManager::putToDatabase(
+LDataManager::putToRestart(
     boost::shared_ptr<Database> db)
 {
     IBTK_TIMER_START(t_put_to_database);
@@ -2327,7 +2325,7 @@ LDataManager::putToDatabase(
         for (std::map<std::string,boost::shared_ptr<LData> >::iterator it = d_lag_mesh_data[level_number].begin(); it != d_lag_mesh_data[level_number].end(); ++it)
         {
             ldata_names.push_back(it->first);
-            it->second->putToDatabase(level_db->putDatabase(ldata_names.back()));
+            it->second->putToRestart(level_db->putDatabase(ldata_names.back()));
         }
         level_db->putInteger("n_ldata_names", ldata_names.size());
         if (!ldata_names.empty())
@@ -2379,7 +2377,7 @@ LDataManager::putToDatabase(
 
     IBTK_TIMER_STOP(t_put_to_database);
     return;
-}// putToDatabase
+}// putToRestart
 
 /////////////////////////////// PROTECTED ////////////////////////////////////
 
@@ -2502,7 +2500,7 @@ LDataManager::LDataManager(
         t_initialize_level_data = TimerManager::getManager()->getTimer("IBTK::LDataManager::initializeLevelData()");
         t_reset_hierarchy_configuration = TimerManager::getManager()->getTimer("IBTK::LDataManager::resetHierarchyConfiguration()");
         t_apply_gradient_detector = TimerManager::getManager()->getTimer("IBTK::LDataManager::applyGradientDetector()");
-        t_put_to_database = TimerManager::getManager()->getTimer("IBTK::LDataManager::putToDatabase()");
+        t_put_to_database = TimerManager::getManager()->getTimer("IBTK::LDataManager::putToRestart()");
         t_begin_nonlocal_data_fill = TimerManager::getManager()->getTimer("IBTK::LDataManager::beginNonlocalDataFill()");
         t_end_nonlocal_data_fill = TimerManager::getManager()->getTimer("IBTK::LDataManager::endNonlocalDataFill()");
         t_compute_node_distribution = TimerManager::getManager()->getTimer("IBTK::LDataManager::computeNodeDistribution()");
