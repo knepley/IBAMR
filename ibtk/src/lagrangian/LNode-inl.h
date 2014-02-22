@@ -38,7 +38,7 @@
 #include "ibtk/LNode.h"
 #include "ibtk/StreamableManager.h"
 #include "ibtk/compiler_hints.h"
-#include "SAMRAI/tbox/AbstractStream.h"
+#include "SAMRAI/tbox/MessageStream.h"
 
 /////////////////////////////// NAMESPACE ////////////////////////////////////
 
@@ -75,7 +75,7 @@ LNode::LNode(
 
 inline
 LNode::LNode(
-    SAMRAI::tbox::AbstractStream& stream,
+    SAMRAI::tbox::MessageStream& stream,
     const SAMRAI::hier::IntVector& offset)
     : LNodeIndex(),
       d_node_data()
@@ -147,7 +147,7 @@ LNode::getNodeDataItem() const
         unsigned int k;
         for (k = 0; k < node_data_sz && !ret_val; ++k)
         {
-            it_val = d_node_data[k];
+            it_val = d_node_data[k].get();
             if (it_val->getStreamableClassID() == T::STREAMABLE_CLASS_ID)
             {
                 ret_val = static_cast<T*>(it_val);
@@ -199,7 +199,7 @@ LNode::getDataStreamSize() const
 
 inline void
 LNode::packStream(
-    SAMRAI::tbox::AbstractStream& stream)
+    SAMRAI::tbox::MessageStream& stream)
 {
     LNodeIndex::packStream(stream);
     StreamableManager::getManager()->packStream(stream, d_node_data);
@@ -208,7 +208,7 @@ LNode::packStream(
 
 inline void
 LNode::unpackStream(
-    SAMRAI::tbox::AbstractStream& stream,
+    SAMRAI::tbox::MessageStream& stream,
     const SAMRAI::hier::IntVector& offset)
 {
     LNodeIndex::unpackStream(stream, offset);
@@ -232,16 +232,14 @@ LNode::assignThatToThis(
 inline void
 LNode::setupNodeDataTypeArray()
 {
-    std::fill(d_node_data_type_arr,d_node_data_type_arr+MAX_SIZE,static_cast<Streamable*>(NULL));
-    Streamable* it_val;
+    std::fill(d_node_data_type_arr,d_node_data_type_arr+MAX_SIZE,nullptr);
     int class_id;
-    for (std::vector<boost::shared_ptr<Streamable> >::const_iterator cit = d_node_data.begin(); cit != d_node_data.end(); ++cit)
+    for (const auto& data_item : d_node_data)
     {
-        it_val = *cit;
-        class_id = it_val->getStreamableClassID();
+        class_id = data_item->getStreamableClassID();
         if (LIKELY(class_id < MAX_SIZE && !d_node_data_type_arr[class_id]))
         {
-            d_node_data_type_arr[class_id] = it_val;
+            d_node_data_type_arr[class_id] = data_item.get();
         }
     }
     return;

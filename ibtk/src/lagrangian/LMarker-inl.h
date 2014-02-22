@@ -36,7 +36,6 @@
 /////////////////////////////// INCLUDES /////////////////////////////////////
 
 #include "ibtk/LMarker.h"
-#include "SAMRAI/tbox/AbstractStream.h"
 
 /////////////////////////////// NAMESPACE ////////////////////////////////////
 
@@ -73,7 +72,7 @@ LMarker::LMarker(
 
 inline
 LMarker::LMarker(
-    SAMRAI::tbox::AbstractStream& stream,
+    SAMRAI::tbox::MessageStream& stream,
     const SAMRAI::hier::IntVector& offset)
     : d_idx(-1),
       d_X(Point::Zero()),
@@ -193,28 +192,29 @@ LMarker::copySourceItem(
 inline size_t
 LMarker::getDataStreamSize() const
 {
-    return (1*SAMRAI::tbox::AbstractStream::sizeofInt() +
-            2*NDIM*SAMRAI::tbox::AbstractStream::sizeofDouble());
+    return SAMRAI::tbox::MessageStream::getSizeof<int>(1+NDIM) + SAMRAI::tbox::MessageStream::getSizeof<double>(2*NDIM);
 }// getDataStreamSize
 
 inline void
 LMarker::packStream(
-    SAMRAI::tbox::AbstractStream& stream)
+    SAMRAI::tbox::MessageStream& stream)
 {
     stream.pack(&d_idx,1);
     stream.pack(d_X.data(),NDIM);
     stream.pack(d_U.data(),NDIM);
+    stream.pack(&d_offset(0), NDIM);
     return;
 }// packStream
 
 inline void
 LMarker::unpackStream(
-    SAMRAI::tbox::AbstractStream& stream,
+    SAMRAI::tbox::MessageStream& stream,
     const SAMRAI::hier::IntVector& /*offset*/)
 {
     stream.unpack(&d_idx,1);
     stream.unpack(d_X.data(),NDIM);
     stream.unpack(d_U.data(),NDIM);
+    stream.unpack(&d_offset(0), NDIM);
     return;
 }// unpackStream
 

@@ -77,8 +77,9 @@ coarsen_index(
     const Index& i,
     const IntVector& ratio)
 {
-    Index coarse_i;
-    for (unsigned int d = 0; d < NDIM; ++d)
+    const Dimension& dim = i.getDim();
+    Index coarse_i(dim);
+    for (unsigned int d = 0; d < dim.getValue(); ++d)
     {
         coarse_i(d) = coarsen(i(d), ratio(d));
     }
@@ -89,6 +90,7 @@ coarsen_index(
 /////////////////////////////// PUBLIC ///////////////////////////////////////
 
 LMarkerCoarsen::LMarkerCoarsen()
+    : CoarsenOperator(s_op_name)
 {
     // intentionally blank
     return;
@@ -100,21 +102,6 @@ LMarkerCoarsen::~LMarkerCoarsen()
     return;
 }// ~LMarkerCoarsen
 
-bool
-LMarkerCoarsen::findCoarsenOperator(
-    const boost::shared_ptr<Variable >& var,
-    const std::string &op_name) const
-{
-    boost::shared_ptr<LMarkerSetVariable> mark_var = var;
-    return (mark_var && op_name == s_op_name);
-}// findCoarsenOperator
-
-const std::string&
-LMarkerCoarsen::getOperatorName() const
-{
-    return s_op_name;
-}// getOperatorName
-
 int
 LMarkerCoarsen::getOperatorPriority() const
 {
@@ -122,9 +109,10 @@ LMarkerCoarsen::getOperatorPriority() const
 }// getOperatorPriority
 
 IntVector
-LMarkerCoarsen::getStencilWidth() const
+LMarkerCoarsen::getStencilWidth(
+    const Dimension& dim) const
 {
-    return COARSEN_OP_STENCIL_WIDTH;
+    return IntVector(dim,COARSEN_OP_STENCIL_WIDTH);
 }// getStencilWidth
 
 void
@@ -136,22 +124,24 @@ LMarkerCoarsen::coarsen(
     const Box& coarse_box,
     const IntVector& ratio) const
 {
-    boost::shared_ptr<LMarkerSetData> dst_mark_data = coarse.getPatchData(dst_component);
-    boost::shared_ptr<LMarkerSetData> src_mark_data = fine  .getPatchData(src_component);
+    auto dst_mark_data = BOOST_CAST<LMarkerSetData>(coarse.getPatchData(dst_component));
+    auto src_mark_data = BOOST_CAST<LMarkerSetData>(fine  .getPatchData(src_component));
 
     const Box fine_box = Box::refine(coarse_box,ratio);
-    for (LMarkerSetData::SetIterator it(*src_mark_data); it; it++)
+    for (auto    it = LMarkerSetData::SetIterator(*src_mark_data,true),
+             it_end = LMarkerSetData::SetIterator(*src_mark_data,false);
+         it != it_end; ++it)
     {
         const Index& fine_i = it.getIndex();
         const Index coarse_i = coarsen_index(fine_i,ratio);
         if (fine_box.contains(fine_i) && coarse_box.contains(coarse_i))
         {
-            const LMarkerSet& fine_mark_set = it();
+            const auto& fine_mark_set = it->getDataSet();
             if (!dst_mark_data->isElement(coarse_i))
             {
-                dst_mark_data->appendItemboost::shared_ptr(coarse_i, new LMarkerSet());
+                dst_mark_data->appendItemPointer(coarse_i, new LMarkerSet());
             }
-            LMarkerSet& coarse_mark_set = *(dst_mark_data->getItem(coarse_i));
+            auto& coarse_mark_set = dst_mark_data->getItem(coarse_i)->getDataSet();
             coarse_mark_set.insert(coarse_mark_set.end(), fine_mark_set.begin(), fine_mark_set.end());
         }
     }

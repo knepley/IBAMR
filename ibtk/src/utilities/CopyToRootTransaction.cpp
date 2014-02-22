@@ -45,7 +45,7 @@
 #include "SAMRAI/hier/PatchDescriptor.h"
 #include "SAMRAI/SAMRAI_config.h"
 #include "ibtk/namespaces.h" // IWYU pragma: keep
-#include "SAMRAI/tbox/AbstractStream.h"
+#include "SAMRAI/tbox/MessageStream.h"
 #include "SAMRAI/tbox/Utilities.h"
 
 namespace SAMRAI {
@@ -114,11 +114,11 @@ CopyToRootTransaction::computeOutgoingMessageSize()
     const Box& dst_box = grid_geom->getPhysicalDomain()[0];
     boost::shared_ptr<BoxGeometry > dst_box_geometry = pdat_factory->getBoxGeometry(dst_box);
 
-    int size = AbstractStream::sizeofInt();
+    int size = MessageStream::sizeofInt();
     for (PatchLevel::Iterator p(d_patch_level); p; p++)
     {
         const int src_patch_num = p();
-        size += AbstractStream::sizeofInt();
+        size += MessageStream::sizeofInt();
         boost::shared_ptr<Patch > patch = d_patch_level->getPatch(src_patch_num);
         const Box& src_box = patch->getBox();
         boost::shared_ptr<BoxGeometry > src_box_geometry = pdat_factory->getBoxGeometry(src_box);
@@ -145,7 +145,7 @@ CopyToRootTransaction::getDestinationProcessor()
 
 void
 CopyToRootTransaction::packStream(
-    AbstractStream& stream)
+    MessageStream& stream)
 {
     boost::shared_ptr<PatchDataFactory > pdat_factory = d_patch_level->getPatchDescriptor()->getPatchDataFactory(d_src_patch_data_idx);
 
@@ -181,7 +181,7 @@ CopyToRootTransaction::packStream(
 
 void
 CopyToRootTransaction::unpackStream(
-    AbstractStream& stream)
+    MessageStream& stream)
 {
     boost::shared_ptr<PatchDataFactory > pdat_factory = d_patch_level->getPatchDescriptor()->getPatchDataFactory(d_src_patch_data_idx);
 

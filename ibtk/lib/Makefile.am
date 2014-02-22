@@ -134,7 +134,6 @@ $(top_srcdir)/src/utilities/EdgeDataSynchronization.cpp \
 $(top_srcdir)/src/utilities/EdgeSynchCopyFillPattern.cpp \
 $(top_srcdir)/src/utilities/FaceDataSynchronization.cpp \
 $(top_srcdir)/src/utilities/FaceSynchCopyFillPattern.cpp \
-$(top_srcdir)/src/utilities/FixedSizedStream.cpp \
 $(top_srcdir)/src/utilities/HierarchyIntegrator.cpp \
 $(top_srcdir)/src/utilities/IndexUtilities.cpp \
 $(top_srcdir)/src/utilities/LMarkerUtilities.cpp \
@@ -282,8 +281,6 @@ $(top_srcdir)/src/utilities/EdgeDataSynchronization.h \
 $(top_srcdir)/src/utilities/EdgeSynchCopyFillPattern.h \
 $(top_srcdir)/src/utilities/FaceDataSynchronization.h \
 $(top_srcdir)/src/utilities/FaceSynchCopyFillPattern.h \
-$(top_srcdir)/src/utilities/FixedSizedStream-inl.h \
-$(top_srcdir)/src/utilities/FixedSizedStream.h \
 $(top_srcdir)/src/utilities/HierarchyIntegrator.h \
 $(top_srcdir)/src/utilities/IndexUtilities-inl.h \
 $(top_srcdir)/src/utilities/IndexUtilities.h \

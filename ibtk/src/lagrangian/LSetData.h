@@ -39,7 +39,6 @@
 #include "SAMRAI/pdat/CellIterator.h"
 #include "SAMRAI/pdat/IndexData.h"
 #include "SAMRAI/hier/IntVector.h"
-#include "ibtk/FixedSizedStream-inl.h"
 #include "ibtk/LMarker.h"
 #include "ibtk/LMarker-inl.h"
 #include "ibtk/LNode.h"

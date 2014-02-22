@@ -49,7 +49,7 @@ namespace hier {
 class Index;
 }  // namespace hier
 namespace tbox {
-class AbstractStream;
+class MessageStream;
 }  // namespace tbox
 }  // namespace SAMRAI
 
@@ -78,9 +78,9 @@ public:
         int lagrangian_nidx=-1,
         int global_petsc_nidx=-1,
         int local_petsc_nidx=-1,
-        const SAMRAI::hier::IntVector& periodic_offset=SAMRAI::hier::IntVector(0),
+        const SAMRAI::hier::IntVector& periodic_offset=SAMRAI::hier::IntVector::getZero(SAMRAI::tbox::Dimension(NDIM)),
         const Vector& periodic_displacement=Vector::Zero(),
-        const std::vector<boost::shared_ptr<Streamable> >& node_data=std::vector<boost::shared_ptr<Streamable> >());
+        const std::vector<boost::shared_ptr<Streamable> >& node_data={});
 
     /*!
      * \brief Copy constructor.
@@ -94,7 +94,7 @@ public:
      * \brief Constructor that unpacks data from an input stream.
      */
     LNode(
-        SAMRAI::tbox::AbstractStream& stream,
+        SAMRAI::tbox::MessageStream& stream,
         const SAMRAI::hier::IntVector& offset);
 
     /*!
@@ -192,14 +192,14 @@ public:
      */
     void
     packStream(
-        SAMRAI::tbox::AbstractStream& stream);
+        SAMRAI::tbox::MessageStream& stream);
 
     /*!
      * \brief Unpack data from the input stream.
      */
     virtual void
     unpackStream(
-        SAMRAI::tbox::AbstractStream& stream,
+        SAMRAI::tbox::MessageStream& stream,
         const SAMRAI::hier::IntVector& offset);
 
 private:

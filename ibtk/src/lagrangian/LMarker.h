@@ -38,6 +38,7 @@
 #include <unistd.h>
 
 #include "SAMRAI/hier/IntVector.h"
+#include "SAMRAI/tbox/MessageStream.h"
 #include "boost/array.hpp"
 #include "ibtk/ibtk_utilities.h"
 
@@ -47,7 +48,7 @@ namespace hier {
 class Index;
 }  // namespace hier
 namespace tbox {
-class AbstractStream;
+class MessageStream;
 }  // namespace tbox
 }  // namespace SAMRAI
 
@@ -60,7 +61,6 @@ namespace IBTK
  * for a Lagrangian marker.
  */
 class LMarker
-    
 {
 public:
     /*!
@@ -70,7 +70,7 @@ public:
         int idx=-1,
         const Point& X=Point::Zero(),
         const Vector& U=Vector::Zero(),
-        const SAMRAI::hier::IntVector& periodic_offset=SAMRAI::hier::IntVector(0));
+        const SAMRAI::hier::IntVector& periodic_offset=SAMRAI::hier::IntVector::getZero(SAMRAI::tbox::Dimension(NDIM)));
 
     /*!
      * \brief Copy constructor.
@@ -84,7 +84,7 @@ public:
      * \brief Constructor that unpacks data from an input stream.
      */
     LMarker(
-        SAMRAI::tbox::AbstractStream& stream,
+        SAMRAI::tbox::MessageStream& stream,
         const SAMRAI::hier::IntVector& offset);
 
 
@@ -203,14 +203,14 @@ public:
      */
     void
     packStream(
-        SAMRAI::tbox::AbstractStream& stream);
+        SAMRAI::tbox::MessageStream& stream);
 
     /*!
      * \brief Unpack data from the input stream.
      */
     virtual void
     unpackStream(
-        SAMRAI::tbox::AbstractStream& stream,
+        SAMRAI::tbox::MessageStream& stream,
         const SAMRAI::hier::IntVector& offset);
 
 private:

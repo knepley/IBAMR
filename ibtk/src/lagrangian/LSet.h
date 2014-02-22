@@ -53,7 +53,7 @@ namespace hier {
 class Index;
 }  // namespace hier
 namespace tbox {
-class AbstractStream;
+class MessageStream;
 class Database;
 }  // namespace tbox
 }  // namespace SAMRAI
@@ -290,14 +290,14 @@ public:
      */
     void
     packStream(
-        SAMRAI::tbox::AbstractStream& stream);
+        SAMRAI::tbox::MessageStream& stream);
 
     /*!
      * \brief Unpack data from the input stream.
      */
     void
     unpackStream(
-        SAMRAI::tbox::AbstractStream& stream,
+        SAMRAI::tbox::MessageStream& stream,
         const SAMRAI::hier::IntVector& offset);
 
     /*!

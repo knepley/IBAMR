@@ -45,7 +45,7 @@
 #include "ibtk/StreamableManager.h"
 #include "ibtk/StreamableManager-inl.h"
 #include "ibtk/namespaces.h" // IWYU pragma: keep
-#include "SAMRAI/tbox/AbstractStream.h"
+#include "SAMRAI/tbox/MessageStream.h"
 #include "SAMRAI/tbox/SAMRAI_MPI.h"
 #include "SAMRAI/tbox/Utilities.h"
 
@@ -139,7 +139,7 @@ ParallelMap::communicateData()
             data_items_to_send.push_back(cit->second);
         }
         std::vector<int> data_sz(size,0);
-        data_sz[rank] = tbox::AbstractStream::sizeofInt()*keys_to_send.size() + streamable_manager->getDataStreamSize(data_items_to_send);
+        data_sz[rank] = tbox::MessageStream::sizeofInt()*keys_to_send.size() + streamable_manager->getDataStreamSize(data_items_to_send);
         SAMRAI_MPI::sumReduction(&data_sz[0], size);
 
         // Broadcast data from each process.

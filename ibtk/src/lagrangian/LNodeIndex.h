@@ -53,7 +53,7 @@ namespace hier {
 class Index;
 }  // namespace hier
 namespace tbox {
-class AbstractStream;
+class MessageStream;
 }  // namespace tbox
 }  // namespace SAMRAI
 
@@ -77,7 +77,7 @@ public:
         int lagrangian_nidx=-1,
         int global_petsc_nidx=-1,
         int local_petsc_nidx=-1,
-        const SAMRAI::hier::IntVector& periodic_offset=SAMRAI::hier::IntVector(0),
+        const SAMRAI::hier::IntVector& periodic_offset=SAMRAI::hier::IntVector::getZero(SAMRAI::tbox::Dimension(NDIM)),
         const Vector& periodic_displacement=Vector::Zero());
 
     /*!
@@ -92,7 +92,7 @@ public:
      * \brief Constructor that unpacks data from an input stream.
      */
     LNodeIndex(
-        SAMRAI::tbox::AbstractStream& stream,
+        SAMRAI::tbox::MessageStream& stream,
         const SAMRAI::hier::IntVector& offset);
 
     /*!
@@ -195,14 +195,14 @@ public:
      */
     virtual void
     packStream(
-        SAMRAI::tbox::AbstractStream& stream);
+        SAMRAI::tbox::MessageStream& stream);
 
     /*!
      * \brief Unpack data from the input stream.
      */
     virtual void
     unpackStream(
-        SAMRAI::tbox::AbstractStream& stream,
+        SAMRAI::tbox::MessageStream& stream,
         const SAMRAI::hier::IntVector& offset);
 
 private:

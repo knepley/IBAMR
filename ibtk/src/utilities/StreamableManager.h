@@ -50,7 +50,7 @@ namespace hier {
 class IntVector;
 }  // namespace hier
 namespace tbox {
-class AbstractStream;
+class MessageStream;
 }  // namespace tbox
 }  // namespace SAMRAI
 
@@ -61,7 +61,7 @@ namespace IBTK
 /*!
  * \brief Class StreamableManager is a singleton manager class that organizes the
  * actual packing and unpacking of concrete Streamable objects for
- * SAMRAI::tbox::AbstractStream based communication.
+ * SAMRAI::tbox::MessageStream based communication.
  *
  * \see Streamable
  * \see StreamableFactory
@@ -135,7 +135,7 @@ public:
      */
     size_t
     getDataStreamSize(
-        boost::shared_ptr<Streamable> data_item) const;
+        const boost::shared_ptr<Streamable>& data_item) const;
 
     /*!
      * \brief Return an upper bound on the amount of space required to pack a
@@ -150,23 +150,23 @@ public:
      */
     void
     packStream(
-        SAMRAI::tbox::AbstractStream& stream,
-        boost::shared_ptr<Streamable> data_item);
+        SAMRAI::tbox::MessageStream& stream,
+        const boost::shared_ptr<Streamable>& data_item);
 
     /*!
      * \brief Pack a vector of Streamable objects into the output stream.
      */
     void
     packStream(
-        SAMRAI::tbox::AbstractStream& stream,
-        std::vector<boost::shared_ptr<Streamable> >& data_items);
+        SAMRAI::tbox::MessageStream& stream,
+        const std::vector<boost::shared_ptr<Streamable> >& data_items);
 
     /*!
      * \brief Unpack a Streamable object from the data stream.
      */
     boost::shared_ptr<Streamable>
     unpackStream(
-        SAMRAI::tbox::AbstractStream& stream,
+        SAMRAI::tbox::MessageStream& stream,
         const SAMRAI::hier::IntVector& offset);
 
     /*!
@@ -174,7 +174,7 @@ public:
      */
     void
     unpackStream(
-        SAMRAI::tbox::AbstractStream& stream,
+        SAMRAI::tbox::MessageStream& stream,
         const SAMRAI::hier::IntVector& offset,
         std::vector<boost::shared_ptr<Streamable> >& data_items);
 

@@ -36,7 +36,7 @@
 /////////////////////////////// INCLUDES /////////////////////////////////////
 
 #include "ibtk/LNodeIndex.h"
-#include "SAMRAI/tbox/AbstractStream.h"
+#include "SAMRAI/tbox/MessageStream.h"
 
 /////////////////////////////// NAMESPACE ////////////////////////////////////
 
@@ -76,12 +76,12 @@ LNodeIndex::LNodeIndex(
 
 inline
 LNodeIndex::LNodeIndex(
-    SAMRAI::tbox::AbstractStream& stream,
+    SAMRAI::tbox::MessageStream& stream,
     const SAMRAI::hier::IntVector& offset)
     : d_lagrangian_nidx(-1),
       d_global_petsc_nidx(-1),
       d_local_petsc_nidx(-1),
-      d_offset(0),
+      d_offset(SAMRAI::hier::IntVector::getZero(SAMRAI::tbox::Dimension(NDIM))),
       d_displacement(Vector::Zero())
 {
     unpackStream(stream,offset);
@@ -183,30 +183,30 @@ LNodeIndex::copySourceItem(
 inline size_t
 LNodeIndex::getDataStreamSize() const
 {
-    return (3+NDIM)*SAMRAI::tbox::AbstractStream::sizeofInt() + NDIM*SAMRAI::tbox::AbstractStream::sizeofDouble();
+    return SAMRAI::tbox::MessageStream::getSizeof<int>(3+NDIM) + SAMRAI::tbox::MessageStream::getSizeof<double>(NDIM);
 }// getDataStreamSize
 
 inline void
 LNodeIndex::packStream(
-    SAMRAI::tbox::AbstractStream& stream)
+    SAMRAI::tbox::MessageStream& stream)
 {
     stream.pack(&d_lagrangian_nidx, 1);
     stream.pack(&d_global_petsc_nidx, 1);
     stream.pack(&d_local_petsc_nidx, 1);
-    stream.pack(d_offset, NDIM);
+    stream.pack(&d_offset(0), NDIM);
     stream.pack(d_displacement.data(), NDIM);
     return;
 }// packStream
 
 inline void
 LNodeIndex::unpackStream(
-    SAMRAI::tbox::AbstractStream& stream,
+    SAMRAI::tbox::MessageStream& stream,
     const SAMRAI::hier::IntVector& /*offset*/)
 {
     stream.unpack(&d_lagrangian_nidx, 1);
     stream.unpack(&d_global_petsc_nidx, 1);
     stream.unpack(&d_local_petsc_nidx, 1);
-    stream.unpack(d_offset, NDIM);
+    stream.unpack(&d_offset(0), NDIM);
     stream.unpack(d_displacement.data(), NDIM);
     return;
 }// unpackStream

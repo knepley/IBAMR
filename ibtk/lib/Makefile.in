@@ -226,7 +226,6 @@ am__libIBTK2d_a_SOURCES_DIST = $(top_srcdir)/src/boundary/HierarchyGhostCellInte
 	$(top_srcdir)/src/utilities/EdgeSynchCopyFillPattern.cpp \
 	$(top_srcdir)/src/utilities/FaceDataSynchronization.cpp \
 	$(top_srcdir)/src/utilities/FaceSynchCopyFillPattern.cpp \
-	$(top_srcdir)/src/utilities/FixedSizedStream.cpp \
 	$(top_srcdir)/src/utilities/HierarchyIntegrator.cpp \
 	$(top_srcdir)/src/utilities/IndexUtilities.cpp \
 	$(top_srcdir)/src/utilities/LMarkerUtilities.cpp \
@@ -360,7 +359,6 @@ am__objects_2 = libIBTK2d_a-HierarchyGhostCellInterpolation.$(OBJEXT) \
 	libIBTK2d_a-EdgeSynchCopyFillPattern.$(OBJEXT) \
 	libIBTK2d_a-FaceDataSynchronization.$(OBJEXT) \
 	libIBTK2d_a-FaceSynchCopyFillPattern.$(OBJEXT) \
-	libIBTK2d_a-FixedSizedStream.$(OBJEXT) \
 	libIBTK2d_a-HierarchyIntegrator.$(OBJEXT) \
 	libIBTK2d_a-IndexUtilities.$(OBJEXT) \
 	libIBTK2d_a-LMarkerUtilities.$(OBJEXT) \
@@ -488,7 +486,6 @@ am__libIBTK3d_a_SOURCES_DIST = $(top_srcdir)/src/boundary/HierarchyGhostCellInte
 	$(top_srcdir)/src/utilities/EdgeSynchCopyFillPattern.cpp \
 	$(top_srcdir)/src/utilities/FaceDataSynchronization.cpp \
 	$(top_srcdir)/src/utilities/FaceSynchCopyFillPattern.cpp \
-	$(top_srcdir)/src/utilities/FixedSizedStream.cpp \
 	$(top_srcdir)/src/utilities/HierarchyIntegrator.cpp \
 	$(top_srcdir)/src/utilities/IndexUtilities.cpp \
 	$(top_srcdir)/src/utilities/LMarkerUtilities.cpp \
@@ -621,7 +618,6 @@ am__objects_4 = libIBTK3d_a-HierarchyGhostCellInterpolation.$(OBJEXT) \
 	libIBTK3d_a-EdgeSynchCopyFillPattern.$(OBJEXT) \
 	libIBTK3d_a-FaceDataSynchronization.$(OBJEXT) \
 	libIBTK3d_a-FaceSynchCopyFillPattern.$(OBJEXT) \
-	libIBTK3d_a-FixedSizedStream.$(OBJEXT) \
 	libIBTK3d_a-HierarchyIntegrator.$(OBJEXT) \
 	libIBTK3d_a-IndexUtilities.$(OBJEXT) \
 	libIBTK3d_a-LMarkerUtilities.$(OBJEXT) \
@@ -1107,8 +1103,6 @@ pkg_include_HEADERS = $(top_srcdir)/src/utilities/IBTK_CHKERRQ.h \
 	$(top_srcdir)/src/utilities/EdgeSynchCopyFillPattern.h \
 	$(top_srcdir)/src/utilities/FaceDataSynchronization.h \
 	$(top_srcdir)/src/utilities/FaceSynchCopyFillPattern.h \
-	$(top_srcdir)/src/utilities/FixedSizedStream-inl.h \
-	$(top_srcdir)/src/utilities/FixedSizedStream.h \
 	$(top_srcdir)/src/utilities/HierarchyIntegrator.h \
 	$(top_srcdir)/src/utilities/IndexUtilities-inl.h \
 	$(top_srcdir)/src/utilities/IndexUtilities.h \
@@ -1225,7 +1219,6 @@ DIM_INDEPENDENT_SOURCES = $(top_srcdir)/src/boundary/HierarchyGhostCellInterpola
 	$(top_srcdir)/src/utilities/EdgeSynchCopyFillPattern.cpp \
 	$(top_srcdir)/src/utilities/FaceDataSynchronization.cpp \
 	$(top_srcdir)/src/utilities/FaceSynchCopyFillPattern.cpp \
-	$(top_srcdir)/src/utilities/FixedSizedStream.cpp \
 	$(top_srcdir)/src/utilities/HierarchyIntegrator.cpp \
 	$(top_srcdir)/src/utilities/IndexUtilities.cpp \
 	$(top_srcdir)/src/utilities/LMarkerUtilities.cpp \
@@ -1409,7 +1402,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libIBTK2d_a-FEDataManager.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libIBTK2d_a-FaceDataSynchronization.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libIBTK2d_a-FaceSynchCopyFillPattern.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libIBTK2d_a-FixedSizedStream.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libIBTK2d_a-GeneralOperator.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libIBTK2d_a-GeneralSolver.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libIBTK2d_a-HierarchyGhostCellInterpolation.Po@am__quote@
@@ -1525,7 +1517,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libIBTK3d_a-FEDataManager.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libIBTK3d_a-FaceDataSynchronization.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libIBTK3d_a-FaceSynchCopyFillPattern.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libIBTK3d_a-FixedSizedStream.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libIBTK3d_a-GeneralOperator.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libIBTK3d_a-GeneralSolver.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libIBTK3d_a-HierarchyGhostCellInterpolation.Po@am__quote@
@@ -2983,20 +2974,6 @@ libIBTK2d_a-FaceSynchCopyFillPattern.obj: $(top_srcdir)/src/utilities/FaceSynchC
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='$(top_srcdir)/src/utilities/FaceSynchCopyFillPattern.cpp' object='libIBTK2d_a-FaceSynchCopyFillPattern.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libIBTK2d_a_CXXFLAGS) $(CXXFLAGS) -c -o libIBTK2d_a-FaceSynchCopyFillPattern.obj `if test -f '$(top_srcdir)/src/utilities/FaceSynchCopyFillPattern.cpp'; then $(CYGPATH_W) '$(top_srcdir)/src/utilities/FaceSynchCopyFillPattern.cpp'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/src/utilities/FaceSynchCopyFillPattern.cpp'; fi`
-
-libIBTK2d_a-FixedSizedStream.o: $(top_srcdir)/src/utilities/FixedSizedStream.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libIBTK2d_a_CXXFLAGS) $(CXXFLAGS) -MT libIBTK2d_a-FixedSizedStream.o -MD -MP -MF $(DEPDIR)/libIBTK2d_a-FixedSizedStream.Tpo -c -o libIBTK2d_a-FixedSizedStream.o `test -f '$(top_srcdir)/src/utilities/FixedSizedStream.cpp' || echo '$(srcdir)/'`$(top_srcdir)/src/utilities/FixedSizedStream.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libIBTK2d_a-FixedSizedStream.Tpo $(DEPDIR)/libIBTK2d_a-FixedSizedStream.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='$(top_srcdir)/src/utilities/FixedSizedStream.cpp' object='libIBTK2d_a-FixedSizedStream.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libIBTK2d_a_CXXFLAGS) $(CXXFLAGS) -c -o libIBTK2d_a-FixedSizedStream.o `test -f '$(top_srcdir)/src/utilities/FixedSizedStream.cpp' || echo '$(srcdir)/'`$(top_srcdir)/src/utilities/FixedSizedStream.cpp
-
-libIBTK2d_a-FixedSizedStream.obj: $(top_srcdir)/src/utilities/FixedSizedStream.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libIBTK2d_a_CXXFLAGS) $(CXXFLAGS) -MT libIBTK2d_a-FixedSizedStream.obj -MD -MP -MF $(DEPDIR)/libIBTK2d_a-FixedSizedStream.Tpo -c -o libIBTK2d_a-FixedSizedStream.obj `if test -f '$(top_srcdir)/src/utilities/FixedSizedStream.cpp'; then $(CYGPATH_W) '$(top_srcdir)/src/utilities/FixedSizedStream.cpp'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/src/utilities/FixedSizedStream.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libIBTK2d_a-FixedSizedStream.Tpo $(DEPDIR)/libIBTK2d_a-FixedSizedStream.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='$(top_srcdir)/src/utilities/FixedSizedStream.cpp' object='libIBTK2d_a-FixedSizedStream.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libIBTK2d_a_CXXFLAGS) $(CXXFLAGS) -c -o libIBTK2d_a-FixedSizedStream.obj `if test -f '$(top_srcdir)/src/utilities/FixedSizedStream.cpp'; then $(CYGPATH_W) '$(top_srcdir)/src/utilities/FixedSizedStream.cpp'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/src/utilities/FixedSizedStream.cpp'; fi`
 
 libIBTK2d_a-HierarchyIntegrator.o: $(top_srcdir)/src/utilities/HierarchyIntegrator.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libIBTK2d_a_CXXFLAGS) $(CXXFLAGS) -MT libIBTK2d_a-HierarchyIntegrator.o -MD -MP -MF $(DEPDIR)/libIBTK2d_a-HierarchyIntegrator.Tpo -c -o libIBTK2d_a-HierarchyIntegrator.o `test -f '$(top_srcdir)/src/utilities/HierarchyIntegrator.cpp' || echo '$(srcdir)/'`$(top_srcdir)/src/utilities/HierarchyIntegrator.cpp
@@ -4607,20 +4584,6 @@ libIBTK3d_a-FaceSynchCopyFillPattern.obj: $(top_srcdir)/src/utilities/FaceSynchC
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='$(top_srcdir)/src/utilities/FaceSynchCopyFillPattern.cpp' object='libIBTK3d_a-FaceSynchCopyFillPattern.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libIBTK3d_a_CXXFLAGS) $(CXXFLAGS) -c -o libIBTK3d_a-FaceSynchCopyFillPattern.obj `if test -f '$(top_srcdir)/src/utilities/FaceSynchCopyFillPattern.cpp'; then $(CYGPATH_W) '$(top_srcdir)/src/utilities/FaceSynchCopyFillPattern.cpp'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/src/utilities/FaceSynchCopyFillPattern.cpp'; fi`
-
-libIBTK3d_a-FixedSizedStream.o: $(top_srcdir)/src/utilities/FixedSizedStream.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libIBTK3d_a_CXXFLAGS) $(CXXFLAGS) -MT libIBTK3d_a-FixedSizedStream.o -MD -MP -MF $(DEPDIR)/libIBTK3d_a-FixedSizedStream.Tpo -c -o libIBTK3d_a-FixedSizedStream.o `test -f '$(top_srcdir)/src/utilities/FixedSizedStream.cpp' || echo '$(srcdir)/'`$(top_srcdir)/src/utilities/FixedSizedStream.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libIBTK3d_a-FixedSizedStream.Tpo $(DEPDIR)/libIBTK3d_a-FixedSizedStream.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='$(top_srcdir)/src/utilities/FixedSizedStream.cpp' object='libIBTK3d_a-FixedSizedStream.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libIBTK3d_a_CXXFLAGS) $(CXXFLAGS) -c -o libIBTK3d_a-FixedSizedStream.o `test -f '$(top_srcdir)/src/utilities/FixedSizedStream.cpp' || echo '$(srcdir)/'`$(top_srcdir)/src/utilities/FixedSizedStream.cpp
-
-libIBTK3d_a-FixedSizedStream.obj: $(top_srcdir)/src/utilities/FixedSizedStream.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libIBTK3d_a_CXXFLAGS) $(CXXFLAGS) -MT libIBTK3d_a-FixedSizedStream.obj -MD -MP -MF $(DEPDIR)/libIBTK3d_a-FixedSizedStream.Tpo -c -o libIBTK3d_a-FixedSizedStream.obj `if test -f '$(top_srcdir)/src/utilities/FixedSizedStream.cpp'; then $(CYGPATH_W) '$(top_srcdir)/src/utilities/FixedSizedStream.cpp'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/src/utilities/FixedSizedStream.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libIBTK3d_a-FixedSizedStream.Tpo $(DEPDIR)/libIBTK3d_a-FixedSizedStream.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='$(top_srcdir)/src/utilities/FixedSizedStream.cpp' object='libIBTK3d_a-FixedSizedStream.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libIBTK3d_a_CXXFLAGS) $(CXXFLAGS) -c -o libIBTK3d_a-FixedSizedStream.obj `if test -f '$(top_srcdir)/src/utilities/FixedSizedStream.cpp'; then $(CYGPATH_W) '$(top_srcdir)/src/utilities/FixedSizedStream.cpp'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/src/utilities/FixedSizedStream.cpp'; fi`
 
 libIBTK3d_a-HierarchyIntegrator.o: $(top_srcdir)/src/utilities/HierarchyIntegrator.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libIBTK3d_a_CXXFLAGS) $(CXXFLAGS) -MT libIBTK3d_a-HierarchyIntegrator.o -MD -MP -MF $(DEPDIR)/libIBTK3d_a-HierarchyIntegrator.Tpo -c -o libIBTK3d_a-HierarchyIntegrator.o `test -f '$(top_srcdir)/src/utilities/HierarchyIntegrator.cpp' || echo '$(srcdir)/'`$(top_srcdir)/src/utilities/HierarchyIntegrator.cpp

@@ -44,7 +44,7 @@
 #include <sstream>
 #include <vector>
 
-#include "BasePatchHierarchy.h"
+#include "SAMRAI/hier/PatchHierarchy.h"
 #include "SAMRAI/hier/Box.h"
 #include "BoxArray.h"
 #include "BoxList.h"

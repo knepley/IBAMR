@@ -51,7 +51,7 @@
 
 namespace SAMRAI {
 namespace tbox {
-class AbstractStream;
+class MessageStream;
 }  // namespace tbox
 }  // namespace SAMRAI
 
@@ -224,14 +224,14 @@ public:
      */
     virtual void
     packStream(
-        SAMRAI::tbox::AbstractStream& stream);
+        SAMRAI::tbox::MessageStream& stream);
 
     /*!
      * \brief Unpack the transaction data from the message stream.
      */
     virtual void
     unpackStream(
-        SAMRAI::tbox::AbstractStream& stream);
+        SAMRAI::tbox::MessageStream& stream);
 
     /*!
      * \brief Perform the local data copy for the transaction.
