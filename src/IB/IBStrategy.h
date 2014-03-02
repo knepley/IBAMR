@@ -1,7 +1,7 @@
 // Filename: IBStrategy.h
 // Created on 21 Sep 2011 by Boyce Griffith
 //
-// Copyright (c) 2002-2013, Boyce Griffith
+// Copyright (c) 2002-2014, Boyce Griffith
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -201,19 +201,6 @@ public:
     updateFixedLEOperators();
 
     /*!
-     * Get a pointer to a vector of coupling positions for the specified level
-     * of the patch hierarchy.
-     *
-     * A default implementation is provided that emits an unrecoverable
-     * exception.
-     */
-    virtual void
-    getLEOperatorPositions(
-        Vec& X_vec,
-        int level_num,
-        double data_time);
-
-    /*!
      * Interpolate the Eulerian velocity to the curvilinear mesh at the
      * specified time within the current time interval.
      */
@@ -260,35 +247,6 @@ public:
         double data_time) = 0;
 
     /*!
-     * \brief Compute the non-zero structure of the force Jacobian matrix.
-     *
-     * \note A default implementation is provided that emits an unrecoverable
-     * exception.
-     */
-    virtual void
-    computeLagrangianForceJacobianNonzeroStructure(
-        std::vector<int>& d_nnz,
-        std::vector<int>& o_nnz);
-
-    /*!
-     * \brief Compute the Jacobian of the force with respect to the present
-     * structure configuration.
-     *
-     * \note The elements of the Jacobian should be accumulated in the provided
-     * matrix.
-     *
-     * \note A default implementation is provided that emits an unrecoverable
-     * exception.
-     */
-    virtual void
-    computeLagrangianForceJacobian(
-        Mat& J_mat,
-        MatAssemblyType assembly_type,
-        double X_coef,
-        double U_coef,
-        double data_time);
-
-    /*!
      * Spread the Lagrangian force to the Cartesian grid at the specified time
      * within the current time interval.
      */
@@ -298,24 +256,6 @@ public:
         IBTK::RobinPhysBdryPatchStrategy* f_phys_bdry_op,
         const std::vector<SAMRAI::tbox::Pointer<SAMRAI::xfer::RefineSchedule<NDIM> > >& f_prolongation_scheds,
         double data_time) = 0;
-
-    /*!
-     * \brief Compute the application of the Jacobian of the force at the specified time
-     * within the current time interval.
-     *
-     * \note A default implementation is provided that emits an unrecoverable
-     * exception.
-     */
-    virtual void
-    applyLagrangianForceJacobian(
-        int f_data_idx,
-        IBTK::RobinPhysBdryPatchStrategy* f_phys_bdry_op,
-        const std::vector<SAMRAI::tbox::Pointer<SAMRAI::xfer::RefineSchedule<NDIM> > >& f_prolongation_scheds,
-        int u_data_idx,
-        const std::vector<SAMRAI::tbox::Pointer<SAMRAI::xfer::CoarsenSchedule<NDIM> > >& u_synch_scheds,
-        const std::vector<SAMRAI::tbox::Pointer<SAMRAI::xfer::RefineSchedule<NDIM> > >& u_ghost_fill_scheds,
-        double data_time,
-        Mat& J_mat);
 
     /*!
      * Indicate whether there are any internal fluid sources/sinks.

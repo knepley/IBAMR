@@ -1,7 +1,7 @@
 // Filename: FEDataManager.cpp
 // Created on 19 Apr 2010 by Boyce Griffith
 //
-// Copyright (c) 2002-2013, Boyce Griffith
+// Copyright (c) 2002-2014, Boyce Griffith
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -478,7 +478,7 @@ FEDataManager::spread(
     VariableDatabase* var_db = VariableDatabase::getDatabase();
 
     // Determine the type of data centering.
-    boost::shared_ptr<Variable > f_var;
+    boost::shared_ptr<hier::Variable > f_var;
     var_db->mapIndexToVariable(f_data_idx, f_var);
     boost::shared_ptr<CellVariable<double> > f_cc_var = f_var;
     boost::shared_ptr<SideVariable<double> > f_sc_var = f_var;
@@ -933,7 +933,7 @@ FEDataManager::interp(
     VariableDatabase* var_db = VariableDatabase::getDatabase();
     
     // Determine the type of data centering.
-    boost::shared_ptr<Variable > f_var;
+    boost::shared_ptr<hier::Variable > f_var;
     var_db->mapIndexToVariable(f_data_idx, f_var);
     boost::shared_ptr<CellVariable<double> > f_cc_var = f_var;
     boost::shared_ptr<SideVariable<double> > f_sc_var = f_var;
@@ -2490,7 +2490,7 @@ FEDataManager::collectGhostDOFIndices(
         const unsigned int constrained_dof = i->first;
         if (constrained_dof >= first_local_dof && constrained_dof < end_local_dof)
         {
-            const DofConstraintRow& constraint_row = i->second.first;
+            const DofConstraintRow& constraint_row = i->second;
             for (DofConstraintRow::const_iterator j = constraint_row.begin(); j != constraint_row.end(); ++j)
             {
                 const unsigned int constraint_dependency = j->first;

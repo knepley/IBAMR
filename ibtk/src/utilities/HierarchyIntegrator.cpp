@@ -1,7 +1,7 @@
 // Filename: HierarchyIntegrator.cpp
 // Created on 10 Aug 2011 by Boyce Griffith
 //
-// Copyright (c) 2002-2013, Boyce Griffith
+// Copyright (c) 2002-2014, Boyce Griffith
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -558,6 +558,25 @@ HierarchyIntegrator::integrateHierarchy(
 #endif
     return;
 }// integrateHierarchy
+
+void
+HierarchyIntegrator::skipCycle(
+    const double current_time,
+    const double new_time,
+    const int cycle_num)
+{
+    ++d_current_cycle_num;
+#if !defined(NDEBUG)
+    TBOX_ASSERT(MathUtilities<double>::equalEps(d_current_dt, new_time-current_time));
+    TBOX_ASSERT(d_current_cycle_num == cycle_num);
+    TBOX_ASSERT(d_current_cycle_num < d_current_num_cycles);
+#else
+    NULL_USE(current_time);
+    NULL_USE(new_time);
+    NULL_USE(cycle_num);
+#endif
+    return;
+}// skipCycle
 
 void
 HierarchyIntegrator::postprocessIntegrateHierarchy(

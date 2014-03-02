@@ -1,7 +1,7 @@
 // Filename: IBStrategy.cpp
 // Created on 21 Sep 2011 by Boyce Griffith
 //
-// Copyright (c) 2002-2013, Boyce Griffith
+// Copyright (c) 2002-2014, Boyce Griffith
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -159,52 +159,6 @@ IBStrategy::updateFixedLEOperators()
     TBOX_ERROR("IBStrategy::updateFixedLEOperators(): unimplemented\n");
     return;
 }// updateFixedLEOperators
-
-void
-IBStrategy::getLEOperatorPositions(
-    Vec& /*X_vec*/,
-    int /*level_num*/,
-    double /*data_time*/)
-{
-    TBOX_ERROR("IBStrategy::getLEOperatorPositions(): unimplemented\n");
-    return;
-}// getLEOperatorPositions
-
-void
-IBStrategy::computeLagrangianForceJacobianNonzeroStructure(
-    std::vector<int>& /*d_nnz*/,
-    std::vector<int>& /*o_nnz*/)
-{
-    TBOX_ERROR("IBStrategy::computeLagrangianForceJacobianNonzeroStructure(): unimplemented\n");
-    return;
-}// computeLagrangianForceJacobianNonzeroStructure
-
-void
-IBStrategy::computeLagrangianForceJacobian(
-    Mat& /*J_mat*/,
-    MatAssemblyType /*assembly_type*/,
-    double /*X_coef*/,
-    double /*U_coef*/,
-    double /*data_time*/)
-{
-    TBOX_ERROR("IBStrategy::computeLagrangianForceJacobian(): unimplemented\n");
-    return;
-}// computeLagrangianForceJacobian
-
-void
-IBStrategy::applyLagrangianForceJacobian(
-    int /*f_data_idx*/,
-    RobinPhysBdryPatchStrategy* /*f_phys_bdry_op*/,
-    const std::vector<Pointer<RefineSchedule<NDIM> > >& /*f_prolongation_scheds*/,
-    int /*u_data_idx*/,
-    const std::vector<Pointer<CoarsenSchedule<NDIM> > >& /*u_synch_scheds*/,
-    const std::vector<Pointer<RefineSchedule<NDIM> > >& /*u_ghost_fill_scheds*/,
-    double /*data_time*/,
-    Mat& /*J_mat*/)
-{
-    TBOX_ERROR("IBStrategy::applyLagrangianForceJacobian(): unimplemented\n");
-    return;
-}// applyLagrangianForceJacobian
 
 bool
 IBStrategy::hasFluidSources() const

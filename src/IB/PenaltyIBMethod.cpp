@@ -1,7 +1,7 @@
 // Filename: PenaltyIBMethod.cpp
 // Created on 28 Sep 2011 by Boyce Griffith
 //
-// Copyright (c) 2002-2013, Boyce Griffith
+// Copyright (c) 2002-2014, Boyce Griffith
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -360,42 +360,6 @@ PenaltyIBMethod::computeLagrangianForce(
     }
     return;
 }// computeLagrangianForce
-
-void
-PenaltyIBMethod::computeLagrangianForceJacobianNonzeroStructure(
-    std::vector<int>& /*d_nnz*/,
-    std::vector<int>& /*o_nnz*/)
-{
-    TBOX_ERROR("PenaltyIBMethod::computeLagrangianForceJacobianNonzeroStructure(): unimplemented\n");
-    return;
-}// computeLagrangianForceJacobianNonzeroStructure
-
-void
-PenaltyIBMethod::computeLagrangianForceJacobian(
-    Mat& /*J_mat*/,
-    MatAssemblyType /*assembly_type*/,
-    double /*X_coef*/,
-    double /*U_coef*/,
-    double /*data_time*/)
-{
-    TBOX_ERROR("PenaltyIBMethod::computeLagrangianForceJacobian(): unimplemented\n");
-    return;
-}// computeLagrangianForceJacobian
-
-void
-PenaltyIBMethod::applyLagrangianForceJacobian(
-    int /*f_data_idx*/,
-    RobinPhysBdryPatchStrategy* /*f_phys_bdry_op*/,
-    const std::vector<Pointer<RefineSchedule<NDIM> > >& /*f_prolongation_scheds*/,
-    int /*u_data_idx*/,
-    const std::vector<Pointer<CoarsenSchedule<NDIM> > >& /*u_synch_scheds*/,
-    const std::vector<Pointer<RefineSchedule<NDIM> > >& /*u_ghost_fill_scheds*/,
-    double /*data_time*/,
-    Mat& /*J_mat*/)
-{
-    TBOX_ERROR("PenaltyIBMethod::applyLagrangianForceJacobian(): unimplemented\n");
-    return;
-}// applyLagrangianForceJacobian
 
 void
 PenaltyIBMethod::initializePatchHierarchy(

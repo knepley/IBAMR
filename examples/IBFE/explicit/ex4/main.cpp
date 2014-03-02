@@ -1,4 +1,4 @@
-// Copyright (c) 2002-2013, Boyce Griffith
+// Copyright (c) 2002-2014, Boyce Griffith
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -278,6 +278,7 @@ main(
         EquationSystems* equation_systems = ib_method_ops->getFEDataManager()->getEquationSystems();
 
         // Set up post processor to recover computed stresses.
+        FEDataManager* fe_data_manager = ib_method_ops->getFEDataManager();
         Pointer<IBFEPostProcessor> ib_post_processor = new IBFECentroidPostProcessor("IBFEPostProcessor", fe_data_manager);
 
         ib_post_processor->registerTensorVariable(

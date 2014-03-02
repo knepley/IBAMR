@@ -1,7 +1,7 @@
 // Filename: StaggeredStokesOperator.h
 // Created on 29 Mar 2008 by Boyce Griffith
 //
-// Copyright (c) 2002-2013, Boyce Griffith
+// Copyright (c) 2002-2014, Boyce Griffith
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -92,6 +92,14 @@ public:
         const SAMRAI::solv::PoissonSpecifications& U_problem_coefs);
 
     /*!
+     * \brief Get the PoissonSpecifications object used to specify the
+     * coefficients for the momentum equation in the incompressible Stokes
+     * operator.
+     */
+    virtual const SAMRAI::solv::PoissonSpecifications&
+    getVelocityPoissonSpecifications() const;
+
+    /*!
      * \brief Set the SAMRAI::solv::RobinBcCoefStrategy objects used to specify
      * physical boundary conditions.
      *
@@ -109,8 +117,7 @@ public:
         SAMRAI::solv::RobinBcCoefStrategy<NDIM>* P_bc_coef);
 
     /*!
-     * \brief Set the StokesSpecifications object and timestep size used to specify
-     * the coefficients for the time-dependent incompressible Stokes operator.
+     * \brief Set the physical boundary condition helper object.
      */
     virtual void
     setPhysicalBoundaryHelper(

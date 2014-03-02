@@ -1,7 +1,7 @@
 // Filename: StreamableManager.cpp
 // Created on 14 Jun 2004 by Boyce Griffith
 //
-// Copyright (c) 2002-2013, Boyce Griffith
+// Copyright (c) 2002-2014, Boyce Griffith
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -37,7 +37,6 @@
 
 #include "SAMRAI/SAMRAI_config.h"
 #include "StreamableManager.h"
-#include "ibtk/efficient_add_or_update.h"
 #include "ibtk/namespaces.h" // IWYU pragma: keep
 #include "SAMRAI/tbox/SAMRAI_MPI.h"
 #include "SAMRAI/tbox/ShutdownRegistry.h"
@@ -111,7 +110,7 @@ StreamableManager::registerFactory(
     const int factory_id = createUniqueID();
     SAMRAI_MPI::barrier();
     factory->setStreamableClassID(factory_id);
-    efficient_add_or_update(d_factory_map, factory_id, factory);
+    d_factory_map[factory_id] = factory;
     return factory_id;
 }// registerFactory
 

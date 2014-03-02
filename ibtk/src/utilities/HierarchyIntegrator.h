@@ -1,7 +1,7 @@
 // Filename: HierarchyIntegrator.h
 // Created on 10 Aug 2011 by Boyce Griffith
 //
-// Copyright (c) 2002-2013, Boyce Griffith
+// Copyright (c) 2002-2014, Boyce Griffith
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -353,6 +353,16 @@ public:
         double current_time,
         double new_time,
         int cycle_num=0) = 0;
+
+    /*!
+     * Method to skip a cycle of the time integration scheme (e.g. for cases in
+     * which time integration is handled by another class).
+     */
+    void
+    skipCycle(
+        double current_time,
+        double new_time,
+        int cycle_num=0);
 
     /*!
      * Virtual method to clean up data following call(s) to
