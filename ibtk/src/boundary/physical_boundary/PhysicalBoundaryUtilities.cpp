@@ -219,13 +219,16 @@ PhysicalBoundaryUtilities::trimBoundaryCodim1Box(
 {
     TBOX_ASSERT(bdry_box.getBoundaryType() == 1);
 
+    const Dimension& dim = patch.getDim();
+    const int ndim = dim.getValue();
+    
     // Trim a boundary box so it does not stick out past the corners of a patch.
     const Box&     b_box = bdry_box.getBox();
     const Box& patch_box = patch.getBox();
     const unsigned int bdry_normal_axis = bdry_box.getLocationIndex()/2;
 
     Box trimmed_b_box = b_box;
-    for (unsigned int d = 0; d < NDIM; ++d)
+    for (unsigned int d = 0; d < ndim; ++d)
     {
         if (d != bdry_normal_axis)
         {

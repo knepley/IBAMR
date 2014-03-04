@@ -186,8 +186,10 @@ bool
 StaggeredPhysicalBoundaryHelper::patchTouchesDirichletBoundary(
     boost::shared_ptr<Patch > patch) const
 {
+    const Dimension& dim = patch->getDim();
+    const int ndim = dim.getValue();
     if (!patch->getPatchGeometry()->getTouchesRegularBoundary()) return false;
-    for (unsigned int axis = 0; axis < NDIM; ++axis)
+    for (unsigned int axis = 0; axis < ndim; ++axis)
     {
         if (patchTouchesDirichletBoundaryAxis(patch,axis)) return true;
     }
@@ -226,7 +228,9 @@ StaggeredPhysicalBoundaryHelper::cacheBcCoefData(
     const double fill_time,
     const boost::shared_ptr<PatchHierarchy > hierarchy)
 {
-    TBOX_ASSERT(u_bc_coefs.size() == NDIM);
+    const Dimension& dim = hierarchy->getDim();
+    const int ndim = dim.getValue();
+    TBOX_ASSERT(u_bc_coefs.size() == ndim);
     TBOX_ASSERT(hierarchy);
     if (d_hierarchy) clearBcCoefData();
 
@@ -301,12 +305,13 @@ StaggeredPhysicalBoundaryHelper::setupBcCoefBoxes(
     boost::shared_ptr<Patch > patch)
 {
     const Dimension& dim = patch->getDim();
+    const int ndim = dim.getValue();
     boost::shared_ptr<PatchGeometry > pgeom = patch->getPatchGeometry();
     const Box& patch_box = patch->getBox();
     const unsigned int location_index   = bdry_box.getLocationIndex();
     const unsigned int bdry_normal_axis = location_index / 2;
     Box bc_fill_box = pgeom->getBoundaryFillBox(bdry_box, patch_box, /* gcw_to_fill */ IntVector::getOne(dim));
-    for (unsigned int d = 0; d < NDIM; ++d)
+    for (unsigned int d = 0; d < ndim; ++d)
     {
         if (d != bdry_normal_axis)
         {

@@ -135,7 +135,7 @@ public:
      */
     void
     appendNodeDataItem(
-        const SAMRAI::tbox::Pointer<Streamable>& node_data_item);
+        const boost::shared_ptr<Streamable>& node_data_item);
 
     /*!
      * \brief Remove a data item to the collection of data items associated with
@@ -146,7 +146,7 @@ public:
      */
     void
     removeNodeDataItem(
-        const SAMRAI::tbox::Pointer<Streamable>& node_data_item);
+        const boost::shared_ptr<Streamable>& node_data_item);
 
     /*!
      * \return A pointer to the first data item of type T associated with the
