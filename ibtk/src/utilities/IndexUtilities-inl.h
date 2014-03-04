@@ -50,7 +50,7 @@ IndexUtilities::coarsen(
     const SAMRAI::hier::Index& i_fine,
     const SAMRAI::hier::Index& ratio)
 {
-    const Dimension& dim = i_fine.getDim();
+    const SAMRAI::tbox::Dimension& dim = i_fine.getDim();
     SAMRAI::hier::Index i_coarse(dim);
     for (unsigned int d = 0; d < dim.getValue(); ++d)
     {

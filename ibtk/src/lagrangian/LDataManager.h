@@ -879,7 +879,7 @@ public:
      */
     void
     putToRestart(
-        const boost::shared_ptr<SAMRAI::tbox::Database>& db);
+        const boost::shared_ptr<SAMRAI::tbox::Database>& db) const;
 
 protected:
     /*!

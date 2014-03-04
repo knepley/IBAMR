@@ -105,7 +105,7 @@
 #include "SAMRAI/tbox/RestartManager.h"
 #include "SAMRAI/tbox/SAMRAI_MPI.h"
 #include "SAMRAI/tbox/Schedule.h"
-#include "SAMRAI/tbox/ShutdownRegistry.h"
+#include "SAMRAI/tbox/StartupShutdownManager.h"
 #include "SAMRAI/tbox/Timer.h"
 #include "SAMRAI/tbox/TimerManager.h"
 #include "SAMRAI/tbox/Transaction.h"

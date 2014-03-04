@@ -195,14 +195,14 @@ public:
      *
      * \see canEstimateIncomingMessageSize()
      */
-    virtual int
+    virtual size_t
     computeIncomingMessageSize();
 
     /*!
      * \brief Return the integer buffer space (in bytes) needed for the outgoing
      * message.
      */
-    virtual int
+    virtual size_t
     computeOutgoingMessageSize();
 
     /*!
