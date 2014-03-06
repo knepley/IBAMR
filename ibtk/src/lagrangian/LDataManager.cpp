@@ -59,6 +59,9 @@
 #include "LDataManager.h"
 #include "SAMRAI/pdat/NodeData.h"
 #include "SAMRAI/pdat/EdgeData.h"
+#include "SAMRAI/pdat/EdgeVariable.h"
+#include "SAMRAI/pdat/NodeVariable.h"
+#include "SAMRAI/pdat/SideVariable.h"
 #include "SAMRAI/hier/Patch.h"
 #include "SAMRAI/hier/PatchData.h"
 #include "SAMRAI/hier/PatchLevel.h"
@@ -161,45 +164,40 @@ const std::string LDataManager::     POSN_DATA_NAME = "X";
 const std::string LDataManager::INIT_POSN_DATA_NAME = "X0";
 const std::string LDataManager::      VEL_DATA_NAME = "U";
 std::map<std::string,LDataManager*> LDataManager::s_data_manager_instances;
-bool LDataManager::s_registered_callback = false;
-unsigned char LDataManager::s_shutdown_priority = 200;
 std::vector<int> LDataManager::s_ao_dummy(1,-1);
-
-LDataManager*
-LDataManager::getManager(
-    const std::string& name,
-    const std::string& default_interp_kernel_fcn,
-    const std::string& default_spread_kernel_fcn,
-    const IntVector& min_ghost_cell_width,
-    bool register_for_restart)
-{
-    if (s_data_manager_instances.find(name) == s_data_manager_instances.end())
-    {
-        const int stencil_size = std::max(LEInteractor::getStencilSize(default_interp_kernel_fcn),LEInteractor::getStencilSize(default_spread_kernel_fcn));
-        const IntVector gcw = IntVector::max(IntVector(static_cast<int>(floor(0.5*static_cast<double>(stencil_size)))+1),min_ghost_cell_width);
-        s_data_manager_instances[name] = new LDataManager(name, default_interp_kernel_fcn, default_spread_kernel_fcn, gcw, register_for_restart);
-    }
-    if (!s_registered_callback)
-    {
-        ShutdownRegistry::registerShutdownRoutine(freeAllManagers, s_shutdown_priority);
-        s_registered_callback = true;
-    }
-    return s_data_manager_instances[name];
-}// getManager
 
 void
 LDataManager::freeAllManagers()
 {
-    for (std::map<std::string,LDataManager*>::iterator it = s_data_manager_instances.begin(); it != s_data_manager_instances.end(); ++it)
+    for (auto& manager : s_data_manager_instances)
     {
-        if (it->second)
-        {
-            delete it->second;
-        }
-        it->second = NULL;
+        delete manager.second;
+        manager.second = NULL;
     }
     return;
-}// freeManager
+}// freeAllManagers
+
+LDataManager*
+LDataManager::getManager(
+    const Dimension& dim,
+    const std::string& name,
+    const std::string& default_interp_kernel_fcn,
+    const std::string& default_spread_kernel_fcn,
+    const int min_ghost_cell_width,
+    const bool register_for_restart)
+{
+    IBTK_DO_ONCE(
+        static StartupShutdownManager::Handler startup_shutdown_handler(NULL, NULL, LDataManager::freeAllManagers, NULL, /*shutdown_priority*/ 0);
+        StartupShutdownManager::registerHandler(&startup_shutdown_handler);
+                 );
+    if (s_data_manager_instances.find(name) == s_data_manager_instances.end())
+    {
+        const int stencil_size = std::max(LEInteractor::getStencilSize(default_interp_kernel_fcn),LEInteractor::getStencilSize(default_spread_kernel_fcn));
+        const int ghost_cell_width = std::max(static_cast<int>(floor(0.5*static_cast<double>(stencil_size)))+1, min_ghost_cell_width);
+        s_data_manager_instances[name] = new LDataManager(dim, name, default_interp_kernel_fcn, default_spread_kernel_fcn, ghost_cell_width, register_for_restart);
+    }
+    return s_data_manager_instances[name];
+}// getManager
 
 /////////////////////////////// PUBLIC ///////////////////////////////////////
 
@@ -207,11 +205,7 @@ void
 LDataManager::setPatchHierarchy(
     boost::shared_ptr<PatchHierarchy > hierarchy)
 {
-#if !defined(NDEBUG)
     TBOX_ASSERT(hierarchy);
-#endif
-
-    // Reset the hierarchy.
     d_hierarchy = hierarchy;
     d_grid_geom = hierarchy->getGridGeometry();
     return;
@@ -228,12 +222,11 @@ LDataManager::setPatchLevels(
     const int coarsest_ln,
     const int finest_ln)
 {
-#if !defined(NDEBUG)
     TBOX_ASSERT(d_hierarchy);
     TBOX_ASSERT((coarsest_ln >= 0) &&
                 (finest_ln >= coarsest_ln) &&
                 (finest_ln <= d_hierarchy->getFinestLevelNumber()));
-#endif
+    
     // Destroy any unneeded AO objects.
     int ierr;
     for (int level_number = std::max(d_coarsest_ln,0); (level_number <= d_finest_ln) && (level_number < coarsest_ln); ++level_number)
@@ -301,9 +294,7 @@ LDataManager::spread(
 {
     const int coarsest_ln = 0;
     const int finest_ln = d_hierarchy->getFinestLevelNumber();
-#if !defined(NDEBUG)
     TBOX_ASSERT(coarsest_ln <= level_num && level_num <= finest_ln);
-#endif
     std::vector<boost::shared_ptr<LData> >  F_data_vec(finest_ln+1);
     std::vector<boost::shared_ptr<LData> >  X_data_vec(finest_ln+1);
     std::vector<boost::shared_ptr<LData> > ds_data_vec(finest_ln+1);
@@ -347,7 +338,7 @@ LDataManager::spread(
         if (!levelContainsLagrangianData(ln)) continue;
 
         const int depth = F_data[ln]->getDepth();
-        F_ds_data[ln] = new LData("", getNumberOfLocalNodes(ln), depth, d_nonlocal_petsc_indices[ln]);
+        F_ds_data[ln] = boost::make_shared<LData>("", getNumberOfLocalNodes(ln), depth, d_nonlocal_petsc_indices[ln]);
         boost::multi_array_ref<double,2>&       F_ds_arr = *F_ds_data[ln]->getGhostedLocalFormVecArray();
         const boost::multi_array_ref<double,2>&    F_arr = *   F_data[ln]->getGhostedLocalFormVecArray();
         const boost::multi_array_ref<double,1>&   ds_arr = *  ds_data[ln]->getGhostedLocalFormArray();
@@ -384,9 +375,7 @@ LDataManager::spread(
 {
     const int coarsest_ln = 0;
     const int finest_ln = d_hierarchy->getFinestLevelNumber();
-#if !defined(NDEBUG)
     TBOX_ASSERT(coarsest_ln <= level_num && level_num <= finest_ln);
-#endif
     std::vector<boost::shared_ptr<LData> > F_data_vec(finest_ln+1);
     std::vector<boost::shared_ptr<LData> > X_data_vec(finest_ln+1);
     F_data_vec[level_num] = F_data;
@@ -417,14 +406,14 @@ LDataManager::spread(
     // Determine the type of data centering.
     boost::shared_ptr<Variable > f_var;
     var_db->mapIndexToVariable(f_data_idx, f_var);
-    boost::shared_ptr<CellVariable<double> > f_cc_var = f_var;
-    boost::shared_ptr<EdgeVariable<double> > f_ec_var = f_var;
-    boost::shared_ptr<NodeVariable<double> > f_nc_var = f_var;
-    boost::shared_ptr<SideVariable<double> > f_sc_var = f_var;
-    const bool cc_data = f_cc_var;
-    const bool ec_data = f_ec_var;
-    const bool nc_data = f_nc_var;
-    const bool sc_data = f_sc_var;
+    auto f_cc_var = boost::dynamic_pointer_cast<CellVariable<double> >(f_var);
+    auto f_ec_var = boost::dynamic_pointer_cast<EdgeVariable<double> >(f_var);
+    auto f_nc_var = boost::dynamic_pointer_cast<NodeVariable<double> >(f_var);
+    auto f_sc_var = boost::dynamic_pointer_cast<SideVariable<double> >(f_var);
+    const bool cc_data = f_cc_var.get();
+    const bool ec_data = f_ec_var.get();
+    const bool nc_data = f_nc_var.get();
+    const bool sc_data = f_sc_var.get();
     TBOX_ASSERT(cc_data || ec_data || nc_data || sc_data);
     
     // Make a copy of the Eulerian data.
@@ -448,7 +437,6 @@ LDataManager::spread(
     }
 
     // Spread data from the Lagrangian mesh to the Eulerian grid.
-    boost::shared_ptr<CartesianGridGeometry > grid_geom = d_hierarchy->getGridGeometry();
     for (int ln = coarsest_ln; ln <= finest_ln; ++ln)
     {
         // If there are coarser levels in the patch hierarchy, prolong data from
@@ -464,31 +452,30 @@ LDataManager::spread(
         if (F_data_ghost_node_update) F_data[ln]->endGhostUpdate();
         if (X_data_ghost_node_update) X_data[ln]->endGhostUpdate();
         boost::shared_ptr<PatchLevel > level = d_hierarchy->getPatchLevel(ln);
-        const IntVector& periodic_shift = grid_geom->getPeriodicShift(level->getRatio());
-        for (PatchLevel::Iterator p(level); p; p++)
+        const IntVector& periodic_shift = d_grid_geom->getPeriodicShift(level->getRatioToLevelZero());
+        for (const auto& patch : *level)
         {
-            boost::shared_ptr<Patch > patch = level->getPatch(p());
-            boost::shared_ptr<PatchData > f_data = patch->getPatchData(f_data_idx);
-            boost::shared_ptr<LNodeSetData> idx_data = patch->getPatchData(d_lag_node_index_current_idx);
+            auto f_data = patch->getPatchData(f_data_idx);
+            auto idx_data = BOOST_CAST<LNodeSetData>(patch->getPatchData(d_lag_node_index_current_idx));
             const Box& box = idx_data->getGhostBox();
             if (cc_data)
             {
-                boost::shared_ptr<CellData<double> > f_cc_data = f_data;
+                auto f_cc_data = BOOST_CAST<CellData<double> >(f_data);
                 LEInteractor::spread(f_cc_data, F_data[ln], X_data[ln], idx_data, patch, box, periodic_shift, d_default_spread_kernel_fcn);
             }
             if (ec_data)
             { 
-                boost::shared_ptr<EdgeData<double> > f_ec_data = f_data;
+                auto f_ec_data = BOOST_CAST<EdgeData<double> >(f_data);
                 LEInteractor::spread(f_ec_data, F_data[ln], X_data[ln], idx_data, patch, box, periodic_shift, d_default_spread_kernel_fcn);
             }
             if (nc_data)
             {
-                boost::shared_ptr<NodeData<double> > f_nc_data = f_data;
+                auto f_nc_data = BOOST_CAST<NodeData<double> >(f_data);
                 LEInteractor::spread(f_nc_data, F_data[ln], X_data[ln], idx_data, patch, box, periodic_shift, d_default_spread_kernel_fcn);
             }
             if (sc_data)
             {
-                boost::shared_ptr<SideData<double> > f_sc_data = f_data;
+                auto f_sc_data = BOOST_CAST<SideData<double> >(f_data);
                 LEInteractor::spread(f_sc_data, F_data[ln], X_data[ln], idx_data, patch, box, periodic_shift, d_default_spread_kernel_fcn);
             }
             if (f_phys_bdry_op)
@@ -525,9 +512,7 @@ LDataManager::interp(
 {
     const int coarsest_ln = 0;
     const int finest_ln = d_hierarchy->getFinestLevelNumber();
-#if !defined(NDEBUG)
     TBOX_ASSERT(coarsest_ln <= level_num && level_num <= finest_ln);
-#endif
     std::vector<boost::shared_ptr<LData> > F_data_vec(finest_ln+1);
     std::vector<boost::shared_ptr<LData> > X_data_vec(finest_ln+1);
     F_data_vec[level_num] = F_data;
@@ -556,14 +541,14 @@ LDataManager::interp(
     // Determine the type of data centering.
     boost::shared_ptr<Variable > f_var;
     var_db->mapIndexToVariable(f_data_idx, f_var);
-    boost::shared_ptr<CellVariable<double> > f_cc_var = f_var;
-    boost::shared_ptr<EdgeVariable<double> > f_ec_var = f_var;
-    boost::shared_ptr<NodeVariable<double> > f_nc_var = f_var;
-    boost::shared_ptr<SideVariable<double> > f_sc_var = f_var;
-    const bool cc_data = f_cc_var;
-    const bool ec_data = f_ec_var;
-    const bool nc_data = f_nc_var;
-    const bool sc_data = f_sc_var;
+    auto f_cc_var = boost::dynamic_pointer_cast<CellVariable<double> >(f_var);
+    auto f_ec_var = boost::dynamic_pointer_cast<EdgeVariable<double> >(f_var);
+    auto f_nc_var = boost::dynamic_pointer_cast<NodeVariable<double> >(f_var);
+    auto f_sc_var = boost::dynamic_pointer_cast<SideVariable<double> >(f_var);
+    const bool cc_data = f_cc_var.get();
+    const bool ec_data = f_ec_var.get();
+    const bool nc_data = f_nc_var.get();
+    const bool sc_data = f_sc_var.get();
     TBOX_ASSERT(cc_data || ec_data || nc_data || sc_data);
 
     // Synchronize Eulerian values.
@@ -576,7 +561,6 @@ LDataManager::interp(
     }
 
     // Interpolate data from the Eulerian grid to the Lagrangian mesh.
-    boost::shared_ptr<CartesianGridGeometry > grid_geom = d_hierarchy->getGridGeometry();
     for (int ln = coarsest_ln; ln <= finest_ln; ++ln)
     {
         if (!levelContainsLagrangianData(ln)) continue;
@@ -586,31 +570,30 @@ LDataManager::interp(
             f_ghost_fill_scheds[ln]->fillData(fill_data_time);
         }
         boost::shared_ptr<PatchLevel > level = d_hierarchy->getPatchLevel(ln);
-        const IntVector& periodic_shift = grid_geom->getPeriodicShift(level->getRatio());
-        for (PatchLevel::Iterator p(level); p; p++)
+        const IntVector& periodic_shift = d_grid_geom->getPeriodicShift(level->getRatioToLevelZero());
+        for (const auto& patch : *level)
         {
-            boost::shared_ptr<Patch > patch = level->getPatch(p());
-            boost::shared_ptr<PatchData > f_data = patch->getPatchData(f_data_idx);
-            boost::shared_ptr<LNodeSetData> idx_data = patch->getPatchData(d_lag_node_index_current_idx);
+            auto f_data = patch->getPatchData(f_data_idx);
+            auto idx_data = BOOST_CAST<LNodeSetData>(patch->getPatchData(d_lag_node_index_current_idx));
             const Box& box = idx_data->getBox();
             if (cc_data)
             {
-                boost::shared_ptr<CellData<double> > f_cc_data = f_data;
+                auto f_cc_data = BOOST_CAST<CellData<double> >(f_data);
                 LEInteractor::interpolate(F_data[ln], X_data[ln], idx_data, f_cc_data, patch, box, periodic_shift, d_default_interp_kernel_fcn);
             } 
             if (ec_data)
             {
-                boost::shared_ptr<EdgeData<double> > f_ec_data = f_data;
+                auto f_ec_data = BOOST_CAST<EdgeData<double> >(f_data);
                 LEInteractor::interpolate(F_data[ln], X_data[ln], idx_data, f_ec_data, patch, box, periodic_shift, d_default_interp_kernel_fcn);
             }
             if (nc_data)
             { 
-                boost::shared_ptr<NodeData<double> > f_nc_data = f_data;
+                auto f_nc_data = BOOST_CAST<NodeData<double> >(f_data);
                 LEInteractor::interpolate(F_data[ln], X_data[ln], idx_data, f_nc_data, patch, box, periodic_shift, d_default_interp_kernel_fcn);
             }
             if (sc_data)
             {
-                boost::shared_ptr<SideData<double> > f_sc_data = f_data;
+                auto f_sc_data = BOOST_CAST<SideData<double> >(f_data);
                 LEInteractor::interpolate(F_data[ln], X_data[ln], idx_data, f_sc_data, patch, box, periodic_shift, d_default_interp_kernel_fcn);
             }
         }
@@ -630,9 +613,7 @@ void
 LDataManager::registerLInitStrategy(
     boost::shared_ptr<LInitStrategy> lag_init)
 {
-#if !defined(NDEBUG)
     TBOX_ASSERT(lag_init);
-#endif
     d_lag_init = lag_init;
     return;
 }// registerLInitStrategy
@@ -640,7 +621,7 @@ LDataManager::registerLInitStrategy(
 void
 LDataManager::freeLInitStrategy()
 {
-    d_lag_init.setNull();
+    d_lag_init.reset();
     return;
 }// freeLInitStrategy
 
@@ -648,9 +629,7 @@ void
 LDataManager::registerVisItDataWriter(
     boost::shared_ptr<VisItDataWriter > visit_writer)
 {
-#if !defined(NDEBUG)
     TBOX_ASSERT(visit_writer);
-#endif
     d_visit_writer = visit_writer;
     if (d_output_workload)
     {
@@ -667,29 +646,23 @@ void
 LDataManager::registerLSiloDataWriter(
     boost::shared_ptr<LSiloDataWriter> silo_writer)
 {
-#if !defined(NDEBUG)
     TBOX_ASSERT(silo_writer);
-#endif
     d_silo_writer = silo_writer;
     return;
 }// registerLSiloDataWriter
 
 void
 LDataManager::registerLoadBalancer(
-    boost::shared_ptr<LoadBalancer > load_balancer,
+    boost::shared_ptr<LoadBalanceStrategy> load_balancer,
     int workload_idx)
 {
-#if !defined(NDEBUG)
     TBOX_ASSERT(load_balancer);
-#endif
     d_load_balancer = load_balancer;
     d_workload_idx = workload_idx;
     boost::shared_ptr<Variable > workload_var;
     VariableDatabase::getDatabase()->mapIndexToVariable(d_workload_idx, workload_var);
     d_workload_var = workload_var;
-#if !defined(NDEBUG)
     TBOX_ASSERT(d_workload_var);
-#endif
     return;
 }// return
 
@@ -700,13 +673,11 @@ LDataManager::createLData(
     const unsigned int depth,
     const bool maintain_data)
 {
-#if !defined(NDEBUG)
     TBOX_ASSERT(!maintain_data || (d_lag_mesh_data[level_number].find(quantity_name) == d_lag_mesh_data[level_number].end()));
     TBOX_ASSERT(level_number >= 0);
     TBOX_ASSERT(d_coarsest_ln <= level_number && d_finest_ln >= level_number);
     TBOX_ASSERT(depth > 0);
-#endif
-    boost::shared_ptr<LData> ret_val = new LData(quantity_name, getNumberOfLocalNodes(level_number), depth, d_nonlocal_petsc_indices[level_number]);
+    auto ret_val = boost::make_shared<LData>(quantity_name, getNumberOfLocalNodes(level_number), depth, d_nonlocal_petsc_indices[level_number]);
     if (maintain_data)
     {
         d_lag_mesh_data[level_number][quantity_name] = ret_val;
@@ -719,10 +690,8 @@ LDataManager::computeLagrangianStructureCenterOfMass(
     const int structure_id,
     const int level_number)
 {
-#if !defined(NDEBUG)
     TBOX_ASSERT(d_coarsest_ln <= level_number &&
                 d_finest_ln   >= level_number);
-#endif
     int node_counter = 0;
     Point X_com(Point::Zero());
     std::pair<int,int> lag_idx_range = getLagrangianStructureIndexRange(structure_id, level_number);
@@ -761,10 +730,9 @@ LDataManager::computeLagrangianStructureBoundingBox(
     const int structure_id,
     const int level_number)
 {
-#if !defined(NDEBUG)
     TBOX_ASSERT(d_coarsest_ln <= level_number &&
                 d_finest_ln   >= level_number);
-#endif
+    
     Point X_lower(Point::Constant( (std::numeric_limits<double>::max()-sqrt(std::numeric_limits<double>::epsilon()))));
     Point X_upper(Point::Constant(-(std::numeric_limits<double>::max()-sqrt(std::numeric_limits<double>::epsilon()))));
     std::pair<int,int> lag_idx_range = getLagrangianStructureIndexRange(structure_id, level_number);
@@ -800,10 +768,9 @@ LDataManager::reinitLagrangianStructure(
     const int structure_id,
     const int level_number)
 {
-#if !defined(NDEBUG)
     TBOX_ASSERT(d_coarsest_ln <= level_number &&
                 d_finest_ln   >= level_number);
-#endif
+
     d_displaced_strct_ids[level_number].push_back(structure_id);
 
     // Compute the bounding box of the structure in its reference configuration.
@@ -847,7 +814,6 @@ LDataManager::reinitLagrangianStructure(
         shifted_bounding_box.first [d] += dX[d];
         shifted_bounding_box.second[d] += dX[d];
     }
-#if !defined(NDEBUG)
     const double* const domain_x_lower = d_grid_geom->getXLower();
     const double* const domain_x_upper = d_grid_geom->getXUpper();
     for (unsigned int d = 0; d < NDIM; ++d)
@@ -855,7 +821,6 @@ LDataManager::reinitLagrangianStructure(
         TBOX_ASSERT(domain_x_lower[d] <= shifted_bounding_box.first [d]);
         TBOX_ASSERT(domain_x_upper[d] >= shifted_bounding_box.second[d]);
     }
-#endif
     d_displaced_strct_bounding_boxes[level_number].push_back(shifted_bounding_box);
 
     // For each node within the shifted structure: update the position of the
@@ -863,14 +828,13 @@ LDataManager::reinitLagrangianStructure(
     // collect that node into a set of shifted Lagrangian nodes.
     boost::multi_array_ref<double,2>& X_data = *d_lag_mesh_data[level_number][POSN_DATA_NAME]->getLocalFormVecArray();
     boost::shared_ptr<PatchLevel > level = d_hierarchy->getPatchLevel(level_number);
-    for (PatchLevel::Iterator p(level); p; p++)
+    for (const auto& patch : *level)
     {
-        boost::shared_ptr<Patch > patch = level->getPatch(p());
         const Box& patch_box = patch->getBox();
-        const boost::shared_ptr<LNodeSetData> idx_data = patch->getPatchData(d_lag_node_index_current_idx);
-        for (LNodeSetData::CellIterator it(patch_box); it; it++)
+        const auto idx_data = BOOST_CAST<LNodeSetData>(patch->getPatchData(d_lag_node_index_current_idx));
+        for (auto b = CellGeometry::begin(patch_box), bend = CellGeometry::end(patch_box); b != bend; ++b)
         {
-            const Index& i = *it;
+            const Index& i = *b;
             LNodeSet* const node_set = idx_data->getItem(i);
             if (node_set)
             {
@@ -915,10 +879,9 @@ LDataManager::displaceLagrangianStructure(
     const int structure_id,
     const int level_number)
 {
-#if !defined(NDEBUG)
     TBOX_ASSERT(d_coarsest_ln <= level_number &&
                 d_finest_ln   >= level_number);
-#endif
+
     d_displaced_strct_ids[level_number].push_back(structure_id);
 
     // Compute the shifted bounding box.
@@ -929,7 +892,6 @@ LDataManager::displaceLagrangianStructure(
         shifted_bounding_box.first [d] += dX[d];
         shifted_bounding_box.second[d] += dX[d];
     }
-#if !defined(NDEBUG)
     const double* const domain_x_lower = d_grid_geom->getXLower();
     const double* const domain_x_upper = d_grid_geom->getXUpper();
     for (unsigned int d = 0; d < NDIM; ++d)
@@ -937,7 +899,6 @@ LDataManager::displaceLagrangianStructure(
         TBOX_ASSERT(domain_x_lower[d] <= shifted_bounding_box.first [d]);
         TBOX_ASSERT(domain_x_upper[d] >= shifted_bounding_box.second[d]);
     }
-#endif
     d_displaced_strct_bounding_boxes[level_number].push_back(shifted_bounding_box);
 
     // For each node within the shifted structure: update the position of the
@@ -946,14 +907,13 @@ LDataManager::displaceLagrangianStructure(
     boost::multi_array_ref<double,2>& X_data = *d_lag_mesh_data[level_number][POSN_DATA_NAME]->getLocalFormVecArray();
     std::pair<int,int> lag_idx_range = getLagrangianStructureIndexRange(structure_id, level_number);
     boost::shared_ptr<PatchLevel > level = d_hierarchy->getPatchLevel(level_number);
-    for (PatchLevel::Iterator p(level); p; p++)
+    for (const auto& patch : *level)
     {
-        boost::shared_ptr<Patch > patch = level->getPatch(p());
         const Box& patch_box = patch->getBox();
-        const boost::shared_ptr<LNodeSetData> idx_data = patch->getPatchData(d_lag_node_index_current_idx);
-        for (LNodeSetData::CellIterator it(patch_box); it; it++)
+        const auto idx_data = BOOST_CAST<LNodeSetData>(patch->getPatchData(d_lag_node_index_current_idx));
+        for (auto b = CellGeometry::begin(patch_box), bend = CellGeometry::end(patch_box); b != bend; ++b)
         {
-            const Index& i = *it;
+            const Index& i = *b;
             LNodeSet* const node_set = idx_data->getItem(i);
             if (node_set)
             {
@@ -995,10 +955,8 @@ LDataManager::activateLagrangianStructures(
     const std::vector<int>& structure_ids,
     const int level_number)
 {
-#if !defined(NDEBUG)
     TBOX_ASSERT(d_coarsest_ln <= level_number &&
                 d_finest_ln   >= level_number);
-#endif
     for (std::vector<int>::const_iterator cit = structure_ids.begin(); cit != structure_ids.end(); ++cit)
     {
         d_inactive_strcts[level_number].removeItem(*cit);
@@ -1012,10 +970,8 @@ LDataManager::inactivateLagrangianStructures(
     const std::vector<int>& structure_ids,
     const int level_number)
 {
-#if !defined(NDEBUG)
     TBOX_ASSERT(d_coarsest_ln <= level_number &&
                 d_finest_ln   >= level_number);
-#endif
     for (std::vector<int>::const_iterator cit = structure_ids.begin(); cit != structure_ids.end(); ++cit)
     {
         d_inactive_strcts[level_number].addItem(*cit);
@@ -1029,10 +985,8 @@ LDataManager::zeroInactivatedComponents(
     boost::shared_ptr<LData> lag_data,
     const int level_number) const
 {
-#if !defined(NDEBUG)
     TBOX_ASSERT(d_coarsest_ln <= level_number &&
                 d_finest_ln   >= level_number);
-#endif
 
     if (LIKELY(d_inactive_strcts[level_number].getSet().empty())) return;
 
@@ -1095,10 +1049,8 @@ LDataManager::mapLagrangianToPETSc(
 {
     IBTK_TIMER_START(t_map_lagrangian_to_petsc);
 
-#if !defined(NDEBUG)
     TBOX_ASSERT(d_coarsest_ln <= level_number &&
                 d_finest_ln   >= level_number);
-#endif
 
     const int ierr = AOApplicationToPetsc(
         d_ao[level_number],
@@ -1117,10 +1069,8 @@ LDataManager::mapPETScToLagrangian(
 {
     IBTK_TIMER_START(t_map_petsc_to_lagrangian);
 
-#if !defined(NDEBUG)
     TBOX_ASSERT(d_coarsest_ln <= level_number &&
                 d_finest_ln   >= level_number);
-#endif
 
     const int ierr = AOPetscToApplication(
         d_ao[level_number],
@@ -1192,12 +1142,10 @@ LDataManager::beginDataRedistribution(
     const int coarsest_ln = (coarsest_ln_in == -1) ? d_coarsest_ln : coarsest_ln_in;
     const int finest_ln = (finest_ln_in == -1) ? d_finest_ln : finest_ln_in;
 
-#if !defined(NDEBUG)
     TBOX_ASSERT(coarsest_ln >= d_coarsest_ln &&
                 coarsest_ln <= d_finest_ln);
     TBOX_ASSERT(finest_ln   >= d_coarsest_ln &&
                 finest_ln   <= d_finest_ln);
-#endif
 
     // Emit warnings if things seem to be out of synch.
     for (int level_number = coarsest_ln; level_number <= finest_ln; ++level_number)
@@ -1230,8 +1178,8 @@ LDataManager::beginDataRedistribution(
         // been (re-)initialized yet.
         boost::multi_array_ref<double,2>& X_data = *d_lag_mesh_data[level_number][POSN_DATA_NAME]->getGhostedLocalFormVecArray();
         unsigned int num_nodes = X_data.shape()[0];
-        const IntVector& ratio = d_hierarchy->getPatchLevel(level_number)->getRatio();
-        const IntVector& periodic_shift = d_grid_geom->getPeriodicShift();
+        const IntVector& ratio = d_hierarchy->getPatchLevel(level_number)->getRatioToLevelZero();
+        const IntVector& periodic_shift = d_grid_geom->getPeriodicShift(ratio);
         double level_dx[NDIM];
         for (unsigned int d = 0; d < NDIM; ++d) level_dx[d] = domain_dx[d] / ratio[d];
         for (unsigned int local_idx = 0; local_idx < num_nodes; ++local_idx)
@@ -1280,9 +1228,8 @@ LDataManager::beginDataRedistribution(
         if (!d_level_contains_lag_data[level_number]) continue;
         boost::multi_array_ref<double,2>& X_data = *d_lag_mesh_data[level_number][POSN_DATA_NAME]->getGhostedLocalFormVecArray();
         boost::shared_ptr<PatchLevel > level = d_hierarchy->getPatchLevel(level_number);
-        for (PatchLevel::Iterator p(level); p; p++)
+        for (const auto& patch : *level)
         {
-            boost::shared_ptr<Patch > patch = level->getPatch(p());
             boost::shared_ptr<LNodeSetData> current_idx_data = patch->getPatchData(d_lag_node_index_current_idx);
             boost::shared_ptr<LNodeSetData>     new_idx_data = new LNodeSetData(current_idx_data->getBox(), current_idx_data->getGhostCellWidth());
             const Box& patch_box = patch->getBox();
@@ -1293,9 +1240,10 @@ LDataManager::beginDataRedistribution(
             const double* const patch_x_upper = patch_geom->getXUpper();
             const double* const patch_dx = patch_geom->getDx();
             std::set<int> registered_periodic_idx;
-            for (LNodeSetData::CellIterator it(Box::grow(patch_box, IntVector(CFL_WIDTH))); it; it++)
+            const Box cfl_box = Box::grow(patch_box, IntVector(CFL_WIDTH));
+            for (auto b = CellGeometry::begin(cfl_box), bend = CellGeometry::end(cfl_box); b != bend; ++b)
             {
-                const Index& old_cell_idx = *it;
+                const Index& old_cell_idx = *b;
                 LNodeSet* const old_node_set = current_idx_data->getItem(old_cell_idx);
                 if (old_node_set)
                 {
@@ -1354,12 +1302,10 @@ LDataManager::endDataRedistribution(
     const int coarsest_ln = (coarsest_ln_in == -1) ? d_coarsest_ln : coarsest_ln_in;
     const int finest_ln = (finest_ln_in == -1) ? d_finest_ln : finest_ln_in;
 
-#if !defined(NDEBUG)
     TBOX_ASSERT(coarsest_ln >= d_coarsest_ln &&
                 coarsest_ln <= d_finest_ln);
     TBOX_ASSERT(finest_ln   >= d_coarsest_ln &&
                 finest_ln   <= d_finest_ln);
-#endif
 
     for (int level_number = coarsest_ln; level_number <= finest_ln; ++level_number)
     {
@@ -1395,9 +1341,7 @@ LDataManager::endDataRedistribution(
 
         // Determine which processor owns each of the local displaced nodes.
         size_t num_nodes = d_displaced_strct_lnode_idxs[level_number].size();
-#if !defined(NDEBUG)
         TBOX_ASSERT(d_displaced_strct_lnode_posns[level_number].size() == num_nodes);
-#endif
         typedef LNodeTransaction::LTransactionComponent LNodeTransactionComponent;
         std::vector<std::vector<LNodeTransactionComponent> > src_index_set(num_procs);
         for (size_t k = 0; k < num_nodes; ++k)
@@ -1408,13 +1352,9 @@ LDataManager::endDataRedistribution(
 
             Array<int> indices;
             box_tree->findOverlapIndices(indices, Box(cell_idx,cell_idx));
-#if !defined(NDEBUG)
             TBOX_ASSERT(indices.getSize() == 1);
-#endif
             const int patch_num = indices[0];
-#if !defined(NDEBUG)
             TBOX_ASSERT(patch_num >= 0 && patch_num < level->getNumberOfPatches());
-#endif
             const int dst_proc = processor_mapping.getProcessorAssignment(patch_num);
             LNodeTransactionComponent component(lag_idx, posn);
             src_index_set[dst_proc].push_back(component);
@@ -1466,9 +1406,7 @@ LDataManager::endDataRedistribution(
 
         // Determine which patch owns each of the local displaced nodes.
         num_nodes = d_displaced_strct_lnode_idxs[level_number].size();
-#if !defined(NDEBUG)
         TBOX_ASSERT(d_displaced_strct_lnode_posns[level_number].size() == num_nodes);
-#endif
         for (size_t k = 0; k < num_nodes; ++k)
         {
             const LNodeSet::value_type& lag_idx = d_displaced_strct_lnode_idxs[level_number][k];
@@ -1477,15 +1415,10 @@ LDataManager::endDataRedistribution(
 
             Array<int> indices;
             box_tree->findOverlapIndices(indices, Box(cell_idx,cell_idx));
-#if !defined(NDEBUG)
             TBOX_ASSERT(indices.getSize() == 1);
-#endif
             const int patch_num = indices[0];
-#if !defined(NDEBUG)
             TBOX_ASSERT(patch_num >= 0 && patch_num < level->getNumberOfPatches());
-#endif
-            boost::shared_ptr<Patch > patch = level->getPatch(patch_num);
-            boost::shared_ptr<LNodeSetData> idx_data = patch->getPatchData(d_lag_node_index_current_idx);
+            auto idx_data = BOOST_CAST<LNodeSetData>(patch->getPatchData(d_lag_node_index_current_idx));
             if (!idx_data->isElement(cell_idx))
             {
                 idx_data->appendItemboost::shared_ptr(cell_idx, new LNodeSet());
@@ -1612,9 +1545,7 @@ LDataManager::endDataRedistribution(
         for (it = level_data.begin(), i = 0; it != level_data.end(); ++it, ++i)
         {
             boost::shared_ptr<LData> data = it->second;
-#if !defined(NDEBUG)
             TBOX_ASSERT(data);
-#endif
             const int depth = data->getDepth();
 
             // Determine the PETSc indices of the source nodes for use when
@@ -1668,7 +1599,6 @@ LDataManager::endDataRedistribution(
 
     // Update cached indexing information on each grid patch and setup new LMesh
     // data structures.
-    boost::shared_ptr<CartesianGridGeometry > grid_geom = d_hierarchy->getGridGeometry();
     d_local_and_ghost_nodes.resize(finest_ln+1);
     for (int level_number = coarsest_ln; level_number <= finest_ln; ++level_number)
     {
@@ -1684,12 +1614,11 @@ LDataManager::endDataRedistribution(
             local_and_ghost_node_ptrs[k] = boost::shared_ptr<LNode>(&(*new_local_and_ghost_nodes)[k],false);
         }
         boost::shared_ptr<PatchLevel > level = d_hierarchy->getPatchLevel(level_number);
-        const IntVector& periodic_shift = grid_geom->getPeriodicShift(level->getRatio());
+        const IntVector& periodic_shift = d_grid_geom->getPeriodicShift(level->getRatio());
         std::set<int> local_petsc_idxs;
-        for (PatchLevel::Iterator p(level); p; p++)
+        for (const auto& patch : *level)
         {
-            boost::shared_ptr<Patch > patch = level->getPatch(p());
-            boost::shared_ptr<LNodeSetData> idx_data = patch->getPatchData(d_lag_node_index_current_idx);
+            auto idx_data = BOOST_CAST<LNodeSetData>(patch->getPatchData(d_lag_node_index_current_idx));
             idx_data->cacheLocalIndices(patch, periodic_shift);
             const Box& ghost_box = idx_data->getGhostBox();
             for (LNodeSetData::DataIterator it = idx_data->data_begin(ghost_box); it != idx_data->data_end(); ++it)
@@ -1790,10 +1719,8 @@ LDataManager::updateWorkloadEstimates(
     const int coarsest_ln = (coarsest_ln_in == -1) ? d_coarsest_ln : coarsest_ln_in;
     const int finest_ln = (finest_ln_in == -1) ? d_finest_ln : finest_ln_in;
 
-#if !defined(NDEBUG)
     TBOX_ASSERT(coarsest_ln >= d_coarsest_ln && coarsest_ln <= d_finest_ln);
     TBOX_ASSERT(finest_ln   >= d_coarsest_ln && finest_ln   <= d_finest_ln);
-#endif
 
     updateNodeCountData(coarsest_ln, finest_ln);
     HierarchyCellDataOpsReal<double> hier_cc_data_ops(d_hierarchy,coarsest_ln,finest_ln);
@@ -1813,19 +1740,16 @@ LDataManager::updateNodeCountData(
     const int coarsest_ln = (coarsest_ln_in == -1) ? d_coarsest_ln : coarsest_ln_in;
     const int finest_ln = (finest_ln_in == -1) ? d_finest_ln : finest_ln_in;
 
-#if !defined(NDEBUG)
     TBOX_ASSERT(coarsest_ln >= d_coarsest_ln && coarsest_ln <= d_finest_ln);
     TBOX_ASSERT(finest_ln   >= d_coarsest_ln && finest_ln   <= d_finest_ln);
-#endif
 
     for (int level_number = coarsest_ln; level_number <= finest_ln; ++level_number)
     {
         boost::shared_ptr<PatchLevel > level = d_hierarchy->getPatchLevel(level_number);
-        for (PatchLevel::Iterator p(level); p; p++)
+        for (const auto& patch : *level)
         {
-            boost::shared_ptr<Patch > patch = level->getPatch(p());
             const Box& patch_box = patch->getBox();
-            const boost::shared_ptr<LNodeSetData> idx_data = patch->getPatchData(d_lag_node_index_current_idx);
+            const auto idx_data = BOOST_CAST<LNodeSetData>(patch->getPatchData(d_lag_node_index_current_idx));
             boost::shared_ptr<CellData<double> > node_count_data = patch->getPatchData(d_node_count_idx);
             node_count_data->fillAll(0.0);
             for (LNodeSetData::SetIterator it(*idx_data); it; it++)
@@ -1856,24 +1780,21 @@ LDataManager::initializeLevelData(
 {
     IBTK_TIMER_START(t_initialize_level_data);
 
-#if !defined(NDEBUG)
     TBOX_ASSERT(hierarchy);
-    TBOX_ASSERT((level_number >= 0)
-                && (level_number <= hierarchy->getFinestLevelNumber()));
+    TBOX_ASSERT((level_number >= 0) && (level_number <= hierarchy->getFinestLevelNumber()));
     if (old_level)
     {
         TBOX_ASSERT(level_number == old_level->getLevelNumber());
     }
     TBOX_ASSERT(hierarchy->getPatchLevel(level_number));
-#endif
 
     boost::shared_ptr<PatchLevel > level = hierarchy->getPatchLevel(level_number);
 
 #if !defined(NDEBUG)
     // Check for overlapping boxes on this level.
     //
-    // (This is potentially fairly expensive and hence is only done when
-    // assertion checking is active.)
+    // (This is potentially fairly expensive and is only done when assertion
+    // checking is active.)
     BoxList boxes(level->getBoxes());
 
     std::vector<bool> patch_overlaps(boxes.getNumberOfItems());
@@ -1959,10 +1880,7 @@ LDataManager::initializeLevelData(
         d_nonlocal_lag_indices          .resize(level_number+1);
         d_local_petsc_indices           .resize(level_number+1);
         d_nonlocal_petsc_indices        .resize(level_number+1);
-
-#if !defined(NDEBUG)
         TBOX_ASSERT(d_lag_init);
-#endif
         d_level_contains_lag_data[level_number] = d_lag_init->getLevelHasLagrangianData(level_number, can_be_refined);
     }
     if (initial_time && d_level_contains_lag_data[level_number])
@@ -2032,15 +1950,13 @@ LDataManager::initializeLevelData(
         }
 
         // 4. Compute the initial distribution (indexing) data.
-        boost::shared_ptr<CartesianGridGeometry > grid_geom = d_hierarchy->getGridGeometry();
-        const IntVector& periodic_shift = grid_geom->getPeriodicShift(level->getRatio());
+        const IntVector& periodic_shift = d_grid_geom->getPeriodicShift(level->getRatio());
         std::set<LNode*,LNodeIndexLocalPETScIndexComp> local_nodes, ghost_nodes;
-        for (PatchLevel::Iterator p(level); p; p++)
+        for (const auto& patch : *level)
         {
-            boost::shared_ptr<Patch > patch = level->getPatch(p());
             const Box& patch_box = patch->getBox();
 
-            boost::shared_ptr<LNodeSetData> idx_data = patch->getPatchData(d_lag_node_index_current_idx);
+            auto idx_data = BOOST_CAST<LNodeSetData>(patch->getPatchData(d_lag_node_index_current_idx));
             boost::shared_ptr<CellData<double> > node_count_data = patch->getPatchData(d_node_count_idx);
 
             node_count_data->fillAll(0.0);
@@ -2113,7 +2029,6 @@ LDataManager::resetHierarchyConfiguration(
 {
     IBTK_TIMER_START(t_reset_hierarchy_configuration);
 
-#if !defined(NDEBUG)
     TBOX_ASSERT(hierarchy);
     TBOX_ASSERT((coarsest_ln >= 0)
                 && (coarsest_ln <= finest_ln)
@@ -2122,7 +2037,6 @@ LDataManager::resetHierarchyConfiguration(
     {
         TBOX_ASSERT(hierarchy->getPatchLevel(level_number));
     }
-#endif
     const int finest_hier_level = hierarchy->getFinestLevelNumber();
 
     // Reset the patch hierarchy and levels.
@@ -2179,12 +2093,10 @@ LDataManager::applyGradientDetector(
 {
     IBTK_TIMER_START(t_apply_gradient_detector);
 
-#if !defined(NDEBUG)
     TBOX_ASSERT(hierarchy);
     TBOX_ASSERT((level_number >= 0)
                 && (level_number <= hierarchy->getFinestLevelNumber()));
     TBOX_ASSERT(hierarchy->getPatchLevel(level_number));
-#endif
 
     if (initial_time)
     {
@@ -2198,9 +2110,8 @@ LDataManager::applyGradientDetector(
         boost::shared_ptr<PatchLevel > finer_level = hierarchy->getPatchLevel(level_number+1);
 
         // Zero out the node count data on the current level.
-        for (PatchLevel::Iterator p(level); p; p++)
+        for (const auto& patch : *level)
         {
-            boost::shared_ptr<Patch > patch = level->getPatch(p());
             boost::shared_ptr<CellData<double> > node_count_data = patch->getPatchData(d_node_count_idx);
             node_count_data->fillAll(0.0);
         }
@@ -2215,17 +2126,15 @@ LDataManager::applyGradientDetector(
 
         // Tag cells for refinement wherever there exist nodes on the next finer
         // level of the Cartesian grid.
-        for (PatchLevel::Iterator p(level); p; p++)
+        for (const auto& patch : *level)
         {
-            const boost::shared_ptr<Patch > patch = level->getPatch(p());
             const Box& patch_box = patch->getBox();
 
             boost::shared_ptr<CellData<int> > tag_data = patch->getPatchData(tag_index);
             const boost::shared_ptr<CellData<double> > node_count_data = patch->getPatchData(d_node_count_idx);
-
-            for (CellIterator ic(patch_box); ic; ic++)
+            for (auto b = CellGeometry::begin(patch_box), bend = CellGeometry::end(patch_box); b != bend; ++b)
             {
-                const CellIndex& i = ic();
+                const CellIndex& i = *b;
                 if (!MathUtilities<double>::equalEps((*node_count_data)(i),0.0))
                 {
                     (*tag_data)(i) = 1;
@@ -2235,9 +2144,8 @@ LDataManager::applyGradientDetector(
 
         // Tag cells for refinement within the bounding boxes of any displaced
         // structures on finer levels of the patch hierarchy.
-        for (PatchLevel::Iterator p(level); p; p++)
+        for (const auto& patch : *level)
         {
-            const boost::shared_ptr<Patch > patch = level->getPatch(p());
             const Box& patch_box = patch->getBox();
             const boost::shared_ptr<CartesianPatchGeometry > patch_geom = patch->getPatchGeometry();
             const CellIndex& patch_lower = patch_box.lower();
@@ -2279,9 +2187,8 @@ LDataManager::putToRestart(
 {
     IBTK_TIMER_START(t_put_to_database);
 
-#if !defined(NDEBUG)
     TBOX_ASSERT(db);
-#endif
+    
     db->putInteger("LDATA_MANAGER_VERSION", LDATA_MANAGER_VERSION);
 
     db->putInteger("d_coarsest_ln", d_coarsest_ln);
@@ -2430,10 +2337,8 @@ LDataManager::LDataManager(
       d_local_petsc_indices(),
       d_nonlocal_petsc_indices()
 {
-#if !defined(NDEBUG)
     TBOX_ASSERT(!object_name.empty());
     TBOX_ASSERT(ghost_width.min() >= 0);
-#endif
 
     if (d_registered_for_restart)
     {
@@ -2538,15 +2443,11 @@ LDataManager::scatterData(
     int petsc_size, lagrangian_size;
     ierr = VecGetSize(petsc_vec, &petsc_size);  IBTK_CHKERRQ(ierr);
     ierr = VecGetSize(lagrangian_vec, &lagrangian_size);  IBTK_CHKERRQ(ierr);
-#if !defined(NDEBUG)
     TBOX_ASSERT(petsc_size == lagrangian_size);
-#endif
     int petsc_bs, lagrangian_bs;
     ierr = VecGetBlockSize(petsc_vec, &petsc_bs);  IBTK_CHKERRQ(ierr);
     ierr = VecGetBlockSize(lagrangian_vec, &lagrangian_bs);  IBTK_CHKERRQ(ierr);
-#if !defined(NDEBUG)
     TBOX_ASSERT(petsc_bs == lagrangian_bs);
-#endif
     const int depth = petsc_bs;
 
     // Determine the application indices corresponding to the local PETSc
@@ -2601,12 +2502,10 @@ LDataManager::beginNonlocalDataFill(
     const int coarsest_ln = (coarsest_ln_in == -1) ? d_coarsest_ln : coarsest_ln_in;
     const int finest_ln = (finest_ln_in == -1) ? d_finest_ln : finest_ln_in;
 
-#if !defined(NDEBUG)
     TBOX_ASSERT(coarsest_ln >= d_coarsest_ln &&
                 coarsest_ln <= d_finest_ln);
     TBOX_ASSERT(finest_ln   >= d_coarsest_ln &&
                 finest_ln   <= d_finest_ln);
-#endif
 
     for (int level_number = coarsest_ln; level_number <= finest_ln; ++level_number)
     {
@@ -2631,10 +2530,8 @@ LDataManager::endNonlocalDataFill(
     const int coarsest_ln = (coarsest_ln_in == -1) ? d_coarsest_ln : coarsest_ln_in;
     const int finest_ln = (finest_ln_in == -1) ? d_finest_ln : finest_ln_in;
 
-#if !defined(NDEBUG)
     TBOX_ASSERT(coarsest_ln >= d_coarsest_ln && coarsest_ln <= d_finest_ln);
     TBOX_ASSERT(finest_ln   >= d_coarsest_ln && finest_ln   <= d_finest_ln);
-#endif
 
     for (int level_number = coarsest_ln; level_number <= finest_ln; ++level_number)
     {
@@ -2662,10 +2559,8 @@ LDataManager::computeNodeDistribution(
 {
     IBTK_TIMER_START(t_compute_node_distribution);
 
-#if !defined(NDEBUG)
     TBOX_ASSERT(level_number >= d_coarsest_ln &&
                 level_number <= d_finest_ln);
-#endif
 
     local_lag_indices.clear();
     nonlocal_lag_indices.clear();
@@ -2690,12 +2585,10 @@ LDataManager::computeNodeDistribution(
     // Collect the local nodes and assign local indices to the local nodes.
     unsigned int local_offset = 0;
     std::map<int,int> lag_idx_to_petsc_idx;
-#if 1
-    for (PatchLevel::Iterator p(level); p; p++)
+    for (const auto& patch : *level)
     {
-        const boost::shared_ptr<Patch > patch = level->getPatch(p());
         const Box& patch_box = patch->getBox();
-        const boost::shared_ptr<LNodeSetData> idx_data = patch->getPatchData(d_lag_node_index_current_idx);
+        const auto idx_data = BOOST_CAST<LNodeSetData>(patch->getPatchData(d_lag_node_index_current_idx));
         for (LNodeSetData::DataIterator it = idx_data->data_begin(patch_box); it != idx_data->data_end(); ++it)
         {
             LNode* const node_idx = *it;
@@ -2706,36 +2599,12 @@ LDataManager::computeNodeDistribution(
             lag_idx_to_petsc_idx[lag_idx] = petsc_idx;
         }
     }
-#else
-    for (PatchLevel::Iterator p(level); p; p++)
-    {
-        const boost::shared_ptr<Patch > patch = level->getPatch(p());
-        const Box& patch_box = patch->getBox();
-        const boost::shared_ptr<LNodeSetData> idx_data = patch->getPatchData(d_lag_node_index_current_idx);
-        for (Box::Iterator b(patch_box); b; b++)
-        {
-            const Index& i = b();
-            if (!idx_data->isElement(i)) continue;
-            const LNodeSet* const node_set = idx_data->getItem(i);
-            for (LNodeSet::const_iterator node_it = node_set->begin(); node_it != node_set->end(); ++node_it)
-            {
-                LNode* const node_idx = *node_it;
-                const int lag_idx = node_idx->getLagrangianIndex();
-                local_lag_indices.push_back(lag_idx);
-                const int petsc_idx = local_offset++;
-                node_idx->setLocalPETScIndex(petsc_idx);
-                lag_idx_to_petsc_idx[lag_idx] = petsc_idx;
-            }
-        }
-    }
-#endif
 
     // Determine the Lagrangian indices of the nonlocal nodes.
-    for (PatchLevel::Iterator p(level); p; p++)
+    for (const auto& patch : *level)
     {
-        const boost::shared_ptr<Patch > patch = level->getPatch(p());
         const Box& patch_box = patch->getBox();
-        const boost::shared_ptr<LNodeSetData> idx_data = patch->getPatchData(d_lag_node_index_current_idx);
+        const auto idx_data = BOOST_CAST<LNodeSetData>(patch->getPatchData(d_lag_node_index_current_idx));
         BoxList ghost_boxes = idx_data->getGhostBox();
         ghost_boxes.removeIntersections(patch_box);
         for (BoxList::Iterator bl(ghost_boxes); bl; bl++)
@@ -2823,10 +2692,9 @@ LDataManager::computeNodeDistribution(
     nonlocal_petsc_indices.insert(nonlocal_petsc_indices.end(), node_indices.begin()+num_local_nodes, node_indices.end());
 
     // Store the global PETSc index in the local LNode objects.
-    for (PatchLevel::Iterator p(level); p; p++)
+    for (const auto& patch : *level)
     {
-        const boost::shared_ptr<Patch > patch = level->getPatch(p());
-        const boost::shared_ptr<LNodeSetData> idx_data = patch->getPatchData(d_lag_node_index_current_idx);
+        const auto idx_data = BOOST_CAST<LNodeSetData>(patch->getPatchData(d_lag_node_index_current_idx));
         const Box& ghost_box = idx_data->getGhostBox();
         for (LNodeSetData::DataIterator it = idx_data->data_begin(ghost_box); it != idx_data->data_end(); ++it)
         {

@@ -139,10 +139,11 @@ public:
      */
     static LDataManager*
     getManager(
+        const SAMRAI::tbox::Dimension& dim,
         const std::string& name,
         const std::string& default_interp_kernel_fcn,
         const std::string& default_spread_kernel_fcn,
-        const SAMRAI::hier::IntVector& min_ghost_cell_width=SAMRAI::hier::IntVector::getZero(SAMRAI::tbox::Dimension(NDIM)),
+        int min_ghost_cell_width=0,
         bool register_for_restart=true);
 
     /*!
@@ -381,8 +382,8 @@ public:
      * \brief Register a load balancer for non-uniform load balancing.
      */
     void
-    registerLoadBalanceStrategy(
-        boost::shared_ptr<SAMRAI::mesh::LoadBalanceStrategy > load_balancer,
+    registerLoadBalancer(
+        boost::shared_ptr<SAMRAI::mesh::LoadBalanceStrategy> load_balancer,
         int workload_data_idx);
 
     /*!
@@ -886,10 +887,11 @@ protected:
      * \brief Constructor.
      */
     LDataManager(
+        const SAMRAI::tbox::Dimension& dim,
         const std::string& object_name,
         const std::string& default_interp_kernel_fcn,
         const std::string& default_spread_kernel_fcn,
-        const SAMRAI::hier::IntVector& ghost_width,
+        int ghost_width,
         bool register_for_restart=true);
 
     /*!
@@ -1024,12 +1026,10 @@ private:
     getFromRestart();
 
     /*!
-     * Static data members used to control access to and destruction of
-     * singleton data manager instance.
+     * Static data member used to control access to singleton data manager
+     * instances.
      */
     static std::map<std::string,LDataManager*> s_data_manager_instances;
-    static bool s_registered_callback;
-    static unsigned char s_shutdown_priority;
 
     /*
      * The object name is used as a handle to databases stored in restart files
@@ -1056,7 +1056,7 @@ private:
     /*
      * We cache a pointer to the load balancer.
      */
-    boost::shared_ptr<SAMRAI::mesh::LoadBalanceStrategy > d_load_balancer;
+    boost::shared_ptr<SAMRAI::mesh::LoadBalanceStrategy> d_load_balancer;
 
     /*
      * Objects used to specify and initialize the Lagrangian data on the patch
