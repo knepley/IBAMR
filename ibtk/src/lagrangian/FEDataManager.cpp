@@ -1881,9 +1881,12 @@ void FEDataManager::updateWorkloadEstimates(const int coarsest_ln_in, const int 
     const int ln = d_level_number;
     if (coarsest_ln <= ln && ln <= finest_ln)
     {
+        Pointer<PatchLevel<NDIM> > level = d_hierarchy->getPatchLevel(ln);
+        level->allocatePatchData(d_qp_count_idx);
         updateQuadPointCountData(ln, ln);
         HierarchyCellDataOpsReal<NDIM, double> hier_cc_data_ops(d_hierarchy, ln, ln);
         hier_cc_data_ops.add(d_workload_idx, d_qp_count_idx, d_workload_idx);
+        level->deallocatePatchData(d_qp_count_idx);
     }
 
     IBTK_TIMER_STOP(t_update_workload_estimates);
@@ -2057,22 +2060,23 @@ void FEDataManager::applyGradientDetector(const Pointer<BasePatchHierarchy<NDIM>
     else if (level_number + 1 == d_level_number &&
              level_number < d_hierarchy->getFinestLevelNumber())
     {
-        Pointer<PatchLevel<NDIM> > finer_level = d_hierarchy->getPatchLevel(level_number + 1);
-        Pointer<PatchLevel<NDIM> > level = d_hierarchy->getPatchLevel(level_number);
+        Pointer<PatchLevel<NDIM> > coarse_level = d_hierarchy->getPatchLevel(level_number);
+        Pointer<PatchLevel<NDIM> > fine_level = d_hierarchy->getPatchLevel(level_number + 1);
 
         // Update the node count data and coarsen it from the finer level.
-        updateQuadPointCountData(level_number, level_number + 1);
+        coarse_level->allocatePatchData(d_qp_count_idx);
+        fine_level->allocatePatchData(d_qp_count_idx);
+        updateQuadPointCountData(level_number + 1, level_number + 1);
         Pointer<CoarsenOperator<NDIM> > coarsen_op =
             new CartesianCellDoubleWeightedAverage<NDIM>();
         Pointer<CoarsenAlgorithm<NDIM> > coarsen_alg = new CoarsenAlgorithm<NDIM>();
         coarsen_alg->registerCoarsen(d_qp_count_idx, d_qp_count_idx, coarsen_op);
-        coarsen_alg->createSchedule(level, finer_level)->coarsenData();
+        coarsen_alg->createSchedule(coarse_level, fine_level)->coarsenData();
 
-        // Tag cells for refinement whenever they contain element quadrature
-        // points.
-        for (PatchLevel<NDIM>::Iterator p(level); p; p++)
+        // Tag cells for refinement that contain element quadrature points.
+        for (PatchLevel<NDIM>::Iterator p(coarse_level); p; p++)
         {
-            const Pointer<Patch<NDIM> > patch = level->getPatch(p());
+            const Pointer<Patch<NDIM> > patch = coarse_level->getPatch(p());
             const Box<NDIM>& patch_box = patch->getBox();
             Pointer<CellData<NDIM, int> > tag_data = patch->getPatchData(tag_index);
             Pointer<CellData<NDIM, double> > qp_count_data =
@@ -2086,6 +2090,10 @@ void FEDataManager::applyGradientDetector(const Pointer<BasePatchHierarchy<NDIM>
                 }
             }
         }
+
+        // Deallocate scratch data.
+        coarse_level->deallocatePatchData(d_qp_count_idx);
+        fine_level->deallocatePatchData(d_qp_count_idx);
     }
 
     IBTK_TIMER_STOP(t_apply_gradient_detector);
@@ -2211,7 +2219,6 @@ void FEDataManager::updateQuadPointCountData(const int coarsest_ln, const int fi
     for (int ln = coarsest_ln; ln <= finest_ln; ++ln)
     {
         Pointer<PatchLevel<NDIM> > level = d_hierarchy->getPatchLevel(ln);
-        if (!level->checkAllocated(d_qp_count_idx)) level->allocatePatchData(d_qp_count_idx);
         HierarchyCellDataOpsReal<NDIM, double> hier_cc_data_ops(d_hierarchy, ln, ln);
         hier_cc_data_ops.setToScalar(d_qp_count_idx, 0.0);
         if (ln != d_level_number) continue;
