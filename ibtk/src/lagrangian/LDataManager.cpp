@@ -1760,13 +1760,7 @@ void LDataManager::endDataRedistribution(const int coarsest_ln_in, const int fin
 
         Pointer<PatchLevel<NDIM> > level = d_hierarchy->getPatchLevel(level_number);
         level->allocatePatchData(d_scratch_data);
-
-        const double current_time = 0.0;
-        level->setTime(current_time, d_current_data);
-        level->setTime(current_time, d_scratch_data);
-
-        d_lag_node_index_bdry_fill_scheds[level_number]->fillData(current_time);
-
+        d_lag_node_index_bdry_fill_scheds[level_number]->fillData(/*fill_time*/ 0.0);
         level->deallocatePatchData(d_scratch_data);
     }
 
@@ -2194,24 +2188,17 @@ void LDataManager::initializeLevelData(const Pointer<BasePatchHierarchy<NDIM> > 
 
     // Allocate storage needed to initialize the level and fill data from
     // coarser levels in AMR hierarchy, if any.
-    //
-    // Since time gets set when we allocate data, re-stamp it to current time if
-    // we don't need to allocate.
     if (allocate_data && (level_number >= d_coarsest_ln) && (level_number <= d_finest_ln))
     {
-        level->allocatePatchData(d_current_data, init_data_time);
-    }
-    else if (level_number >= d_coarsest_ln && level_number <= d_finest_ln)
-    {
-        level->setTime(init_data_time, d_current_data);
+        level->allocatePatchData(d_current_data);
     }
 
     // Fill data from the old level when available.
     if (old_level && d_level_contains_lag_data[level_number])
     {
-        level->allocatePatchData(d_scratch_data, init_data_time);
+        level->allocatePatchData(d_scratch_data);
         d_lag_node_index_bdry_fill_alg->createSchedule(level, old_level)
-            ->fillData(init_data_time);
+            ->fillData(/*fill_time*/ 0.0);
         level->deallocatePatchData(d_scratch_data);
     }
 
