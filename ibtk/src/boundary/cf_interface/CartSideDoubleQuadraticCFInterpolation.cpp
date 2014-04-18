@@ -417,21 +417,16 @@ void CartSideDoubleQuadraticCFInterpolation::setPatchHierarchy(
     }
 
     Pointer<RefineAlgorithm<NDIM> > refine_alg = new RefineAlgorithm<NDIM>();
-    Pointer<RefineOperator<NDIM> > refine_op = NULL;
     refine_alg->registerRefine(d_sc_indicator_idx, // destination
                                d_sc_indicator_idx, // source
                                d_sc_indicator_idx, // temporary work space
-                               refine_op);
+                               /*refine_op*/ NULL);
     for (int ln = 0; ln <= finest_level_number; ++ln)
     {
         Pointer<PatchLevel<NDIM> > level = d_hierarchy->getPatchLevel(ln);
         if (!level->checkAllocated(d_sc_indicator_idx))
         {
-            level->allocatePatchData(d_sc_indicator_idx, 0.0);
-        }
-        else
-        {
-            level->setTime(0.0, d_sc_indicator_idx);
+            level->allocatePatchData(d_sc_indicator_idx);
         }
         for (PatchLevel<NDIM>::Iterator p(level); p; p++)
         {
@@ -441,7 +436,7 @@ void CartSideDoubleQuadraticCFInterpolation::setPatchHierarchy(
             sc_indicator_data->fillAll(0, sc_indicator_data->getGhostBox());
             sc_indicator_data->fillAll(1, sc_indicator_data->getBox());
         }
-        refine_alg->createSchedule(d_hierarchy->getPatchLevel(ln))->fillData(0.0);
+        refine_alg->createSchedule(level)->fillData(/*fill_time*/ 0.0);
     }
     return;
 } // setPatchHierarchy
@@ -454,7 +449,6 @@ void CartSideDoubleQuadraticCFInterpolation::clearPatchHierarchy()
          ++it)
     {
         delete (*it);
-        (*it) = NULL;
     }
     d_cf_boundary.clear();
     return;
