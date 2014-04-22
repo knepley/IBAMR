@@ -173,6 +173,7 @@ AdvDiffStochasticForcing::setDataOnPatchHierarchy(const int data_idx,
     const int finest_ln =
         (finest_ln_in == -1 ? hierarchy->getFinestLevelNumber() : finest_ln_in);
     const int cycle_num = d_adv_diff_solver->getCurrentCycleNumber();
+
     if (!initial_time)
     {
 #if !defined(NDEBUG)
@@ -182,16 +183,14 @@ AdvDiffStochasticForcing::setDataOnPatchHierarchy(const int data_idx,
         for (int level_num = coarsest_ln; level_num <= finest_ln; ++level_num)
         {
             Pointer<PatchLevel<NDIM> > level = hierarchy->getPatchLevel(level_num);
-            if (!level->checkAllocated(d_C_current_cc_idx))
-                level->allocatePatchData(d_C_current_cc_idx);
-            if (!level->checkAllocated(d_C_half_cc_idx))
-                level->allocatePatchData(d_C_half_cc_idx);
-            if (!level->checkAllocated(d_C_new_cc_idx))
-                level->allocatePatchData(d_C_new_cc_idx);
-            if (!level->checkAllocated(d_F_sc_idx)) level->allocatePatchData(d_F_sc_idx);
+            level->allocatePatchData(d_C_current_cc_idx);
+            level->allocatePatchData(d_C_half_cc_idx);
+            level->allocatePatchData(d_C_new_cc_idx);
+            level->allocatePatchData(d_F_sc_idx);
             for (int k = 0; k < d_num_rand_vals; ++k)
-                if (!level->checkAllocated(d_F_sc_idxs[k]))
-                    level->allocatePatchData(d_F_sc_idxs[k]);
+            {
+                level->allocatePatchData(d_F_sc_idxs[k]);
+            }
         }
 
         // Set concentration value used to compute concentration-dependent flux
@@ -285,8 +284,8 @@ AdvDiffStochasticForcing::setDataOnPatchHierarchy(const int data_idx,
             }
         }
 
-// Set random values for the present cycle as weighted combinations of
-// the generated random values.
+        // Set random values for the present cycle as weighted combinations of
+        // the generated random values.
 #if !defined(NDEBUG)
         TBOX_ASSERT(cycle_num >= 0 && cycle_num < static_cast<int>(d_weights.size()));
 #endif
@@ -395,6 +394,23 @@ AdvDiffStochasticForcing::setDataOnPatchHierarchy(const int data_idx,
     {
         setDataOnPatchLevel(
             data_idx, var, hierarchy->getPatchLevel(level_num), data_time, initial_time);
+    }
+
+    if (!initial_time)
+    {
+        // Deallocate scratch data.
+        for (int level_num = coarsest_ln; level_num <= finest_ln; ++level_num)
+        {
+            Pointer<PatchLevel<NDIM> > level = hierarchy->getPatchLevel(level_num);
+            level->deallocatePatchData(d_C_current_cc_idx);
+            level->deallocatePatchData(d_C_half_cc_idx);
+            level->deallocatePatchData(d_C_new_cc_idx);
+            level->deallocatePatchData(d_F_sc_idx);
+            for (int k = 0; k < d_num_rand_vals; ++k)
+            {
+                level->deallocatePatchData(d_F_sc_idxs[k]);
+            }
+        }
     }
     return;
 } // setDataOnPatchHierarchy
